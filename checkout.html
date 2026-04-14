@@ -18,10 +18,16 @@
     n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
     t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
     document,'script','https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init','YOUR_PIXEL_ID');
+    fbq('init','499919262310418');
     fbq('track','PageView');
   </script>
-  <!-- HYROS_SCRIPT_TAG_HERE -->
+  <script>
+var head = document.head;
+var script = document.createElement('script');
+script.type = 'text/javascript';
+script.src = "https://t.naturalsanitations.com/v1/lst/universal-script?ph=5fecc4f438ca2193e96ee1cd7f0374180f426ce110a45be4dbf15f3ca233b720&tag=!clicked&ref_url=" + encodeURI(document.URL );
+head.appendChild(script);
+</script>
   <!-- ============================================================ -->
 
   <style>
@@ -432,7 +438,8 @@
     <div class="summary-period" id="s-period">per year</div>
     <div class="summary-bins" id="s-bins">2 bins · Oakland &amp; Macomb County</div>
     <div class="summary-split" id="s-split">
-      <strong>$125 today</strong> · $125 in 30 days<br>
+      <strong>$250 today</strong><br>
+      Annual $250/yr billed today.<br>
       No contract · Cancel any time
     </div>
     <hr class="summary-divider" />
@@ -463,41 +470,46 @@
 /*
   ============================================================
   STRIPE CONFIGURATION
+  Use the same pk_live / pk_test selection as index.html (STRIPE_PK_LIVE / STRIPE_PK_TEST).
   Replace YOUR_STRIPE_PUBLISHABLE_KEY with your real key.
   Replace the PRICE_IDS with your Stripe Price IDs for each plan.
   ============================================================
 */
-const STRIPE_KEY = 'YOUR_STRIPE_PUBLISHABLE_KEY';
+const STRIPE_KEY = 'pk_live_51IZeLCHhyjMV1WTXFgxViPoMxrhHcpgXY0tgggShjYE0wI2o88gds9xzvnFzjrw0inNNETA2FxtMxVrsCZxaDPY700Y7GyJLQx';
 
 const PRICE_IDS = {
-  annual_1bin:    'price_REPLACE_annual_1bin',
-  annual_2bin:    'price_REPLACE_annual_2bin',
-  annual_3bin:    'price_REPLACE_annual_3bin',
-  annual_4bin:    'price_REPLACE_annual_4bin',
-  quarterly_any:  'price_REPLACE_quarterly',
-  monthly_1bin:   'price_REPLACE_monthly_1bin',
-  monthly_2bin:   'price_REPLACE_monthly_2bin',
-  monthly_3bin:   'price_REPLACE_monthly_3bin',
-  monthly_4bin:   'price_REPLACE_monthly_4bin',
+  annual_1bin:    'price_1TM830HhyjMV1WTXmITLSMdS',
+  annual_2bin:    'price_1TM830HhyjMV1WTXmITLSMdS',
+  annual_3bin:    'price_1TM83UHhyjMV1WTXX5THQnVL',
+  annual_4bin:    'price_1TM83qHhyjMV1WTXv61FATQf',
+  quarterly_1bin: 'price_1TM84WHhyjMV1WTXhSWyNBba',
+  quarterly_2bin: 'price_1TM84WHhyjMV1WTXhSWyNBba',
+  quarterly_3bin: 'price_1TM84rHhyjMV1WTXEPMngfuM',
+  quarterly_4bin: 'price_1TM85kHhyjMV1WTXpWTjEvRQ',
+  monthly_1bin:   'price_1TM87WHhyjMV1WTX2ekQbLPa',
+  monthly_2bin:   'price_1TM87WHhyjMV1WTX2ekQbLPa',
+  monthly_3bin:   'price_1TM87mHhyjMV1WTXgDHqi4BE',
+  monthly_4bin:   'price_1TM889HhyjMV1WTXdGMfaOib',
 };
 
 /*
   GHL webhook — fires on successful payment to create contact in pipeline.
   Replace GHL_WEBHOOK_URL with your actual webhook URL.
 */
-const GHL_WEBHOOK_URL = 'GHL_WEBHOOK_URL';
+const GHL_WEBHOOK_URL = 'https://services.leadconnectorhq.com/hooks/pit-6925afab-67ff-47f1-b732-63b00ff3d3e8/webhook-trigger/';
 
 /* ── READ URL PARAMS ── */
 const params = new URLSearchParams(window.location.search);
 const selectedPlan = params.get('plan') || 'annual';
 const selectedBins = parseInt(params.get('bins') || '2', 10);
 const selectedPrice = parseInt(params.get('price') || '250', 10);
+const urlZip = (params.get('zip') || '').trim();
 
 /* ── POPULATE ORDER SUMMARY ── */
 const planNames = { annual:'Annual Plan', quarterly:'Quarterly Plan', monthly:'Monthly Plan' };
 const periods   = { annual:'per year', quarterly:'per quarter', monthly:'per month' };
 const splits    = {
-  annual:    '<strong>$'+Math.ceil(selectedPrice/2)+' today</strong> · $'+Math.floor(selectedPrice/2)+' in 30 days<br>No contract · Cancel any time',
+  annual:    '<strong>$'+selectedPrice+' today</strong><br>Annual $'+selectedPrice+'/yr billed today.<br>No contract · Cancel any time',
   quarterly: 'Billed every 3 months<br>No contract · Cancel any time',
   monthly:   'Billed monthly<br>No contract · Cancel any time'
 };
@@ -511,6 +523,31 @@ document.getElementById('s-split').innerHTML = splits[selectedPlan] || splits.an
 /* Update submit button text */
 document.getElementById('submit-btn').textContent =
   'Pay $'+selectedPrice+' — Lock In My Spot →';
+
+function buildCheckoutPaymentIntentPayload(emailOpt) {
+  const cents = Math.round(selectedPrice * 100);
+  return {
+    plan: selectedPlan,
+    bins: selectedBins,
+    zip: urlZip,
+    price: selectedPrice,
+    amount: cents,
+    charge_cents: cents,
+    single_charge: true,
+    next_charge: null,
+    capture_method: 'automatic',
+    email: emailOpt || undefined,
+    metadata: {
+      plan: selectedPlan,
+      bins: String(selectedBins),
+      service_zip: urlZip,
+      charge_dollars: String(selectedPrice),
+      charge_cents: String(cents),
+      single_charge: 'true',
+      next_charge: ''
+    }
+  };
+}
 
 /* ── STRIPE INIT ── */
 const stripe = Stripe(STRIPE_KEY);
@@ -582,7 +619,7 @@ paymentRequest.on('paymentmethod', async (ev) => {
     const res = await fetch('/create-payment-intent', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ plan:selectedPlan, bins:selectedBins, price:selectedPrice })
+      body: JSON.stringify(buildCheckoutPaymentIntentPayload(ev.payerEmail))
     });
     const { clientSecret } = await res.json();
     const { error, paymentIntent } = await stripe.confirmCardPayment(
@@ -634,7 +671,7 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
     const res = await fetch('/create-payment-intent', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ plan:selectedPlan, bins:selectedBins, price:selectedPrice, email })
+      body: JSON.stringify(buildCheckoutPaymentIntentPayload(email))
     });
 
     if (!res.ok) throw new Error('Server error');
