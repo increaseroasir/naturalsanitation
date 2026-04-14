@@ -2114,7 +2114,7 @@ async function handleWalletPayment(ev) {
   try {
     var body = buildPaymentIntentRequestBody(ev.payerEmail || undefined);
     var idem = body.idempotencyKey;
-    var res = await fetch('/create-payment-intent', {
+    var res = await fetch('https://ns-payment.increase-roas.workers.dev/create-payment-intent', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2741,7 +2741,7 @@ function initCheckoutModal() {
       } else {
         var body = buildPaymentIntentRequestBody(email);
         var idem = body.idempotencyKey;
-        chain = fetch('/create-payment-intent', {
+        chain = fetch('https://ns-payment.increase-roas.workers.dev/create-payment-intent', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
