@@ -699,9 +699,9 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
 
     onSuccess({ name:firstName+' '+lastName, email, phone, address });
 
-  } catch(err) {
-    document.getElementById('err-card-general').textContent =
-      'Something went wrong. Please try again or call us directly.';
+  } catch(e) {
+    document.getElementById('err-card-general').textContent = e.message || 'Could not reach payment server. Try again.';
+    console.error('Payment error:', e);
     showProcessing(false);
     document.getElementById('submit-btn').disabled = false;
   }
