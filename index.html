@@ -1514,15 +1514,15 @@ head.appendChild(script);
 
               <form id="modal-checkout-form" novalidate>
                 <div class="modal-field">
-                  <label for="modal-email">Email</label>
-                  <input type="email" id="modal-email" name="email" autocomplete="email" required />
-                  <div class="modal-field-error" id="modal-err-email"></div>
-                </div>
-                <div class="modal-field">
                   <label for="modal-name">Name on card</label>
                   <input type="text" id="modal-name" name="ccname" autocomplete="cc-name" required />
                 </div>
                 <div class="modal-card-section" id="modal-card-section">
+                  <div class="modal-field">
+                    <label for="modal-email">EMAIL</label>
+                    <input type="email" id="modal-email" name="email" autocomplete="email" required />
+                    <div class="modal-field-error" id="modal-err-email"></div>
+                  </div>
                   <div class="modal-field">
                     <label>Card number</label>
                     <div class="stripe-field" id="modal-card-number"></div>
@@ -2179,6 +2179,7 @@ function tryResumePaymentIntentBeforeMount() {
     }
     if (p.status === 'succeeded') {
       firePurchaseDeduped(p);
+      fireModalGHLPurchaseSuccess();
       closeCheckout();
       return true;
     }
@@ -2237,6 +2238,9 @@ async function handleWalletPayment(ev) {
     try {
       var pi = assertPaymentIntentSucceeded(result);
       ev.complete('success');
+      if (ev.payerEmail && document.getElementById('modal-email')) {
+        document.getElementById('modal-email').value = ev.payerEmail;
+      }
       firePurchaseDeduped(pi);
       onCheckoutSuccess(pi);
     } catch (err2) {
@@ -2247,7 +2251,41 @@ async function handleWalletPayment(ev) {
   }
 }
 
+function fireModalGHLPurchaseSuccess() {
+  if (!GHL_WEBHOOK_URL || !/^https:\/\//.test(GHL_WEBHOOK_URL)) {
+    return;
+  }
+  var emailEl = document.getElementById('modal-email');
+  var nameEl = document.getElementById('modal-name');
+  var fullEl = document.getElementById('modal-full-name');
+  var phoneEl = document.getElementById('modal-phone');
+  var email = emailEl ? (emailEl.value || '').trim() : '';
+  var name =
+    (nameEl && (nameEl.value || '').trim()) ||
+    (fullEl && (fullEl.value || '').trim()) ||
+    '';
+  var phone = phoneEl ? (phoneEl.value || '').trim() : '';
+  var zip = document.getElementById('zip-input') ? document.getElementById('zip-input').value.trim() : '';
+  var body = {
+    email: email,
+    name: name,
+    phone: phone,
+    plan: selectedPlan,
+    bins: selectedBins,
+    zip: zip,
+    price: getChargeAmountDollars(),
+    source: 'checkout-modal-paid',
+    status: 'paid'
+  };
+  fetch(GHL_WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).catch(function() {});
+}
+
 function onCheckoutSuccess(pi) {
+  fireModalGHLPurchaseSuccess();
   closeCheckout();
 }
 
