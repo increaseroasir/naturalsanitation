@@ -147,13 +147,6 @@ head.appendChild(script);
       height:100%!important;
       padding-top:0!important;
     }
-    .vsl-caption{
-      font-size:12px;
-      color:var(--muted);
-      text-align:center;
-      margin-top:8px;
-      font-style:italic;
-    }
 
     /* ── PLAN COLUMN ── */
     .plan-col{display:flex;flex-direction:column;gap:14px}
@@ -344,48 +337,42 @@ head.appendChild(script);
     }
     .cta-btn:hover{background:var(--blue-hover)}
     .cta-btn:disabled{opacity:.45;cursor:not-allowed}
-    .cta-trust{
+    .hero-proof-bar{
+      margin-top:14px;
+      max-width:820px;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--r);
+      padding:10px 16px;
+      font-size:13px;
+      font-weight:600;
+      color:var(--muted);
+      text-align:center;
+      line-height:1.45;
+    }
+    .vsl-pre{margin-bottom:14px}
+    .vsl-eyebrow{
+      font-size:11px;
+      font-weight:800;
+      letter-spacing:2px;
+      text-transform:uppercase;
+      color:var(--muted);
+      margin-bottom:8px;
+    }
+    .vsl-pre-headline{
+      font-size:clamp(15px,2.2vw,18px);
+      font-weight:800;
+      color:var(--navy);
+      line-height:1.35;
+      margin:0;
+      max-width:560px;
+    }
+    .hero-cta-note{
       font-size:12px;
       color:var(--muted);
       text-align:center;
       margin-top:8px;
-      line-height:1.6;
-      display:flex;
-      align-items:flex-start;
-      justify-content:center;
-      gap:5px;
-      flex-wrap:wrap;
-    }
-    .cta-trust svg{flex-shrink:0;margin-top:2px}
-    .photo-trust{
-      font-size:12px;
-      color:var(--muted);
-      text-align:center;
-      margin-top:6px;
-    }
-    .photo-trust strong{color:var(--charcoal)}
-    .hero-proof-bar{
-      margin-top:16px;
-      background:var(--surface);
-      border:1px solid var(--border);
-      border-radius:999px;
-      padding:8px 14px;
-      display:flex;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:center;
-      gap:12px;
-      font-size:12px;
-      color:var(--muted);
-    }
-    .hero-proof-pill{
-      font-weight:700;
-      color:var(--navy);
-      font-size:12px;
-      border:1px solid var(--border);
-      border-radius:999px;
-      padding:2px 8px;
-      background:#f8fafc;
+      line-height:1.45;
     }
 
     /* Waitlist */
@@ -1175,20 +1162,25 @@ head.appendChild(script);
 <!-- HERO -->
 <section class="hero">
   <div class="hero-inner">
-    <h1 class="hero-headline">400° steam sanitizes your bins after pickup. No smell. No maggots.</h1>
-    <p class="hero-sub">Two bins cleaned March-Nov. Photos texted after every visit.</p>
+    <h1 class="hero-headline">No smell. No maggots. No more gagging when you open the lid.</h1>
+    <p class="hero-sub">We hit your bins with 400-degree steam after pickup. Then we text you the before-and-after photos.</p>
+    <p class="hero-proof-bar">127,000+ bins cleaned · 250+ five-star reviews · Billed securely through Jobber</p>
 
     <div class="hero-columns">
 
       <!-- HERO PROOF IMAGE -->
       <div class="vsl-col">
+        <div class="vsl-pre">
+          <div class="vsl-eyebrow">WATCH THIS FIRST</div>
+          <h2 class="vsl-pre-headline">See why your bins still stink even after you hose them out — and how we fix it without you scrubbing anything.</h2>
+        </div>
         <div class="vsl-wrapper">
           <img src="./hero-steam-proof.jpg" alt="Before and after trash bin steam cleaning proof" fetchpriority="high" loading="eager" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
         </div>
-        <p class="vsl-caption">Check ZIP • $250 today • 48009 route open Tuesday</p>
         <button type="button" class="cta-btn" id="vsl-cta" onclick="openCheckout()" style="margin-top:12px;width:100%;max-width:340px">
-          Continue with 2 bins • $250 today
+          Get My Bins Cleaned
         </button>
+        <p class="hero-cta-note">$39/mo. No contract. Cancel any time.</p>
       </div>
 
       <!-- PLAN SELECTOR -->
@@ -1287,22 +1279,12 @@ head.appendChild(script);
 
         <!-- CTA -->
         <button class="cta-btn" id="main-cta" onclick="openCheckout()">
-          Continue with 2 bins • $250 today
+          Get My Bins Cleaned
         </button>
-        <p class="photo-trust"><strong>Before &amp; after photos texted after every clean.</strong></p>
-        <div class="cta-trust">
-          <svg width="12" height="14" viewBox="0 0 12 14" fill="none"><path d="M6 0L0 2.5V7C0 10.3 2.6 13.4 6 14C9.4 13.4 12 10.3 12 7V2.5L6 0Z" fill="#5a6478"/></svg>
-          Billed via Jobber • We never see your card • Apple Pay available
-        </div>
+        <p class="hero-cta-note">$39/mo. No contract. Cancel any time.</p>
 
       </div><!-- /plan-col -->
     </div><!-- /hero-columns -->
-    <div class="hero-proof-bar">
-      <span class="hero-proof-pill">250+ five-star reviews</span>
-      <span class="hero-proof-pill">Google</span>
-      <span class="hero-proof-pill">Facebook</span>
-      <span class="hero-proof-pill">Jobber</span>
-    </div>
   </div><!-- /hero-inner -->
 </section>
 
@@ -3482,12 +3464,7 @@ function updateCTALabel() {
     monthly:   'Continue with '+binLabel+' • $'+p.monthly+'/mo',
     quarterly: 'Continue with '+binLabel+' • $'+p.quarterly+'/quarter'
   };
-  document.getElementById('main-cta').textContent = labels[selectedPlan];
   document.getElementById('sticky-mobile-btn').textContent = zipVerified ? labels[selectedPlan] : 'Check ZIP';
-  var vslCta = document.getElementById('vsl-cta');
-  if (vslCta) {
-    vslCta.textContent = labels[selectedPlan];
-  }
   var annualTileCta = document.getElementById('annual-tile-cta');
   if (annualTileCta) {
     annualTileCta.textContent =
