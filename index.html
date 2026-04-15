@@ -77,8 +77,8 @@ head.appendChild(script);
       background:var(--navy);
       color:#e2e8f0;
       text-align:center;
-      padding:9px 16px;
-      font-size:13px;
+      padding:10px 16px;
+      font-size:14px;
       font-weight:600;
     }
     .topbar strong{color:#fbbf24}
@@ -96,7 +96,13 @@ head.appendChild(script);
     }
     .logo{font-size:20px;font-weight:900;color:var(--navy);line-height:1}
     .logo span{color:var(--orange)}
-    .logo-tagline{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:2px}
+    .logo-tagline{
+      font-size:12px;
+      line-height:1.4;
+      color:var(--muted);
+      margin-top:4px;
+      max-width:420px;
+    }
     .header-proof{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
     .stars{color:#f59e0b;letter-spacing:1px}
 
@@ -104,7 +110,7 @@ head.appendChild(script);
     .hero{
       background:var(--surface);
       border-bottom:1px solid var(--border);
-      padding:32px 24px 36px;
+      padding:28px 24px 32px;
     }
     .hero-inner{max-width:1100px;margin:0 auto}
     .hero-headline{
@@ -125,8 +131,9 @@ head.appendChild(script);
     .hero-columns{
       display:grid;
       grid-template-columns:1fr 420px;
-      gap:28px;
+      gap:24px;
       align-items:start;
+      margin-top:4px;
     }
     @media(max-width:880px){.hero-columns{grid-template-columns:1fr}}
 
@@ -138,7 +145,28 @@ head.appendChild(script);
       background:#0a0a0a;
       border-radius:var(--r);
       overflow:hidden;
-      box-shadow:0 4px 24px rgba(0,0,0,.18);
+      box-shadow:0 6px 28px rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .vsl-play-overlay{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events:none;
+      background:linear-gradient(180deg,rgba(0,0,0,.12) 0%,rgba(0,0,0,.35) 100%);
+    }
+    .vsl-play-btn{
+      width:64px;height:64px;border-radius:50%;
+      background:rgba(255,255,255,.92);
+      color:var(--navy);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:22px;
+      padding-left:4px;
+      box-shadow:0 4px 20px rgba(0,0,0,.35);
     }
     .vsl-wrapper #vidalytics_embed_jkpHkAqaro1HFGTh{
       position:absolute!important;
@@ -314,15 +342,47 @@ head.appendChild(script);
     .zip-msg{font-size:13px;font-weight:600;margin-top:6px;min-height:18px}
     .zip-msg.valid{color:var(--green)}
     .zip-msg.invalid{color:#92400e}
-    .zip-compact{
+    .zip-section-title{
+      font-size:17px;
+      font-weight:800;
+      color:var(--navy);
+      margin:0 0 6px;
+      line-height:1.25;
+    }
+    .zip-section-helper{
+      font-size:13px;
+      color:var(--muted);
+      margin:0 0 12px;
+      line-height:1.45;
+    }
+    .zip-compact-stack{
+      padding:14px 14px 12px;
+      background:var(--green-light);
+      border:1px solid var(--green-border);
+      border-radius:var(--r);
+    }
+    .zip-success-head{
+      font-size:15px;
+      font-weight:800;
+      color:var(--charcoal);
+      margin:0 0 6px;
+      line-height:1.3;
+    }
+    .zip-success-sub{
+      font-size:13px;
+      color:var(--muted);
+      margin:0 0 12px;
+      line-height:1.45;
+    }
+    .zip-compact-row{
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:10px;
       flex-wrap:wrap;
       padding:10px 12px;
-      background:var(--green-light);
-      border:1px solid var(--green-border);
+      background:var(--surface);
+      border:1px solid var(--border);
       border-radius:8px;
       font-size:14px;
       font-weight:700;
@@ -361,6 +421,35 @@ head.appendChild(script);
     }
     .plan-cards-row .plan-tile-top{
       margin-bottom:8px;
+    }
+    .pricing-unlocked-block{margin-top:4px}
+    .plan-pricing-bridge{
+      font-size:14px;
+      font-weight:700;
+      color:var(--navy);
+      margin:4px 0 10px;
+      line-height:1.35;
+    }
+    .plan-name-caps{
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:var(--navy);
+    }
+    .plan-price-big{
+      font-size:26px;
+      font-weight:900;
+      color:var(--charcoal);
+      line-height:1.15;
+      margin:6px 0 4px;
+    }
+    .pricing-cta-trust{
+      font-size:12px;
+      color:var(--muted);
+      text-align:center;
+      margin:0 0 10px;
+      line-height:1.45;
     }
     .plan-note-plain{
       font-size:13px;
@@ -1031,6 +1120,25 @@ head.appendChild(script);
     .express-divider::before,.express-divider::after{
       content:'';flex:1;border-top:1px solid var(--border);
     }
+    .modal-lead-title{
+      font-size:17px;
+      font-weight:800;
+      color:var(--navy);
+      margin:0 0 8px;
+      line-height:1.25;
+    }
+    .modal-lead-copy{
+      font-size:13px;
+      color:var(--muted);
+      line-height:1.5;
+      margin:0 0 14px;
+    }
+    .modal-lead-micro{
+      font-size:12px;
+      color:var(--muted);
+      margin:12px 0 14px;
+      line-height:1.45;
+    }
     .modal-field{margin-bottom:12px}
     .modal-field label{
       display:block;
@@ -1175,8 +1283,8 @@ head.appendChild(script);
     .sticky-mobile-btn{
       width:100%;
       border:none;
-      border-radius:10px;
-      padding:12px;
+      border-radius:var(--r);
+      padding:14px;
       background:var(--blue);
       color:#fff;
       font-size:15px;
@@ -1199,14 +1307,14 @@ head.appendChild(script);
 
 <!-- TOP BAR -->
 <div class="topbar">
-  Oakland &amp; Macomb County • Routes filling this week • Enter your ZIP.
+  Oakland &amp; Macomb County routes open this week
 </div>
 
 <!-- HEADER -->
 <header class="site-header">
   <div>
     <div class="logo">Natural Sanitation<span>.</span></div>
-    <div class="logo-tagline">Check ZIP • $250 today • 48009 route open Tuesday</div>
+    <div class="logo-tagline">Serving Oakland &amp; Macomb County homes with text updates and before-and-after photo proof.</div>
   </div>
   <div class="header-proof">
     <span class="stars">★★★★★</span>
@@ -1217,9 +1325,9 @@ head.appendChild(script);
 <!-- HERO -->
 <section class="hero">
   <div class="hero-inner">
-    <h1 class="hero-headline">No smell. No maggots. No more gagging when you open the lid.</h1>
-    <p class="hero-sub">We hit your bins with 400-degree steam after pickup. Then we text you the before-and-after photos.</p>
-    <p class="hero-proof-bar">127,000+ bins cleaned · 250+ five-star reviews · Billed securely through Jobber</p>
+    <h1 class="hero-headline">No smell. No maggots. No more dreading your garbage bins.</h1>
+    <p class="hero-sub">We sanitize your bins with 400-degree steam after pickup, then text you the before-and-after photos.</p>
+    <p class="hero-proof-bar">127,000+ bins cleaned · 250+ five-star reviews · Secure billing through Jobber</p>
 
     <div class="hero-columns">
 
@@ -1227,13 +1335,14 @@ head.appendChild(script);
       <div class="vsl-col">
         <div class="vsl-pre">
           <div class="vsl-eyebrow">WATCH THIS FIRST</div>
-          <h2 class="vsl-pre-headline">See why your bins still stink even after you hose them out — and how we fix it without you scrubbing anything.</h2>
+          <h2 class="vsl-pre-headline">See why your bins still stink after hosing them out — and how we fully sanitize them after pickup.</h2>
         </div>
         <div class="vsl-wrapper">
           <img src="./hero-steam-proof.jpg" alt="Before and after trash bin steam cleaning proof" fetchpriority="high" loading="eager" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
+          <div class="vsl-play-overlay" aria-hidden="true"><span class="vsl-play-btn">▶</span></div>
         </div>
-        <button type="button" class="cta-btn" id="vsl-cta" onclick="openCheckout()" style="margin-top:12px;width:100%;max-width:340px">
-          Get My Bins Cleaned
+        <button type="button" class="cta-btn" id="vsl-cta" onclick="scrollToZipSection()" style="margin-top:12px;width:100%;max-width:340px">
+          Check My Area
         </button>
         <p class="hero-cta-note">$39/mo. No contract. Cancel any time.</p>
       </div>
@@ -1244,9 +1353,8 @@ head.appendChild(script);
         <!-- ZIP -->
         <div class="zip-wrap" id="zip-wrap">
           <div id="zip-expanded">
-            <div class="field-label">
-              <span class="zip-label-text" id="zip-label">Enter your ZIP to verify route</span>
-            </div>
+            <h2 class="zip-section-title">Check if we service your area</h2>
+            <p class="zip-section-helper">Enter your ZIP to unlock plans and pricing.</p>
             <div class="zip-row">
               <input
                 class="zip-input"
@@ -1262,49 +1370,57 @@ head.appendChild(script);
             </div>
             <div class="zip-msg" id="zip-msg" aria-live="polite" aria-atomic="true"></div>
           </div>
-          <div id="zip-compact" class="zip-compact" hidden>
-            <span class="zip-compact-line" id="zip-compact-line" aria-live="polite"></span>
-            <button type="button" class="zip-change-link" id="zip-change-btn" onclick="expandZipForEdit()">Change</button>
+          <div id="zip-compact" class="zip-compact-stack" hidden>
+            <p class="zip-success-head">Good news — we service your area.</p>
+            <p class="zip-success-sub">Choose how many bins need cleaning and pick your plan below.</p>
+            <div class="zip-compact-row">
+              <span class="zip-compact-line" id="zip-compact-line" aria-live="polite"></span>
+              <button type="button" class="zip-change-link" id="zip-change-btn" onclick="expandZipForEdit()">Change</button>
+            </div>
           </div>
         </div>
 
-        <!-- Bin count -->
-        <div>
-          <div class="field-label">How many bins?</div>
-          <div class="bin-row">
-            <button type="button" class="bin-btn active" data-bins="1" onclick="selectBins(1)">1 Bin</button>
-            <button type="button" class="bin-btn" data-bins="2" onclick="selectBins(2)">2 Bins</button>
-            <button type="button" class="bin-btn" data-bins="3" onclick="selectBins(3)">3 Bins</button>
-            <button type="button" class="bin-btn" data-bins="4" onclick="selectBins(4)">4 Bins</button>
-          </div>
-        </div>
+        <div id="pricing-unlocked-block" class="pricing-unlocked-block" hidden aria-hidden="true">
+          <p class="plan-pricing-bridge">Choose how many bins need cleaning, then pick your plan.</p>
 
-        <div class="plan-cards-row" id="plan-cards-row">
-          <div class="plan-tile selected" id="tile-annual" role="button" tabindex="0" onclick="selectPlan('annual')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectPlan('annual');}">
-            <div class="plan-radio" aria-hidden="true"></div>
-            <div class="plan-tile-top">
-              <span class="plan-tile-name">Annual Plan</span>
-              <span class="best-value-badge">Best Value</span>
+          <!-- Bin count -->
+          <div>
+            <div class="field-label">How many bins need cleaning?</div>
+            <div class="bin-row">
+              <button type="button" class="bin-btn active" data-bins="1" onclick="selectBins(1)">1 Bin</button>
+              <button type="button" class="bin-btn" data-bins="2" onclick="selectBins(2)">2 Bins</button>
+              <button type="button" class="bin-btn" data-bins="3" onclick="selectBins(3)">3 Bins</button>
+              <button type="button" class="bin-btn" data-bins="4" onclick="selectBins(4)">4 Bins</button>
             </div>
-            <div class="plan-price-row">
-              <span class="plan-price" id="annual-price">$250</span>
-              <span class="plan-price-period">/year</span>
-            </div>
-            <div class="plan-per-bin-line" id="annual-per-bin-line">$250/year per bin</div>
-            <p class="plan-note-plain">Billed once per year.</p>
           </div>
-          <div class="plan-tile" id="tile-monthly" role="button" tabindex="0" onclick="selectPlan('monthly')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectPlan('monthly');}">
-            <div class="plan-radio" aria-hidden="true"></div>
-            <div class="plan-tile-top">
-              <span class="plan-tile-name">Monthly Plan</span>
+
+          <div class="plan-cards-row" id="plan-cards-row">
+            <div class="plan-tile selected" id="tile-annual" role="button" tabindex="0" onclick="selectPlan('annual')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectPlan('annual');}">
+              <div class="plan-radio" aria-hidden="true"></div>
+              <div class="plan-tile-top">
+                <span class="plan-name-caps">Annual plan</span>
+                <span class="best-value-badge">Best Value</span>
+              </div>
+              <div class="plan-price-big" id="annual-price-big">$250/year</div>
+              <div class="plan-per-bin-line" id="annual-per-bin-line">$250 per bin × 1 bin</div>
+              <p class="plan-note-plain">Billed once per year.</p>
             </div>
-            <div class="plan-price-row">
-              <span class="plan-price" id="monthly-price">$39</span>
-              <span class="plan-price-period">/month</span>
+            <div class="plan-tile" id="tile-monthly" role="button" tabindex="0" onclick="selectPlan('monthly')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectPlan('monthly');}">
+              <div class="plan-radio" aria-hidden="true"></div>
+              <div class="plan-tile-top">
+                <span class="plan-name-caps">Monthly plan</span>
+              </div>
+              <div class="plan-price-big" id="monthly-price-big">$39/month</div>
+              <div class="plan-per-bin-line" id="monthly-per-bin-line">$39 per month per bin × 1 bin</div>
+              <p class="plan-note-plain">No contract. Cancel any time.</p>
             </div>
-            <div class="plan-per-bin-line" id="monthly-per-bin-line">$39/month per bin</div>
-            <p class="plan-note-plain">No contract. Cancel any time.</p>
           </div>
+
+          <p class="pricing-cta-trust" id="pricing-cta-trust">Secure checkout · Billed through Jobber · Cancel anytime on monthly plan</p>
+          <button type="button" class="cta-btn" id="main-cta" onclick="openCheckout()" disabled>
+            Continue with Annual Plan — $250/year
+          </button>
+          <p class="hero-cta-note plan-cta-note">$39/mo. No contract. Cancel any time. Before-and-after photos after every clean.</p>
         </div>
 
         <div id="checkout-pricing-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
@@ -1315,12 +1431,6 @@ head.appendChild(script);
           <input class="waitlist-input" type="email" placeholder="your@email.com" id="waitlist-email" />
           <button class="waitlist-btn" onclick="submitWaitlist()">Notify Me When You're in My Area</button>
         </div>
-
-        <!-- CTA -->
-        <button type="button" class="cta-btn" id="main-cta" onclick="openCheckout()" disabled>
-          Get My Bins Cleaned
-        </button>
-        <p class="hero-cta-note plan-cta-note">$39/mo. No contract. Cancel any time. Before-and-after photos after every clean.</p>
 
       </div><!-- /plan-col -->
     </div><!-- /hero-columns -->
@@ -1336,7 +1446,7 @@ head.appendChild(script);
     <div class="science-card">
       <div class="science-head">
         <div class="thermo"><span>400°</span><span style="font-size:10px;font-weight:700">STEAM</span></div>
-        <p style="font-size:14px;color:var(--muted)">Tap between tabs to see why pressure-only fails and what high-heat steam changes.</p>
+        <p style="font-size:14px;color:var(--muted)">Why DIY does not solve the bacteria and odor problem.</p>
       </div>
       <div class="science-tabs">
         <button class="science-tab active" data-tab="hose" onclick="toggleScienceTab('hose', this)">Why hoses fail</button>
@@ -2307,14 +2417,10 @@ head.appendChild(script);
 
   <!-- BOTTOM CTA REPEAT -->
   <div class="bottom-cta">
-    <h2>Routes are filling by ZIP code. Lock in your spot today.</h2>
+    <h2>Routes are filling by ZIP code. Check your area and lock in your spot.</h2>
     <p>127,000+ bins cleaned · 250+ five-star reviews · 6+ years in Metro Detroit</p>
-    <div class="bottom-plan-row">
-      <button type="button" class="bottom-plan-btn active" onclick="bottomSelectPlan('annual',this)">Annual · <span id="b-annual">$250</span>/yr</button>
-      <button type="button" class="bottom-plan-btn" onclick="bottomSelectPlan('monthly',this)">Monthly · <span id="b-monthly">$39</span>/mo</button>
-    </div>
-    <button class="bottom-cta-btn" onclick="openCheckout()">Lock In My Spot →</button>
-    <div class="bottom-trust">No contract · Billed securely through Jobber · Cancel any time</div>
+    <button type="button" class="bottom-cta-btn" id="bottom-cta-btn" onclick="handleFooterCta()">Check My Area</button>
+    <div class="bottom-trust">Secure checkout · Billed through Jobber · Cancel anytime on monthly plan</div>
   </div>
 
 </div><!-- /below-fold -->
@@ -2368,17 +2474,20 @@ head.appendChild(script);
         <div id="checkout-form-wrap" style="display:none">
           <div class="modal-steps-wrap" id="modal-steps-wrap">
             <div id="modal-step-1" class="modal-step-panel">
+              <p class="modal-lead-title">Where should we send your service details?</p>
+              <p class="modal-lead-copy">Enter your name and mobile number so we can confirm your route, send updates, and text your before-and-after photos.</p>
               <div class="modal-field">
-                <label for="modal-full-name">Name</label>
-                <input type="text" id="modal-full-name" name="name" autocomplete="name" required />
+                <label for="modal-full-name">First name</label>
+                <input type="text" id="modal-full-name" name="name" autocomplete="given-name" required />
                 <div class="modal-field-error" id="modal-err-full-name"></div>
               </div>
               <div class="modal-field">
-                <label for="modal-phone">Phone</label>
+                <label for="modal-phone">Mobile phone number</label>
                 <input type="tel" id="modal-phone" name="phone" autocomplete="tel" required />
                 <div class="modal-field-error" id="modal-err-phone"></div>
               </div>
-              <button type="button" class="modal-submit-secondary" id="modal-continue-payment">Continue to payment →</button>
+              <p class="modal-lead-micro">No spam. We only use this for service updates and your cleaning details.</p>
+              <button type="button" class="modal-submit-secondary" id="modal-continue-payment">Continue to Secure Checkout</button>
             </div>
 
             <div id="modal-step-2" class="modal-step-panel" aria-hidden="true">
@@ -2598,17 +2707,7 @@ function selectPlan(plan) {
   });
   persistCheckoutContext();
   refreshCheckoutModalSummary();
-  updateCTALabel();
-}
-
-function bottomSelectPlan(plan, btn) {
-  selectedPlan = plan;
-  document.querySelectorAll('.bottom-plan-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  persistCheckoutContext();
-  refreshCheckoutModalSummary();
-  updateCTALabel();
-  announcePricingLive();
+  updateAllCtas();
 }
 
 /* ── PRICING UPDATE ── */
@@ -2617,21 +2716,13 @@ function updatePricing() {
   var perY = 250;
   var perM = 39;
 
-  var ap = document.getElementById('annual-price');
-  var mp = document.getElementById('monthly-price');
-  if (ap) {
-    ap.textContent = '$' + p.annual;
+  var ab = document.getElementById('annual-price-big');
+  var mb = document.getElementById('monthly-price-big');
+  if (ab) {
+    ab.textContent = '$' + p.annual + '/year';
   }
-  if (mp) {
-    mp.textContent = '$' + p.monthly;
-  }
-  var ba = document.getElementById('b-annual');
-  var bm = document.getElementById('b-monthly');
-  if (ba) {
-    ba.textContent = '$' + p.annual;
-  }
-  if (bm) {
-    bm.textContent = '$' + p.monthly;
+  if (mb) {
+    mb.textContent = '$' + p.monthly + '/month';
   }
 
   var apl = document.getElementById('annual-per-bin-line');
@@ -2640,7 +2731,7 @@ function updatePricing() {
     apl.textContent =
       '$' +
       perY +
-      '/year per bin × ' +
+      ' per bin × ' +
       selectedBins +
       (selectedBins === 1 ? ' bin' : ' bins');
   }
@@ -2648,14 +2739,14 @@ function updatePricing() {
     mpl.textContent =
       '$' +
       perM +
-      '/month per bin × ' +
+      ' per month per bin × ' +
       selectedBins +
       (selectedBins === 1 ? ' bin' : ' bins');
   }
 
   persistCheckoutContext();
   refreshCheckoutModalSummary();
-  updateCTALabel();
+  updateAllCtas();
   announcePricingLive();
 }
 
@@ -2703,10 +2794,6 @@ function restoreCheckoutContext() {
       if (t) {
         t.classList.toggle('selected', pp === selectedPlan);
       }
-    });
-    document.querySelectorAll('.bottom-plan-btn').forEach(function(btn) {
-      var oc = btn.getAttribute('onclick') || '';
-      btn.classList.toggle('active', oc.indexOf("'" + selectedPlan + "'") !== -1);
     });
     if (z && /^\d{5}$/.test(z)) {
       document.getElementById('zip-input').value = z;
@@ -3511,11 +3598,80 @@ function onCheckoutModalKeydown(e) {
   }
 }
 
-function updateCTALabel() {
-  var sticky = document.getElementById('sticky-mobile-btn');
-  if (sticky) {
-    sticky.textContent = zipVerified ? 'Get My Bins Cleaned' : 'Check ZIP';
+function setPricingUnlocked(on) {
+  var blk = document.getElementById('pricing-unlocked-block');
+  if (!blk) {
+    return;
   }
+  if (on) {
+    blk.removeAttribute('hidden');
+    blk.setAttribute('aria-hidden', 'false');
+  } else {
+    blk.setAttribute('hidden', '');
+    blk.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function getDynamicContinueCtaText() {
+  if (!zipVerified) {
+    return 'Check My Area';
+  }
+  var p = PRICING[selectedBins];
+  if (selectedPlan === 'annual') {
+    return 'Continue with Annual Plan — $' + p.annual + '/year';
+  }
+  return 'Continue with Monthly Plan — $' + p.monthly + '/month';
+}
+
+function updateMainPricingCtaLabel() {
+  var btn = document.getElementById('main-cta');
+  if (!btn) {
+    return;
+  }
+  btn.textContent = getDynamicContinueCtaText();
+}
+
+function updateFooterCtaLabel() {
+  var btn = document.getElementById('bottom-cta-btn');
+  if (!btn) {
+    return;
+  }
+  btn.textContent = getDynamicContinueCtaText();
+}
+
+function updateStickyCtaLabel() {
+  var sticky = document.getElementById('sticky-mobile-btn');
+  if (!sticky) {
+    return;
+  }
+  sticky.textContent = getDynamicContinueCtaText();
+}
+
+function updateAllCtas() {
+  updateMainPricingCtaLabel();
+  updateFooterCtaLabel();
+  updateStickyCtaLabel();
+}
+
+function scrollToZipSection() {
+  var wrap = document.getElementById('zip-wrap');
+  if (wrap) {
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  var el = document.getElementById('zip-input');
+  if (el) {
+    window.setTimeout(function() {
+      el.focus();
+    }, 380);
+  }
+}
+
+function handleFooterCta() {
+  if (!zipVerified) {
+    scrollToZipSection();
+    return;
+  }
+  openCheckout();
 }
 
 function refreshZipChrome() {
@@ -3530,10 +3686,14 @@ function refreshZipChrome() {
   if (ok) {
     line.textContent = 'ZIP ' + zip + ' — Oakland & Macomb County';
     ex.setAttribute('hidden', '');
+    ex.setAttribute('aria-hidden', 'true');
     comp.removeAttribute('hidden');
+    comp.setAttribute('aria-hidden', 'false');
   } else {
     comp.setAttribute('hidden', '');
+    comp.setAttribute('aria-hidden', 'true');
     ex.removeAttribute('hidden');
+    ex.setAttribute('aria-hidden', 'false');
   }
 }
 
@@ -3544,15 +3704,10 @@ function expandZipForEdit() {
     ctaBtn.disabled = true;
   }
   var inputEl = document.getElementById('zip-input');
-  var labelEl = document.getElementById('zip-label');
   var msgEl = document.getElementById('zip-msg');
   var waitlistEl = document.getElementById('waitlist-block');
   if (inputEl) {
     inputEl.classList.remove('verified');
-  }
-  if (labelEl) {
-    labelEl.textContent = 'Enter your ZIP to verify route';
-    labelEl.className = 'zip-label-text';
   }
   if (msgEl) {
     msgEl.textContent = '';
@@ -3561,8 +3716,9 @@ function expandZipForEdit() {
   if (waitlistEl) {
     waitlistEl.style.display = 'none';
   }
+  setPricingUnlocked(false);
   refreshZipChrome();
-  updateCTALabel();
+  updateAllCtas();
   if (inputEl) {
     inputEl.focus();
   }
@@ -3573,7 +3729,6 @@ function checkZip(opts) {
   opts = opts || {};
   const zip = document.getElementById('zip-input').value.trim();
   const msgEl = document.getElementById('zip-msg');
-  const labelEl = document.getElementById('zip-label');
   const inputEl = document.getElementById('zip-input');
   const waitlistEl = document.getElementById('waitlist-block');
   const ctaBtn = document.getElementById('main-cta');
@@ -3585,12 +3740,11 @@ function checkZip(opts) {
     if (ctaBtn) {
       ctaBtn.disabled = true;
     }
-    labelEl.textContent = 'Enter your ZIP to verify route';
-    labelEl.className = 'zip-label-text';
     inputEl.classList.remove('verified');
     waitlistEl.style.display = 'none';
+    setPricingUnlocked(false);
     refreshZipChrome();
-    updateCTALabel();
+    updateAllCtas();
     return;
   }
 
@@ -3601,43 +3755,48 @@ function checkZip(opts) {
     if (ctaBtn) {
       ctaBtn.disabled = true;
     }
+    setPricingUnlocked(false);
     refreshZipChrome();
-    updateCTALabel();
+    updateAllCtas();
     return;
   }
 
   if (SERVICE_ZIPS.has(zip)) {
     msgEl.textContent = '';
     msgEl.className = 'zip-msg valid';
-    labelEl.textContent = '✓ ZIP verified';
-    labelEl.className = 'zip-label-text verified';
     inputEl.classList.add('verified');
     waitlistEl.style.display = 'none';
-    ctaBtn.disabled = false;
     zipVerified = true;
+    setPricingUnlocked(true);
+    if (ctaBtn) {
+      ctaBtn.disabled = false;
+    }
     refreshZipChrome();
+    if (!opts.skipDefaultPlan) {
+      selectPlan('annual');
+    } else {
+      updateAllCtas();
+    }
     if (!opts.skipScroll) {
-      var anchor = document.getElementById('plan-cards-row');
+      var anchor = document.getElementById('pricing-unlocked-block');
       if (anchor) {
         anchor.scrollIntoView({ behavior:'smooth', block:'center' });
       }
-    }
-    if (!opts.skipDefaultPlan) {
-      selectPlan('annual');
     }
     persistCheckoutContext();
   } else {
     msgEl.textContent = 'That ZIP is not on this week\'s route. Join waitlist below.';
     msgEl.className = 'zip-msg invalid';
-    labelEl.textContent = 'Enter your ZIP to verify route';
-    labelEl.className = 'zip-label-text';
     inputEl.classList.remove('verified');
     waitlistEl.style.display = 'block';
-    ctaBtn.disabled = true;
     zipVerified = false;
+    if (ctaBtn) {
+      ctaBtn.disabled = true;
+    }
+    setPricingUnlocked(false);
     refreshZipChrome();
   }
-  updateCTALabel();
+  updateAllCtas();
 }
 
 /* Also validate on Enter key */
@@ -3658,7 +3817,7 @@ function submitWaitlist() {
 /* ── CHECKOUT MODAL ── */
 function openCheckout() {
   if (!zipVerified) {
-    document.getElementById('zip-input').focus();
+    scrollToZipSection();
     return;
   }
   if (!getStripePublishableKey()) {
@@ -3765,8 +3924,7 @@ function closeCheckout() {
 
 function handleStickyAction() {
   if (!zipVerified) {
-    document.getElementById('zip-input').scrollIntoView({ behavior:'smooth', block:'center' });
-    document.getElementById('zip-input').focus();
+    scrollToZipSection();
     return;
   }
   openCheckout();
@@ -4026,6 +4184,7 @@ try {
   updatePricing();
 }
 refreshZipChrome();
+updateAllCtas();
 announcePricingLive();
 initCheckoutModal();
 
