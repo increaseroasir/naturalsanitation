@@ -53,6 +53,14 @@
   </style>
 </head>
 <body>
+  <script>
+  (function () {
+    var p = new URLSearchParams(location.search);
+    document.body.setAttribute('data-event-id', p.get('event_id') || '');
+    document.body.setAttribute('data-order-id', p.get('txn') || '');
+    document.body.setAttribute('data-plan', (p.get('plan') || 'annual').toLowerCase());
+  })();
+  </script>
   <div class="wrap">
     <p class="hero-t">✅ You're locked in.</p>
     <p class="sub" id="welcome-line">Welcome to the route.</p>
@@ -95,7 +103,28 @@
   var bins = parseInt(p.get('bins') || '1', 10) || 1;
   var amount = p.get('amount') || '';
   var email = (p.get('email') || '').trim();
+  var phone = (p.get('phone') || '').trim();
   var city = (p.get('city') || '').trim();
+  var eventId = p.get('event_id') || '';
+  var META_PIXEL_ID = '499919262310418';
+
+  function normalizePhoneForMetaHash(phoneRaw) {
+    var d = String(phoneRaw || '').replace(/\D/g, '');
+    if (d.length === 10) return '1' + d;
+    if (d.length === 11 && d.charAt(0) === '1') return d;
+    return d;
+  }
+
+  function sha256Hex(plain) {
+    if (!plain || !window.crypto || !window.crypto.subtle) return Promise.resolve('');
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(plain)).then(function (buf) {
+      return Array.from(new Uint8Array(buf))
+        .map(function (b) {
+          return b.toString(16).padStart(2, '0');
+        })
+        .join('');
+    });
+  }
 
   document.getElementById('welcome-line').textContent =
     first ? ('Welcome to the route, ' + first + '.') : 'Welcome to the route.';
@@ -108,12 +137,23 @@
   document.getElementById('o-city').textContent = city ? (city + ', MI') : 'Metro Detroit, MI';
 
   var val = parseFloat(String(amount).replace(/[^0-9.]/g, '')) || 0;
-  if (typeof fbq !== 'undefined') {
-    fbq('track', 'Purchase', { value: val, currency: 'USD', content_name: planLabel });
-  }
+  var emNorm = email.toLowerCase().trim();
+  Promise.all([sha256Hex(emNorm), sha256Hex(normalizePhoneForMetaHash(phone))]).then(function (hashes) {
+    if (typeof fbq === 'undefined') return;
+    var emH = hashes[0];
+    var phH = hashes[1];
+    var match = {};
+    if (emH) match.em = emH;
+    if (phH) match.ph = phH;
+    if (Object.keys(match).length) fbq('init', META_PIXEL_ID, match);
+    var purchaseOpts = {};
+    if (eventId) purchaseOpts.eventID = eventId;
+    fbq('track', 'Purchase', { value: val, currency: 'USD', content_name: planLabel, num_items: bins }, purchaseOpts);
+  });
+
   if (typeof gtag !== 'undefined') {
     gtag('event', 'purchase', {
-      transaction_id: p.get('txn') || ('ty_' + Date.now()),
+      transaction_id: eventId || p.get('txn') || 'ty_' + Date.now(),
       value: val,
       currency: 'USD',
       items: [{ item_name: planLabel, quantity: bins }]

@@ -4,10 +4,81 @@
 
   var GHL_WEBHOOK_URL =
     'https://services.leadconnectorhq.com/hooks/pit-6925afab-67ff-47f1-b732-63b00ff3d3e8/webhook-trigger/';
+  /** Lead + Jobber/CRM sync — replace with dedicated Jobber endpoint when available */
+  var CRM_LEAD_URL = GHL_WEBHOOK_URL;
   var PAYMENT_API = 'https://ns-payment.increase-roas.workers.dev/create-payment-intent';
   var STRIPE_PK_LIVE =
     'pk_live_51IZeLCHhyjMV1WTXFgxViPoMxrhHcpgXY0tgggShjYE0wI2o88gds9xzvnFzjrw0inNNETA2FxtMxVrsCZxaDPY700Y7GyJLQx';
   var STRIPE_PK_TEST = 'YOUR_STRIPE_PUBLISHABLE_KEY_TEST';
+  var META_PIXEL_ID = '499919262310418';
+  var MANNY_SMS_NUMBER = '(586) 500-6794';
+
+  function genSessionEventId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      var r = (Math.random() * 16) | 0;
+      var v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  var SESSION_EVENT_ID = genSessionEventId();
+
+  function pixelOpts() {
+    return { eventID: SESSION_EVENT_ID };
+  }
+
+  function trackStandard(ev, params) {
+    if (typeof fbq === 'undefined') return;
+    fbq('track', ev, params || {}, pixelOpts());
+  }
+
+  function trackCustom(ev, params) {
+    if (typeof fbq === 'undefined') return;
+    fbq('trackCustom', ev, params || {}, pixelOpts());
+  }
+
+  function sha256Hex(plain) {
+    if (!plain || !window.crypto || !window.crypto.subtle) return Promise.resolve('');
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(plain)).then(function (buf) {
+      return Array.from(new Uint8Array(buf))
+        .map(function (b) {
+          return b.toString(16).padStart(2, '0');
+        })
+        .join('');
+    });
+  }
+
+  function normalizePhoneForMetaHash(phone) {
+    var d = String(phone || '').replace(/\D/g, '');
+    if (d.length === 10) return '1' + d;
+    if (d.length === 11 && d.charAt(0) === '1') return d;
+    return d;
+  }
+
+  function collectUtmParams() {
+    var q = new URLSearchParams(location.search);
+    var o = {};
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
+      var v = q.get(k);
+      if (v) o[k] = v;
+    });
+    return o;
+  }
+
+  function hyrosIdFromCookie() {
+    var parts = document.cookie.split(';');
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i].trim();
+      if (/hyros|click_id|_ha/i.test(p)) {
+        var eq = p.indexOf('=');
+        if (eq > 0) return decodeURIComponent(p.slice(eq + 1));
+      }
+    }
+    return '';
+  }
 
   var PRICING = {
     annual: { 1: 250, 2: 299, 3: 349, 4: 399 },
@@ -71,6 +142,7 @@
     zip: '',
     zipOk: false,
     planChosen: false,
+    leadSaved: false,
     bins: 1,
     plan: 'annual',
     fn: '',
@@ -81,6 +153,7 @@
   var exitShown = false;
   var scrollMarks = { 25: false, 50: false, 75: false, 100: false };
   var tickerIdx = 0;
+  var addPaymentInfoFired = false;
   var TICKER_LINES = [
     '🟢 Sarah from Macomb Township just signed up · 4 minutes ago',
     '🟢 Kevin from Grosse Pointe Woods upgraded to annual · 11 min ago',
@@ -202,6 +275,10 @@
     return 'Annual Plan';
   }
 
+  function planIntentSlug() {
+    return draft.plan;
+  }
+
   function updatePlanTiles() {
     var b = draft.bins;
     document.getElementById('pt-q').textContent =
@@ -215,6 +292,22 @@
     if (draft.plan === 'annual') btn.textContent = 'Lock In My Route Slot — $' + d + '/year';
     else if (draft.plan === 'monthly') btn.textContent = 'Try Monthly — $' + d + '/month';
     else btn.textContent = 'Start Quarterly — $' + d;
+  }
+
+  function step4Unlocked() {
+    var el = document.getElementById('block-step4');
+    return el && el.classList.contains('unlocked');
+  }
+
+  function maybeTrackAddPaymentInfo(source) {
+    if (addPaymentInfoFired || !draft.leadSaved || !step4Unlocked()) return;
+    addPaymentInfoFired = true;
+    trackStandard('AddPaymentInfo', {
+      content_name: planLabel(),
+      value: getChargeDollars(),
+      currency: 'USD',
+      source: source || 'card',
+    });
   }
 
   var stripeState = {
@@ -251,6 +344,9 @@
       stripeState.cardCvc.mount('#card-cvc-element');
       stripeState.cardNumber.on('change', function (ev) {
         document.getElementById('err-cn').textContent = ev.error ? ev.error.message : '';
+        if (!ev.empty) {
+          maybeTrackAddPaymentInfo('card_input');
+        }
       });
       stripeState.cardExpiry.on('change', function (ev) {
         document.getElementById('err-ce').textContent = ev.error ? ev.error.message : '';
@@ -310,11 +406,85 @@
         bins: String(draft.bins),
         service_zip: z,
         source: 'index-v2-modal',
+        event_id: SESSION_EVENT_ID,
       },
     };
   }
 
+  function buildMannySmsBody(firstName, city, plan, bins, phone) {
+    return (
+      'New lead: ' +
+      firstName +
+      ' in ' +
+      city +
+      ', wants ' +
+      plan +
+      ' for ' +
+      bins +
+      ' bin' +
+      (bins > 1 ? 's' : '') +
+      '. Phone: ' +
+      phone +
+      '. Call within 15 min if no purchase.'
+    );
+  }
+
+  function postCrmLead(payload) {
+    if (!CRM_LEAD_URL || !/^https:\/\//.test(CRM_LEAD_URL)) {
+      return Promise.reject(new Error('CRM not configured'));
+    }
+    return fetch(CRM_LEAD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(function (res) {
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          throw new Error(t || 'CRM save failed (' + res.status + ')');
+        });
+      }
+      return res;
+    });
+  }
+
+  function fireLeadAfterCrm(consent) {
+    var fn = (document.getElementById('pop-fn').value || '').trim();
+    var phRaw = (document.getElementById('pop-ph').value || '').trim();
+    var phNorm = normalizePhoneForMetaHash(phRaw);
+    return sha256Hex(phNorm).then(function (phH) {
+      return sha256Hex(fn.toLowerCase().trim()).then(function (fnH) {
+        if (typeof fbq !== 'undefined') {
+          fbq('init', META_PIXEL_ID, { ph: phH, fn: fnH });
+          fbq(
+            'track',
+            'Lead',
+            {
+              content_name: planLabel(),
+              value: getChargeDollars(),
+              currency: 'USD',
+              consent_tcpa: consent.consent_tcpa,
+              consent_timestamp: consent.consent_timestamp,
+              consent_method: consent.consent_method,
+            },
+            pixelOpts()
+          );
+        }
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+          event: 'lead_crm_saved',
+          event_id: SESSION_EVENT_ID,
+          consent_tcpa: consent.consent_tcpa,
+          consent_timestamp: consent.consent_timestamp,
+          consent_method: consent.consent_method,
+          plan: draft.plan,
+          bins: draft.bins,
+        });
+      });
+    });
+  }
+
   function handleWallet(ev) {
+    maybeTrackAddPaymentInfo('wallet');
     var processing = document.getElementById('processing');
     var secret = null;
     processing.classList.add('show');
@@ -359,20 +529,6 @@
   }
 
   function onPaid(name, email, phone) {
-    if (typeof fbq !== 'undefined') {
-      fbq('track', 'Purchase', {
-        value: getChargeDollars(),
-        currency: 'USD',
-        content_name: planLabel(),
-      });
-    }
-    if (typeof gtag !== 'undefined') {
-      gtag('event', 'purchase', {
-        transaction_id: 'v2_' + Date.now(),
-        value: getChargeDollars(),
-        currency: 'USD',
-      });
-    }
     if (GHL_WEBHOOK_URL && /^https:\/\//.test(GHL_WEBHOOK_URL)) {
       fetch(GHL_WEBHOOK_URL, {
         method: 'POST',
@@ -387,6 +543,7 @@
           service_zip: (document.getElementById('popup-zip').value || '').trim(),
           source: 'index-v2-paid',
           status: 'paid',
+          event_id: SESSION_EVENT_ID,
         }),
       }).catch(function () {});
     }
@@ -399,9 +556,11 @@
       bins: String(draft.bins),
       amount: String(getChargeDollars()),
       email: email || (document.getElementById('pop-em').value || '').trim(),
+      phone: phone || (document.getElementById('pop-ph').value || '').trim(),
       city: city,
       zip: z,
       txn: 'v2_' + Date.now(),
+      event_id: SESSION_EVENT_ID,
     });
     window.location.href = 'thank-you.html?' + q.toString();
   }
@@ -424,10 +583,21 @@
     } else {
       document.getElementById('block-step3').classList.remove('unlocked');
     }
+    if (draft.leadSaved) {
+      document.getElementById('block-step4').classList.add('unlocked');
+      mountStripe();
+    } else {
+      document.getElementById('block-step4').classList.remove('unlocked');
+    }
     document.querySelectorAll('.plan-tile').forEach(function (t) {
       t.classList.toggle('selected', t.getAttribute('data-plan') === draft.plan);
     });
-    mountStripe();
+    trackStandard('InitiateCheckout', {
+      value: getChargeDollars(),
+      currency: 'USD',
+      num_items: draft.bins,
+      content_name: 'signup_popup_open',
+    });
   }
 
   function closeModal() {
@@ -513,8 +683,7 @@
       btn.addEventListener('click', function () {
         draft.county = btn.getAttribute('data-county');
         draft.countyLabel = btn.getAttribute('data-label') || countyLabels[draft.county];
-        if (typeof fbq !== 'undefined') fbq('track', 'Lead', { content_name: draft.countyLabel });
-        if (typeof gtag !== 'undefined') gtag('event', 'generate_lead', { county: draft.county });
+        trackCustom('ClickCTA', { county: draft.county, county_label: draft.countyLabel });
         openModal();
       });
     });
@@ -535,7 +704,6 @@
         draft.countyLabel = countyLabels[draft.county];
         document.getElementById('modal-county-lbl').textContent = draft.countyLabel;
       }
-      if (typeof fbq !== 'undefined') fbq('track', 'CompleteRegistration', { content_name: 'zip_entered' });
       if (typeof gtag !== 'undefined') gtag('event', 'zip_entered', { zip: zip });
       if (ZIP_MAP[zip]) {
         draft.zipOk = true;
@@ -543,7 +711,6 @@
         res.innerHTML = renderZipSuccess(zip);
         document.getElementById('block-step2').classList.add('unlocked');
         document.getElementById('block-step2').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        mountStripe();
       } else {
         draft.zipOk = false;
         res.innerHTML = renderZipWaitlist();
@@ -568,6 +735,7 @@
           zip: (document.getElementById('popup-zip').value || '').trim(),
           source: 'index-v2-waitlist',
           status: 'waitlist',
+          event_id: SESSION_EVENT_ID,
         }),
       }).catch(function () {});
     }
@@ -603,18 +771,103 @@
         document.querySelectorAll('.plan-tile').forEach(function (t) {
           t.classList.toggle('selected', t === tile);
         });
+        trackStandard('AddToCart', {
+          content_type: 'product',
+          content_ids: [plan],
+          contents: [{ id: plan, quantity: draft.bins }],
+          value: getChargeDollars(),
+          currency: 'USD',
+        });
         if (typeof gtag !== 'undefined') gtag('event', 'add_to_cart', { plan: plan, bins: draft.bins });
         updatePlanTiles();
         document.getElementById('block-step3').classList.add('unlocked');
         document.getElementById('block-step3').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        mountStripe();
       });
+    });
+  }
+
+  function wireStepCContinue() {
+    document.getElementById('pop-continue-checkout').addEventListener('click', function () {
+      var errEl = document.getElementById('step-c-err');
+      errEl.textContent = '';
+      var fn = (document.getElementById('pop-fn').value || '').trim();
+      var ph = (document.getElementById('pop-ph').value || '').trim();
+      var digits = ph.replace(/\D/g, '');
+      if (!fn) {
+        errEl.textContent = 'Please enter your first name.';
+        return;
+      }
+      if (digits.length < 10) {
+        errEl.textContent = 'Please enter a valid mobile number.';
+        return;
+      }
+      var zip = (document.getElementById('popup-zip').value || '').trim();
+      if (!draft.zipOk || !ZIP_MAP[zip]) {
+        errEl.textContent = 'Please verify your ZIP first.';
+        return;
+      }
+      if (!draft.planChosen) {
+        errEl.textContent = 'Please select a plan first.';
+        return;
+      }
+      var consentTs = new Date().toISOString();
+      var consent = {
+        consent_tcpa: true,
+        consent_timestamp: consentTs,
+        consent_method: 'submit_button_implied',
+      };
+      var city = (ZIP_MAP[zip] && ZIP_MAP[zip].city) || '';
+      var utms = collectUtmParams();
+      var crmPayload = Object.assign(
+        {
+          type: 'lead_pre_checkout',
+          first_name: fn,
+          phone: ph,
+          zip: zip,
+          county: draft.county,
+          county_label: draft.countyLabel,
+          plan_intent: planIntentSlug(),
+          bins_count: draft.bins,
+          hyros_id: hyrosIdFromCookie(),
+          event_id: SESSION_EVENT_ID,
+          jobber_event_id: SESSION_EVENT_ID,
+          manny_sms_body: buildMannySmsBody(fn, city || 'Metro Detroit', planLabel(), draft.bins, ph),
+          sms_notify_to: MANNY_SMS_NUMBER,
+        },
+        consent,
+        utms
+      );
+      var btn = document.getElementById('pop-continue-checkout');
+      btn.disabled = true;
+      postCrmLead(crmPayload)
+        .then(function () {
+          draft.leadSaved = true;
+          saveFieldsToDraft();
+          return fireLeadAfterCrm(consent).catch(function () {});
+        })
+        .then(function () {
+          document.getElementById('block-step4').classList.add('unlocked');
+          document.getElementById('block-step4').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          addPaymentInfoFired = false;
+          mountStripe();
+        })
+        .catch(function (e) {
+          errEl.textContent =
+            'We could not save your info. Check your connection and try again. ' + (e.message || '');
+        })
+        .finally(function () {
+          btn.disabled = false;
+        });
     });
   }
 
   function wirePay() {
     document.getElementById('pop-pay').addEventListener('click', function () {
       saveFieldsToDraft();
+      if (!draft.leadSaved) {
+        alert('Complete the previous step first.');
+        return;
+      }
       var fn = (document.getElementById('pop-fn').value || '').trim();
       var ph = (document.getElementById('pop-ph').value || '').trim();
       var em = (document.getElementById('pop-em').value || '').trim();
@@ -674,7 +927,7 @@
   }
 
   function wireValidationHints() {
-    function ok(el, cond, msgEl, text) {
+    function ok(el, cond, msgEl) {
       var m = document.getElementById(msgEl);
       if (!m) return;
       m.textContent = cond ? '✓' : '';
@@ -732,7 +985,12 @@
         fetch(GHL_WEBHOOK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: em, source: 'index-v2-exit-intent', status: 'gallery_lead' }),
+          body: JSON.stringify({
+            email: em,
+            source: 'index-v2-exit-intent',
+            status: 'gallery_lead',
+            event_id: SESSION_EVENT_ID,
+          }),
         }).catch(function () {});
       }
       document.getElementById('exit-overlay').classList.remove('show');
@@ -747,9 +1005,9 @@
     });
   });
 
-  if (typeof fbq !== 'undefined') {
-    fbq('track', 'ViewContent');
-  }
+  setTimeout(function () {
+    trackStandard('ViewContent', { content_name: 'hero' });
+  }, 1000);
 
   syncWeeklyNums();
   setInterval(syncWeeklyNums, 60000);
@@ -761,6 +1019,7 @@
   wireZipCheck();
   wireZipResultClicks();
   wireBinsPlans();
+  wireStepCContinue();
   wirePay();
   wireValidationHints();
   wireExit();

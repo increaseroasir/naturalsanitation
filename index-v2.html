@@ -193,6 +193,9 @@ head.appendChild(script);
     .spin{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:sp .7s linear infinite}
     @keyframes sp{to{transform:rotate(360deg)}}
     .hidden{display:none!important}
+    .tcpa-text{font-size:12px;line-height:1.5;color:var(--slate);margin:14px 0 12px}
+    .tcpa-text a{color:var(--teal);text-decoration:underline}
+    .step-err{color:#b91c1c;font-size:13px;margin-top:8px;min-height:20px}
   </style>
   <script type="application/ld+json" id="ld-business">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Natural Sanitation LLC","description":"Residential garbage bin steam cleaning — Metro Detroit.","telephone":"+15865006794","email":"naturalsanitation@gmail.com","areaServed":[{"@type":"City","name":"Macomb Township"},{"@type":"City","name":"Shelby Township"},{"@type":"City","name":"Rochester Hills"}],"aggregateRating":{"@type":"AggregateRating","ratingValue":"4.9","reviewCount":"250"}}</script>
 </head>
@@ -534,7 +537,7 @@ head.appendChild(script);
         <button type="button" class="modal-x" id="modal-close" aria-label="Close">×</button>
       </div>
       <div class="modal-body" id="signup-modal-body">
-        <div class="step-label">Step 1 of 3 · ZIP verification</div>
+        <div class="step-label">Step 1 of 4 · ZIP verification</div>
         <h3 class="h3" style="font-size:24px">What's your ZIP?</h3>
         <p class="muted" style="font-size:14px">We'll show you instantly how many of your neighbors are already on the route.</p>
         <div class="field" style="margin-top:14px">
@@ -546,7 +549,7 @@ head.appendChild(script);
         <div id="zip-result"></div>
 
         <div id="block-step2" class="dim" style="margin-top:28px;padding-top:22px;border-top:1px solid var(--border)">
-          <div class="step-label">Step 2 of 3 · Plan</div>
+          <div class="step-label">Step 2 of 4 · Plan</div>
           <h3 class="h3" style="font-size:22px">How many bins, and which plan?</h3>
           <p class="muted" style="font-size:14px;margin-bottom:8px">Tap a bin count, then choose a plan.</p>
           <div class="bin-row" role="group" aria-label="Bins">
@@ -582,12 +585,22 @@ head.appendChild(script);
         </div>
 
         <div id="block-step3" class="dim" style="margin-top:28px;padding-top:22px;border-top:1px solid var(--border)">
-          <div class="step-label">Step 3 of 3 · Checkout</div>
-          <h3 class="h3" style="font-size:22px">Where should we send your before-and-after photos?</h3>
+          <div class="step-label">Step 3 of 4 · Your contact</div>
+          <h3 class="h3" style="font-size:22px">How can Manny reach you?</h3>
+          <p class="muted" style="font-size:14px">We'll text your before-and-after photos to this number.</p>
           <div class="field"><label for="pop-fn">First name</label><input type="text" id="pop-fn" autocomplete="given-name" /><div class="checkok" id="ok-fn"></div></div>
-          <div class="field"><label for="pop-ph">Mobile phone (this is where Manny texts your photos)</label><input type="tel" id="pop-ph" autocomplete="tel" inputmode="tel" /><div class="checkok" id="ok-ph"></div></div>
+          <div class="field"><label for="pop-ph">Mobile phone</label><input type="tel" id="pop-ph" autocomplete="tel" inputmode="tel" /><div class="checkok" id="ok-ph"></div></div>
+          <p class="tcpa-text" id="tcpa-copy">By clicking Continue, you agree that Manny can text and call you at the number provided about your service — including before-and-after photos, scheduling, and follow-ups. Message and data rates may apply. Reply STOP at any time to opt out. View our <a href="privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and <a href="sms-consent.html" target="_blank" rel="noopener noreferrer">SMS Terms</a>.</p>
+          <div class="step-err" id="step-c-err" aria-live="polite"></div>
+          <button type="button" class="btn-teal" id="pop-continue-checkout" style="max-width:none">Continue to Secure Checkout</button>
+          <p class="muted" style="font-size:12px;margin-top:10px;text-align:left;max-width:none">Your info is saved. If you don't finish checkout, Manny will text you within 15 minutes to answer any questions.</p>
+        </div>
+
+        <div id="block-step4" class="dim" style="margin-top:28px;padding-top:22px;border-top:1px solid var(--border)">
+          <div class="step-label">Step 4 of 4 · Secure checkout</div>
+          <h3 class="h3" style="font-size:22px">Where should we send your receipts?</h3>
           <div class="field"><label for="pop-em">Email (for receipts only)</label><input type="email" id="pop-em" autocomplete="email" /><div class="checkok" id="ok-em"></div></div>
-          <p class="muted" style="font-size:13px">🔒 No spam. Manny uses this number to send your photos and service updates. Reply STOP any time.</p>
+          <p class="muted" style="font-size:13px">🔒 No spam. Receipts and service updates only. Reply STOP any time.</p>
           <hr style="margin:18px 0;border:none;border-top:1px solid var(--border)" />
           <h4 style="font-size:16px;font-weight:700;margin-bottom:10px">Secure payment</h4>
           <div id="express-pay-section">
