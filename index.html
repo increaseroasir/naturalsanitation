@@ -988,6 +988,28 @@ head.appendChild(script);
     }
     .modal-submit-secondary:hover{background:var(--blue-hover)}
     .modal-submit-secondary:disabled{opacity:.5;cursor:not-allowed}
+    .modal-post-pay{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+    .modal-trust-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:14px}
+    .modal-trust-row:last-of-type{margin-bottom:0}
+    .modal-trust-icon{flex-shrink:0;width:22px;height:22px;margin-top:1px;color:var(--blue)}
+    .modal-trust-text{min-width:0}
+    .modal-trust-label{font-weight:800;font-size:13px;color:#0f172a;line-height:1.35;margin:0 0 2px}
+    .modal-trust-desc{font-size:12px;color:var(--muted);line-height:1.45;margin:0}
+    .modal-sat-callout{
+      display:flex;gap:10px;align-items:flex-start;
+      margin:16px 0 18px;padding:12px 14px;
+      background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;
+    }
+    .modal-sat-callout svg{flex-shrink:0;width:20px;height:20px;color:#16a34a;margin-top:1px}
+    .modal-sat-callout p{margin:0;font-size:13px;line-height:1.45;color:#14532d;font-weight:600}
+    .modal-review-card{
+      border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;
+      background:#fafbfc;
+    }
+    .modal-review-card:last-child{margin-bottom:0}
+    .modal-review-stars{color:#ca8a04;font-size:13px;letter-spacing:1px;margin-bottom:6px}
+    .modal-review-quote{font-size:13px;line-height:1.45;color:#334155;margin:0 0 8px}
+    .modal-review-by{font-size:12px;font-weight:700;color:#64748b;margin:0}
     #prb-parking{
       position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.02;
       overflow:hidden;pointer-events:none;z-index:-1;
@@ -1548,6 +1570,49 @@ head.appendChild(script);
                 <div class="modal-field-error" id="modal-err-card-general"></div>
                 <button type="submit" class="modal-submit" id="modal-pay-btn">Complete purchase</button>
               </form>
+
+              <div class="modal-post-pay" id="modal-post-pay" aria-label="Trust and reviews">
+                <div class="modal-trust-row">
+                  <svg class="modal-trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  <div class="modal-trust-text">
+                    <p class="modal-trust-label">No contract. Cancel any time.</p>
+                  </div>
+                </div>
+                <div class="modal-trust-row">
+                  <svg class="modal-trust-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  <div class="modal-trust-text">
+                    <p class="modal-trust-label">250+ five-star Google reviews</p>
+                  </div>
+                </div>
+                <div class="modal-trust-row">
+                  <svg class="modal-trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                  <div class="modal-trust-text">
+                    <p class="modal-trust-label">We come back for free</p>
+                    <p class="modal-trust-desc">If you think we did anything short of exceptional, call us. We have never had to do this twice for the same customer.</p>
+                  </div>
+                </div>
+
+                <div class="modal-sat-callout">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                  <p>Satisfaction guaranteed. Not happy after your first clean? We come back at no charge. No questions.</p>
+                </div>
+
+                <div class="modal-review-card">
+                  <div class="modal-review-stars" aria-hidden="true">★★★★★</div>
+                  <p class="modal-review-quote">“Cheaper than one doctor's visit. My kids used to touch those handles every day. I don't even want to think about what was on them.”</p>
+                  <p class="modal-review-by">— Michelle K., Troy</p>
+                </div>
+                <div class="modal-review-card">
+                  <div class="modal-review-stars" aria-hidden="true">★★★★★</div>
+                  <p class="modal-review-quote">“I texted my husband the before photo. His response was one word. BOOK.”</p>
+                  <p class="modal-review-by">— Laura P., Armada</p>
+                </div>
+                <div class="modal-review-card">
+                  <div class="modal-review-stars" aria-hidden="true">★★★★★</div>
+                  <p class="modal-review-quote">“I use bags every single week. Thought mine would be fine. I was wrong. The stuff on the bottom looked like it had been there for years.”</p>
+                  <p class="modal-review-by">— Karen S., Shelby Township</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
