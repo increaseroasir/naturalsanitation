@@ -38,31 +38,28 @@ head.appendChild(script);
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
-      /* Brand blue is primary interactive color */
-      --blue:#1e4db7;
-      --blue-hover:#163a8f;
-      --blue-light:#eef3ff;
-      /* Orange is accent only (logo); ZIP-qualify CTAs use burnt amber below */
-      --orange:#e8650a;
-      --orange-light:#fff5ee;
-      /* Burnt amber-orange — qualification CTAs only (premium, not neon) */
-      --qualify:#a84a15;
-      --qualify-hover:#7d3610;
-      --qualify-shadow:0 3px 14px rgba(125, 54, 16, 0.28);
-      /* Neutrals */
-      --bg:#f7f8fa;
-      --surface:#ffffff;
-      --charcoal:#1c1c2e;
-      --navy:#1a2d4f;
-      --muted:#5a6478;
-      --border:#dde3ec;
-      /* States */
-      --green:#16a34a;
-      --green-light:#f0fdf4;
-      --green-border:#bbf7d0;
-      /* Radius / shadow */
+      /* Color system: orange = unlock, blue = checkout, green = verified, white cards, gray chrome */
+      --qualify:#C86422;
+      --qualify-hover:#a6541c;
+      --qualify-active:#8f4618;
+      --qualify-shadow:0 3px 14px rgba(200, 100, 34, 0.28);
+      --orange:#C86422;
+      --orange-light:#fef5ef;
+      --blue:#2457D6;
+      --blue-hover:#1c48c4;
+      --blue-light:#e9eefc;
+      --green:#2E9E5B;
+      --green-light:#EAF7EF;
+      --green-border:#c5e5d4;
+      --surface:#FFFFFF;
+      --card:#FFFFFF;
+      --border:#D9E0EA;
+      --navy:#16325C;
+      --muted:#667085;
+      --charcoal:#1F2937;
+      --bg:#f4f6f9;
       --r:10px;
-      --shadow:0 2px 12px rgba(26,45,79,.07);
+      --shadow:0 2px 12px rgba(22, 50, 92, 0.06);
     }
     html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
     body{
@@ -216,15 +213,16 @@ head.appendChild(script);
       border:2px solid var(--border);
       border-radius:var(--r);
       padding:16px;
-      background:var(--surface);
+      background:var(--card);
       cursor:pointer;
       transition:border-color .15s,box-shadow .15s;
       position:relative;
     }
-    .plan-tile:hover{border-color:var(--blue);box-shadow:0 4px 16px rgba(30,77,183,.1)}
+    .plan-tile:hover{border-color:var(--blue);box-shadow:0 4px 16px rgba(36,87,214,.1)}
     .plan-tile.selected{
       border-color:var(--blue);
-      box-shadow:0 4px 16px rgba(30,77,183,.13);
+      background:var(--blue-light);
+      box-shadow:0 4px 16px rgba(36,87,214,.14);
     }
     .plan-tile-top{
       display:flex;
@@ -247,8 +245,8 @@ head.appendChild(script);
       letter-spacing:.5px;
       text-transform:uppercase;
       background:var(--orange-light);
-      color:var(--orange);
-      border:1px solid #fcd9b8;
+      color:var(--qualify);
+      border:1px solid #e8d4c4;
       padding:2px 8px;
       border-radius:20px;
     }
@@ -318,7 +316,7 @@ head.appendChild(script);
 
     /* ZIP */
     .zip-wrap{
-      background:var(--surface);
+      background:var(--card);
       border:1px solid var(--border);
       border-radius:var(--r);
       padding:12px;
@@ -385,7 +383,7 @@ head.appendChild(script);
       gap:10px;
       flex-wrap:wrap;
       padding:10px 12px;
-      background:var(--surface);
+      background:var(--card);
       border:1px solid var(--border);
       border-radius:8px;
       font-size:14px;
@@ -485,24 +483,24 @@ head.appendChild(script);
     }
     .cta-btn:hover{background:var(--blue-hover)}
     .cta-btn:disabled{opacity:.45;cursor:not-allowed}
-    /* ZIP / area qualification — burnt amber (not bright orange) */
+    /* ZIP / area qualification — brand orange (unlock only) */
     .cta-btn.cta-qualify,
     .bottom-cta-btn.cta-qualify,
     .sticky-mobile-btn.cta-qualify{
-      background:linear-gradient(180deg,#b55a22 0%,var(--qualify) 55%,#8f3d12 100%);
+      background:var(--qualify);
       color:#fff;
       box-shadow:var(--qualify-shadow);
     }
     .cta-btn.cta-qualify:hover:not(:disabled),
     .bottom-cta-btn.cta-qualify:hover,
     .sticky-mobile-btn.cta-qualify:hover{
-      background:linear-gradient(180deg,#9c4a1c 0%,var(--qualify-hover) 100%);
-      box-shadow:0 4px 18px rgba(125, 54, 16, 0.32);
+      background:var(--qualify-hover);
+      box-shadow:0 4px 18px rgba(200, 100, 34, 0.32);
     }
     .cta-btn.cta-qualify:active:not(:disabled),
     .bottom-cta-btn.cta-qualify:active,
     .sticky-mobile-btn.cta-qualify:active{
-      background:var(--qualify-hover);
+      background:var(--qualify-active);
     }
     .hero-proof-bar{
       margin-top:14px;
@@ -621,7 +619,7 @@ head.appendChild(script);
       gap:4px;
     }
     .proof-img-slot.before{background:#1a0a00;color:#a16207}
-    .proof-img-slot.after{background:#e8f5e9;color:var(--green)}
+    .proof-img-slot.after{background:var(--green-light);color:var(--green)}
     .proof-img-slot span{font-size:18px}
     .proof-img-photo{
       width:100%;
@@ -640,13 +638,13 @@ head.appendChild(script);
     .proof-caption em{font-style:normal;font-size:11px;color:var(--muted)}
     .proof-highlight{
       border:2px solid var(--green-border);
-      box-shadow:0 8px 24px rgba(22,163,74,.12);
+      box-shadow:0 8px 24px rgba(46,158,91,.14);
     }
 
     /* Google-style reviews widget (GBP) */
     .gbp-widget{max-width:920px;margin:0 auto}
     .gbp-header-card{
-      background:var(--surface);
+      background:var(--card);
       border-radius:12px;
       box-shadow:var(--shadow);
       padding:22px 24px;
@@ -671,7 +669,7 @@ head.appendChild(script);
     .gbp-dist-count{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
     .gbp-dist-bar-wrap{
       height:10px;
-      background:#eef0f4;
+      background:#eef2f6;
       border-radius:5px;
       overflow:hidden;
     }
@@ -713,7 +711,7 @@ head.appendChild(script);
       .gbp-reviews-grid{grid-template-columns:1fr}
     }
     .gbp-review-card{
-      background:var(--surface);
+      background:var(--card);
       border:1px solid var(--border);
       border-radius:8px;
       padding:16px;
@@ -941,7 +939,7 @@ head.appendChild(script);
     .bottom-plan-btn:hover,.bottom-plan-btn.active{
       border-color:var(--blue);
       color:#fff;
-      background:rgba(30,77,183,.2);
+      background:rgba(36,87,214,.18);
     }
     .bottom-cta-btn{
       display:inline-block;
@@ -955,7 +953,7 @@ head.appendChild(script);
       transition:background .15s,box-shadow .15s;
     }
     .bottom-cta-btn:hover:not(.cta-qualify){background:var(--blue-hover)}
-    .bottom-trust{font-size:12px;color:#64748b;margin-top:10px}
+    .bottom-trust{font-size:12px;color:var(--muted);margin-top:10px}
 
     /* ── MODAL ── */
     .modal-overlay{
@@ -1260,23 +1258,23 @@ head.appendChild(script);
     .modal-trust-row:last-of-type{margin-bottom:0}
     .modal-trust-icon{flex-shrink:0;width:22px;height:22px;margin-top:1px;color:var(--blue)}
     .modal-trust-text{min-width:0}
-    .modal-trust-label{font-weight:800;font-size:13px;color:#0f172a;line-height:1.35;margin:0 0 2px}
+    .modal-trust-label{font-weight:800;font-size:13px;color:var(--navy);line-height:1.35;margin:0 0 2px}
     .modal-trust-desc{font-size:12px;color:var(--muted);line-height:1.45;margin:0}
     .modal-sat-callout{
       display:flex;gap:10px;align-items:flex-start;
       margin:16px 0 18px;padding:12px 14px;
-      background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;
+      background:var(--green-light);border:1px solid var(--green-border);border-radius:var(--r);
     }
-    .modal-sat-callout svg{flex-shrink:0;width:20px;height:20px;color:#16a34a;margin-top:1px}
-    .modal-sat-callout p{margin:0;font-size:13px;line-height:1.45;color:#14532d;font-weight:600}
+    .modal-sat-callout svg{flex-shrink:0;width:20px;height:20px;color:var(--green);margin-top:1px}
+    .modal-sat-callout p{margin:0;font-size:13px;line-height:1.45;color:var(--charcoal);font-weight:600}
     .modal-review-card{
       border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;
       background:#fafbfc;
     }
     .modal-review-card:last-child{margin-bottom:0}
     .modal-review-stars{color:#ca8a04;font-size:13px;letter-spacing:1px;margin-bottom:6px}
-    .modal-review-quote{font-size:13px;line-height:1.45;color:#334155;margin:0 0 8px}
-    .modal-review-by{font-size:12px;font-weight:700;color:#64748b;margin:0}
+    .modal-review-quote{font-size:13px;line-height:1.45;color:var(--charcoal);margin:0 0 8px}
+    .modal-review-by{font-size:12px;font-weight:700;color:var(--muted);margin:0}
     #prb-parking{
       position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.02;
       overflow:hidden;pointer-events:none;z-index:-1;
@@ -1285,13 +1283,13 @@ head.appendChild(script);
     /* ── FOOTER ── */
     .site-footer{
       background:var(--navy);
-      color:#475569;
+      color:var(--muted);
       text-align:center;
       padding:20px 16px;
       font-size:12px;
     }
-    .site-footer a{color:#64748b;text-decoration:none}
-    .site-footer a:hover{color:#94a3b8}
+    .site-footer a{color:var(--muted);text-decoration:none}
+    .site-footer a:hover{color:#8a96ab}
     .sticky-mobile-bar{
       position:fixed;
       left:0;
@@ -1562,7 +1560,7 @@ head.appendChild(script);
 </article>
 <article class="gbp-review-card gbp-review-item" data-gbp-index="1" hidden>
   <div class="gbp-review-head">
-    <div class="gbp-avatar" style="background:#16a34a" aria-hidden="true">JG</div>
+    <div class="gbp-avatar" style="background:#2E9E5B" aria-hidden="true">JG</div>
     <div class="gbp-review-meta">
       <div class="gbp-name-row">
         <strong class="gbp-reviewer-name">Josue Guillen</strong>
@@ -1674,7 +1672,7 @@ head.appendChild(script);
 </article>
 <article class="gbp-review-card gbp-review-item" data-gbp-index="9" hidden>
   <div class="gbp-review-head">
-    <div class="gbp-avatar" style="background:#16a34a" aria-hidden="true">AH</div>
+    <div class="gbp-avatar" style="background:#2E9E5B" aria-hidden="true">AH</div>
     <div class="gbp-review-meta">
       <div class="gbp-name-row">
         <strong class="gbp-reviewer-name">A. H</strong>
@@ -1786,7 +1784,7 @@ head.appendChild(script);
 </article>
 <article class="gbp-review-card gbp-review-item" data-gbp-index="17" hidden>
   <div class="gbp-review-head">
-    <div class="gbp-avatar" style="background:#16a34a" aria-hidden="true">AB</div>
+    <div class="gbp-avatar" style="background:#2E9E5B" aria-hidden="true">AB</div>
     <div class="gbp-review-meta">
       <div class="gbp-name-row">
         <strong class="gbp-reviewer-name">Alicia Becker</strong>
@@ -1898,7 +1896,7 @@ head.appendChild(script);
 </article>
 <article class="gbp-review-card gbp-review-item" data-gbp-index="25" hidden>
   <div class="gbp-review-head">
-    <div class="gbp-avatar" style="background:#16a34a" aria-hidden="true">EI</div>
+    <div class="gbp-avatar" style="background:#2E9E5B" aria-hidden="true">EI</div>
     <div class="gbp-review-meta">
       <div class="gbp-name-row">
         <strong class="gbp-reviewer-name">Eion</strong>
@@ -2010,7 +2008,7 @@ head.appendChild(script);
 </article>
 <article class="gbp-review-card gbp-review-item" data-gbp-index="33" hidden>
   <div class="gbp-review-head">
-    <div class="gbp-avatar" style="background:#16a34a" aria-hidden="true">NW</div>
+    <div class="gbp-avatar" style="background:#2E9E5B" aria-hidden="true">NW</div>
     <div class="gbp-review-meta">
       <div class="gbp-name-row">
         <strong class="gbp-reviewer-name">Nicole Wink</strong>
@@ -2122,7 +2120,7 @@ head.appendChild(script);
 </article>
 <article class="gbp-review-card gbp-review-item" data-gbp-index="41" hidden>
   <div class="gbp-review-head">
-    <div class="gbp-avatar" style="background:#16a34a" aria-hidden="true">AA</div>
+    <div class="gbp-avatar" style="background:#2E9E5B" aria-hidden="true">AA</div>
     <div class="gbp-review-meta">
       <div class="gbp-name-row">
         <strong class="gbp-reviewer-name">Anna Marie Asaro</strong>
@@ -2234,7 +2232,7 @@ head.appendChild(script);
 </article>
 <article class="gbp-review-card gbp-review-item" data-gbp-index="49" hidden>
   <div class="gbp-review-head">
-    <div class="gbp-avatar" style="background:#16a34a" aria-hidden="true">CL</div>
+    <div class="gbp-avatar" style="background:#2E9E5B" aria-hidden="true">CL</div>
     <div class="gbp-review-meta">
       <div class="gbp-name-row">
         <strong class="gbp-reviewer-name">Cp Lyle</strong>
@@ -3041,7 +3039,7 @@ function mountOrUpdateStripeInModal() {
       base: {
         fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
         fontSize: '15px',
-        color: '#1c1c2e',
+        color: '#1F2937',
         '::placeholder': { color: '#9ca3af' }
       },
       invalid: { color: '#dc2626' }
