@@ -39,7 +39,7 @@ head.appendChild(script);
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
       /* Color system: orange = unlock, blue = checkout, green = verified, white cards, gray chrome */
-      /* Orange = pre-qual “Check My Area” only (.cta-qualify). Blue = post-ZIP + checkout. Green = verified/success. */
+      /* Orange = pre-qual “Verify your ZIP” only (.cta-qualify). Blue = post-ZIP + checkout. Green = verified/success. */
       --qualify:#C86422;
       --qualify-hover:#a6541c;
       --qualify-active:#8f4618;
@@ -1246,6 +1246,50 @@ head.appendChild(script);
     }
     #modal-step-2{display:none;opacity:0;transform:translateX(18px);transition:opacity .3s ease .06s,transform .3s ease .06s;position:relative;z-index:1}
     #modal-step-2.modal-step-active{display:block;opacity:1;transform:translateX(0);z-index:2}
+    .modal-close[hidden]{display:none!important}
+    .modal-summary-wrap.funnel-hide-summary{display:none!important}
+    .modal-body.funnel-hide-pay-foot .sms-consent,
+    .modal-body.funnel-hide-pay-foot .modal-trust-line{display:none!important}
+    .modal-funnel-progress{
+      display:flex;align-items:center;gap:0;margin:0 0 16px;
+      border-radius:999px;overflow:hidden;border:1px solid var(--border);
+      background:#f1f5f9;font-size:11px;font-weight:800;letter-spacing:.04em;
+      text-transform:uppercase;color:var(--muted);
+    }
+    .mf-seg{flex:1;text-align:center;padding:8px 4px;border-right:1px solid var(--border)}
+    .mf-seg:last-child{border-right:0}
+    .mf-seg.is-on{background:var(--blue);color:#fff}
+    .modal-funnel-back{
+      background:none;border:none;color:var(--blue);font-size:13px;font-weight:700;
+      text-decoration:underline;padding:0;margin:0 0 12px;cursor:pointer;font-family:inherit;
+    }
+    .modal-funnel-back:hover{color:var(--blue-hover)}
+    .modal-funnel-panel{display:block}
+    .modal-funnel-panel[hidden]{display:none!important}
+    .zip-check-spinner{
+      display:inline-block;width:18px;height:18px;border:2px solid var(--border);
+      border-top-color:var(--blue);border-radius:50%;animation:mfspin .7s linear infinite;
+      vertical-align:middle;margin-left:8px;
+    }
+    @keyframes mfspin{to{transform:rotate(360deg)}}
+    .modal-pay-hero{margin-bottom:14px}
+    .modal-pay-hero h4{font-size:17px;font-weight:800;color:var(--navy);line-height:1.25;margin:0 0 6px}
+    .modal-pay-hero p{font-size:13px;color:var(--muted);margin:0;line-height:1.45}
+    .modal-plan-inline{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+    .modal-plan-chip{
+      flex:1;min-width:120px;padding:10px 12px;border-radius:10px;border:2px solid var(--border);
+      background:#fff;font-size:13px;font-weight:800;color:var(--navy);cursor:pointer;font-family:inherit;
+    }
+    .modal-plan-chip.is-sel{border-color:var(--blue);background:var(--blue-light);color:var(--blue)}
+    .modal-route-line{font-size:13px;font-weight:700;color:var(--charcoal);margin:0 0 12px;line-height:1.4}
+    .modal-pay-micro{font-size:12px;color:var(--muted);text-align:center;margin-top:8px;line-height:1.4}
+    .ns-success-bar{
+      position:fixed;left:0;right:0;bottom:0;z-index:100002;
+      background:var(--green);color:#fff;text-align:center;padding:14px 16px;
+      font-size:15px;font-weight:800;box-shadow:0 -4px 20px rgba(0,0,0,.12);
+      animation:nsBarIn .35s ease;
+    }
+    @keyframes nsBarIn{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
     .modal-submit-secondary{
       width:100%;margin-top:14px;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:var(--r);
       font-size:16px;font-weight:800;cursor:pointer;
@@ -1347,8 +1391,9 @@ head.appendChild(script);
 <!-- HERO -->
 <section class="hero">
   <div class="hero-inner">
-    <h1 class="hero-headline">No smell. No maggots. No more dreading your garbage bins.</h1>
-    <p class="hero-sub">We sanitize your bins with 400-degree steam after pickup, then text you the before-and-after photos.</p>
+    <h1 class="hero-headline">I clean garbage bins in Macomb and Oakland County.</h1>
+    <p class="hero-sub">No smell. No maggots. 400° steam after pickup. We text before/after photos.</p>
+    <p class="hero-cta-note" style="margin-top:6px;margin-bottom:10px">2 bins • $250/year — $39/month available.</p>
     <p class="hero-proof-bar">127,000+ bins cleaned · 250+ five-star reviews · Secure billing through Jobber</p>
 
     <div class="hero-columns">
@@ -1363,10 +1408,11 @@ head.appendChild(script);
           <img src="./hero-steam-proof.jpg" alt="Before and after trash bin steam cleaning proof" fetchpriority="high" loading="eager" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
           <div class="vsl-play-overlay" aria-hidden="true"><span class="vsl-play-btn">▶</span></div>
         </div>
-        <button type="button" class="cta-btn cta-qualify" id="vsl-cta" onclick="scrollToZipSection()" style="margin-top:12px;width:100%;max-width:340px">
-          Check My Area
+        <button type="button" class="cta-btn cta-qualify" id="vsl-cta" onclick="openVerifyZipModal()" style="margin-top:12px;width:100%;max-width:340px">
+          Verify your ZIP
         </button>
-        <p class="hero-cta-note">From $33/mo or $199/yr (1 bin). 2 bins $39/mo or $249/yr. No contract.</p>
+        <p class="hero-cta-note" style="margin-top:6px">Takes 10 seconds. Next step is payment.</p>
+        <p class="hero-cta-note">From $33/mo or $199/yr (1 bin). 2 bins $39/mo or $250/yr. No contract.</p>
       </div>
 
       <!-- PLAN SELECTOR -->
@@ -1375,7 +1421,7 @@ head.appendChild(script);
         <!-- ZIP -->
         <div class="zip-wrap" id="zip-wrap">
           <div id="zip-expanded">
-            <h2 class="zip-section-title">Check if we service your area</h2>
+            <h2 class="zip-section-title">Verify your ZIP</h2>
             <p class="zip-section-helper">Enter your ZIP to unlock plans and pricing.</p>
             <div class="zip-row">
               <input
@@ -1440,9 +1486,9 @@ head.appendChild(script);
 
           <p class="pricing-cta-trust" id="pricing-cta-trust">Secure checkout · Billed through Jobber · Cancel anytime on monthly plan</p>
           <button type="button" class="cta-btn" id="main-cta" onclick="openCheckout()" disabled>
-            Continue with Annual Plan — $199/year
+            Pay and lock your route
           </button>
-          <p class="hero-cta-note plan-cta-note">From $33/mo or $199/yr (1 bin) · 2 bins $39/mo or $249/yr · No contract · Before-and-after photos after every clean.</p>
+          <p class="hero-cta-note plan-cta-note">From $33/mo or $199/yr (1 bin) · 2 bins $39/mo or $250/yr · No contract · Before-and-after photos after every clean.</p>
         </div>
 
         <div id="checkout-pricing-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
@@ -1464,7 +1510,7 @@ head.appendChild(script);
 
   <section class="section">
     <div class="section-label">Why Hoses Fail</div>
-    <div class="section-title">What actually kills bacteria.</div>
+    <div class="section-title">What actually kills bacteria</div>
     <div class="science-card">
       <div class="science-head">
         <div class="thermo"><span>400°</span><span style="font-size:10px;font-weight:700">STEAM</span></div>
@@ -1483,7 +1529,7 @@ head.appendChild(script);
         </div>
       </div>
       <div class="science-panel" id="science-steam">
-        <p style="font-size:14px;color:var(--muted)">Pressurized 400° steam sanitizes surfaces, then we apply eco repellent to keep bins cleaner between pickups.</p>
+        <p style="font-size:14px;color:var(--muted)">400° steam sanitizes lid, walls, and wheels. Odor source destroyed. No driveway mess.</p>
         <div class="science-carousel">
           <img src="./after-bin-1.png" alt="Clean bin after steam treatment" loading="lazy" decoding="async" />
           <img src="./after-bin-2.png" alt="Clean green bin after steam treatment" loading="lazy" decoding="async" />
@@ -1496,7 +1542,7 @@ head.appendChild(script);
   <!-- BEFORE / AFTER PROOF -->
   <section class="section">
     <div class="section-label">The Before Photo Moment</div>
-    <div class="section-title">One heavy hitter first. Then the rest.</div>
+    <div class="section-title">Before and after from today’s route in Macomb &amp; Oakland.</div>
     <div class="proof-grid">
 
       <div class="proof-card proof-highlight">
@@ -1521,6 +1567,7 @@ head.appendChild(script);
     <div class="gbp-widget">
       <div class="gbp-header-card">
         <div class="gbp-biz-name">Natural Sanitation Garbage Can Cleaning</div>
+        <p class="gbp-review-count-text" style="margin:0 0 10px;font-weight:700;color:var(--charcoal)">Last 30 days in Macomb + Oakland</p>
         <div class="gbp-rating-row">
           <span class="gbp-rating-num">4.9</span>
           <span class="gbp-stars-gold" aria-hidden="true">★★★★★</span>
@@ -2355,19 +2402,19 @@ head.appendChild(script);
     <div class="steps-row">
       <div class="step">
         <div class="step-num">1</div>
-        <h3>Post-pickup visit</h3>
-        <p>We come March through November on your regular trash day. Clean curbside. No need to be home.</p>
+        <h3>After your pickup day</h3>
+        <p>We service after your pickup day.</p>
       </div>
       <div class="step">
         <div class="step-num">2</div>
-        <h3>400° sanitize + eco repellent</h3>
-        <p>Kills E. coli, salmonella, and mold at the source. A hose cannot do this.</p>
+        <h3>400° steam, lid to wheels</h3>
+        <p>400° steam sanitizes lid to wheels. Mess contained on truck.</p>
         <div class="process-badge">✓ Eco repellent applied after each clean</div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
-        <h3>Texted photos every time</h3>
-        <p>Before and after photos sent to your phone after every single visit.</p>
+        <h3>Photo proof, zero effort</h3>
+        <p>We text before/after photos. You don't lift a finger.</p>
       </div>
     </div>
     <p class="process-footnote">We remove all dirty water-nothing is left on your driveway.</p>
@@ -2384,7 +2431,7 @@ head.appendChild(script);
           Why can't I just use a hose or pressure washer?
           <span class="faq-icon">▾</span>
         </button>
-        <div class="faq-a">Hoses move debris but do not sanitize; 400° steam kills bacteria and odor at the source. <a href="#">Learn more</a></div>
+        <div class="faq-a">Hoses move debris but do not sanitize; 400° steam kills bacteria and odor at the source. Verify your ZIP to get routed this week.</div>
       </div>
 
       <div class="faq-item">
@@ -2392,7 +2439,7 @@ head.appendChild(script);
           How does pricing work for multiple bins?
           <span class="faq-icon">▾</span>
         </button>
-        <div class="faq-a">Annual (per year): $199 / $249 / $299 / $349 for 1/2/3/4 bins. Monthly: $33 / $39 / $45 / $50 per month. Quarterly: $94 / $124 / $149 / $164 per quarter. Month to month March–November; monthly and quarterly billing run on 9‑month cycles. <a href="#">Learn more</a></div>
+        <div class="faq-a">Annual (per year): $199 / $250 / $299 / $349 for 1/2/3/4 bins. Monthly: $33 / $39 / $45 / $50 per month. Quarterly: $94 / $124 / $149 / $164 per quarter. Month to month March–November; monthly and quarterly billing run on 9‑month cycles. Verify your ZIP to get routed this week.</div>
       </div>
 
       <div class="faq-item">
@@ -2400,7 +2447,7 @@ head.appendChild(script);
           What if I sign up mid-season?
           <span class="faq-icon">▾</span>
         </button>
-        <div class="faq-a">Missed cleanings roll into March so you receive your full count every season. <a href="#">Learn more</a></div>
+        <div class="faq-a">Missed cleanings roll into March so you receive your full count every season. Verify your ZIP to get routed this week.</div>
       </div>
 
       <div class="faq-item">
@@ -2408,7 +2455,7 @@ head.appendChild(script);
           Is my driveway safe? Will you damage anything?
           <span class="faq-icon">▾</span>
         </button>
-        <div class="faq-a">Our closed system removes all dirty water inside the truck, so your driveway stays clean. <a href="#">Learn more</a></div>
+        <div class="faq-a">Our closed system removes all dirty water inside the truck, so your driveway stays clean. Verify your ZIP to get routed this week.</div>
       </div>
 
       <div class="faq-item">
@@ -2416,7 +2463,7 @@ head.appendChild(script);
           Is there a contract? Can I cancel?
           <span class="faq-icon">▾</span>
         </button>
-        <div class="faq-a">No contract, cancel anytime, and your route spot is reserved while active. <a href="#">Learn more</a></div>
+        <div class="faq-a">No contract, cancel anytime, and your route spot is reserved while active. Verify your ZIP to get routed this week.</div>
       </div>
 
       <div class="faq-item">
@@ -2424,14 +2471,14 @@ head.appendChild(script);
           Will my HOA have an issue with this?
           <span class="faq-icon">▾</span>
         </button>
-        <div class="faq-a">HOA-safe service works curbside or by the garage with no standing water left behind. <a href="#">Learn more</a></div>
+        <div class="faq-a">HOA-safe service works curbside or by the garage with no standing water left behind. Verify your ZIP to get routed this week.</div>
       </div>
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">
           Do you offer quarterly?
           <span class="faq-icon">▾</span>
         </button>
-        <div class="faq-a">Yes — $94 (1 bin), $124 (2), $149 (3), or $164 (4) per quarter, billed every 9 months. <a href="#">Learn more</a></div>
+        <div class="faq-a">Yes — $94 (1 bin), $124 (2), $149 (3), or $164 (4) per quarter, billed every 9 months. Verify your ZIP to get routed this week.</div>
       </div>
 
     </div>
@@ -2439,16 +2486,16 @@ head.appendChild(script);
 
   <!-- BOTTOM CTA REPEAT -->
   <div class="bottom-cta">
-    <h2>Routes are filling by ZIP code. Check your area and lock in your spot.</h2>
+    <h2>Routes are filling by ZIP code. Verify your ZIP and lock in your spot.</h2>
     <p>127,000+ bins cleaned · 250+ five-star reviews · 6+ years in Metro Detroit</p>
-    <button type="button" class="bottom-cta-btn cta-qualify" id="bottom-cta-btn" onclick="handleFooterCta()">Check My Area</button>
+    <button type="button" class="bottom-cta-btn cta-qualify" id="bottom-cta-btn" onclick="handleFooterCta()">Verify your ZIP</button>
     <div class="bottom-trust">Secure checkout · Billed through Jobber · Cancel anytime on monthly plan</div>
   </div>
 
 </div><!-- /below-fold -->
 
 <div class="sticky-mobile-bar" id="sticky-mobile-bar">
-  <button type="button" class="sticky-mobile-btn cta-qualify" id="sticky-mobile-btn" onclick="handleStickyAction()">Check My Area</button>
+  <button type="button" class="sticky-mobile-btn cta-qualify" id="sticky-mobile-btn" onclick="handleStickyAction()">Verify your ZIP</button>
 </div>
 
 <!-- FOOTER -->
@@ -2467,12 +2514,12 @@ head.appendChild(script);
   aria-labelledby="modal-checkout-title"
 >
   <div class="modal" id="checkout-modal-panel" tabindex="-1">
-    <button type="button" class="modal-close" id="checkout-modal-close" aria-label="Close checkout">✕</button>
-    <div class="modal-head">
-      <h3 id="modal-checkout-title">Secure checkout</h3>
-      <p>Native card &amp; wallet · Billed via Stripe · We never store your full card number</p>
+    <button type="button" class="modal-close" id="checkout-modal-close" hidden aria-label="Close checkout">✕</button>
+    <div class="modal-head" id="checkout-modal-head">
+      <h3 id="modal-checkout-title">Verify your ZIP</h3>
+      <p id="modal-checkout-sub">We service after pickup. Takes 10 seconds.</p>
     </div>
-    <div class="modal-summary-wrap is-loading" id="modal-summary-wrap">
+    <div class="modal-summary-wrap is-loading funnel-hide-summary" id="modal-summary-wrap">
       <div class="modal-summary-skel" aria-hidden="true">
         <div class="modal-summary-skel-bar"></div>
         <div class="modal-summary-skel-bar short"></div>
@@ -2489,30 +2536,75 @@ head.appendChild(script);
         <div class="modal-summary-price" id="modal-plan-price" aria-live="polite" aria-atomic="true">Annual $199/yr billed today.</div>
       </div>
     </div>
-    <div class="modal-body">
+    <div class="modal-body funnel-hide-pay-foot" id="checkout-modal-body">
       <div class="checkout-embed-area" id="checkout-embed-area">
         <div class="checkout-embed-loading" id="checkout-embed-loading">Preparing secure payment…</div>
 
         <div id="checkout-form-wrap" style="display:none">
           <div class="modal-steps-wrap" id="modal-steps-wrap">
-            <div id="modal-step-1" class="modal-step-panel">
-              <p class="modal-lead-title">Where should we send your service details?</p>
-              <p class="modal-lead-copy">Enter your name and mobile number so we can confirm your route, send updates, and text your before-and-after photos.</p>
+            <div class="modal-funnel-progress" id="modal-funnel-progress" aria-hidden="true">
+              <div class="mf-seg is-on" id="mf-seg-1">1 · ZIP</div>
+              <div class="mf-seg" id="mf-seg-2">2 · Details</div>
+              <div class="mf-seg" id="mf-seg-3">3 · Pay</div>
+            </div>
+
+            <div id="modal-funnel-zip" class="modal-funnel-panel">
+              <p class="modal-lead-title">Verify your ZIP</p>
+              <p class="modal-lead-copy">We service after pickup. Takes 10 seconds.</p>
               <div class="modal-field">
-                <label for="modal-full-name">First name</label>
-                <input type="text" id="modal-full-name" name="name" autocomplete="given-name" required />
+                <label for="modal-zip-flow-input">ZIP code</label>
+                <input type="text" id="modal-zip-flow-input" maxlength="5" inputmode="numeric" pattern="[0-9]*" autocomplete="postal-code" placeholder="48009" required />
+                <div class="modal-field-error" id="modal-err-zip-flow"></div>
+              </div>
+              <button type="button" class="modal-submit-secondary" id="modal-check-eligibility-btn">Check eligibility</button>
+              <span id="modal-zip-spinner" class="zip-check-spinner" style="display:none" aria-hidden="true"></span>
+            </div>
+
+            <div id="modal-funnel-out" class="modal-funnel-panel" hidden>
+              <p class="modal-lead-title" id="modal-out-title">We don’t route this ZIP yet</p>
+              <p class="modal-lead-copy">Leave your mobile and we’ll text you when routes open.</p>
+              <div class="modal-field">
+                <label for="modal-out-phone">Mobile number</label>
+                <input type="tel" id="modal-out-phone" autocomplete="tel" inputmode="tel" />
+                <div class="modal-field-error" id="modal-err-out-phone"></div>
+              </div>
+              <button type="button" class="modal-submit-secondary" id="modal-out-waitlist-btn">Text me when we open routes.</button>
+            </div>
+
+            <div id="modal-step-1" class="modal-step-panel" style="display:none" aria-hidden="true">
+              <button type="button" class="modal-funnel-back" id="modal-back-to-zip">Back</button>
+              <p class="modal-lead-title">Get routed this week</p>
+              <p class="modal-lead-copy">First clean can be as early as tomorrow. We’ll text confirmation.</p>
+              <div class="modal-field">
+                <label for="modal-full-name">Full name</label>
+                <input type="text" id="modal-full-name" name="name" autocomplete="name" required />
                 <div class="modal-field-error" id="modal-err-full-name"></div>
               </div>
               <div class="modal-field">
-                <label for="modal-phone">Mobile phone number</label>
+                <label for="modal-phone">Mobile phone</label>
                 <input type="tel" id="modal-phone" name="phone" autocomplete="tel" required />
                 <div class="modal-field-error" id="modal-err-phone"></div>
               </div>
-              <p class="modal-lead-micro">No spam. We only use this for service updates and your cleaning details.</p>
-              <button type="button" class="modal-submit-secondary" id="modal-continue-payment">Continue to Secure Checkout</button>
+              <div class="modal-field">
+                <label for="modal-lead-email">Email <span style="font-weight:600;color:var(--muted)">(optional)</span></label>
+                <input type="email" id="modal-lead-email" name="email" autocomplete="email" />
+                <div class="modal-field-error" id="modal-err-lead-email"></div>
+              </div>
+              <p class="modal-lead-micro">By continuing you agree to receive service texts. Reply STOP to opt out.</p>
+              <button type="button" class="modal-submit-secondary" id="modal-continue-payment">Continue to pricing</button>
             </div>
 
             <div id="modal-step-2" class="modal-step-panel" aria-hidden="true">
+              <button type="button" class="modal-funnel-back" id="modal-back-to-details">Back</button>
+              <div class="modal-pay-hero">
+                <h4>2 bins • $250/year — $39/month available</h4>
+                <p>After pickup service. 400° steam. Photos texted.</p>
+              </div>
+              <p class="modal-route-line" id="modal-route-order-line">Your ZIP: — Route opens this week.</p>
+              <div class="modal-plan-inline" role="group" aria-label="Billing plan">
+                <button type="button" class="modal-plan-chip is-sel" id="modal-plan-chip-annual" data-plan-pick="annual">Annual</button>
+                <button type="button" class="modal-plan-chip" id="modal-plan-chip-monthly" data-plan-pick="monthly">Monthly</button>
+              </div>
               <div class="express-pay-section" id="express-pay-section">
                 <div class="express-pay-label">Pay instantly with</div>
                 <div id="payment-request-button"></div>
@@ -2553,7 +2645,8 @@ head.appendChild(script);
                   </div>
                 </div>
                 <div class="modal-field-error" id="modal-err-card-general"></div>
-                <button type="submit" class="modal-submit" id="modal-pay-btn">Complete purchase</button>
+                <button type="submit" class="modal-submit" id="modal-pay-btn">Pay and lock your route</button>
+                <p class="modal-pay-micro" id="modal-pay-micro">Secure checkout. You’ll get a text in minutes.</p>
               </form>
 
               <div class="modal-post-pay" id="modal-post-pay" aria-label="Trust and reviews">
@@ -2618,6 +2711,8 @@ head.appendChild(script);
   </div>
 </div>
 
+<div id="checkout-success-bar" class="ns-success-bar" role="status" aria-live="polite" hidden>You’re routed. Check your phone.</div>
+
 <script>
 /* ── SERVICE ZIPS ── */
 const SERVICE_ZIPS = new Set([
@@ -2635,7 +2730,7 @@ const SERVICE_ZIPS = new Set([
 /* ── PRICING (bins = cans): tier totals by bin count; 1-bin tier inferred (not on v2 rate card) ── */
 const PRICING = {
   1: { annual: 199, monthly: 33 },
-  2: { annual: 249, monthly: 39 },
+  2: { annual: 250, monthly: 39 },
   3: { annual: 299, monthly: 45 },
   4: { annual: 349, monthly: 50 }
 };
@@ -2682,8 +2777,726 @@ const __checkoutModal = {
   walletFirstCardCollapsed: false,
   resumeClientSecret: null,
   resumeIdempotencyEcho: null,
-  checkoutStep: 1
+  checkoutStep: 1,
+  funnelPhase: 'closed',
+  zipEligibilityResolved: false,
+  funnelStep2Sent: false,
+  payShortcut: false,
+  lastPurchasePiId: null
 };
+
+const LS_FUNNEL_MODAL = 'ns_modal_funnel_state';
+const META_PIXEL_ID_FUNNEL = '499919262310418';
+
+function genFunnelEventId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    var r = (Math.random() * 16) | 0;
+    var v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+function getOrCreateFunnelEventId() {
+  var q = new URLSearchParams(location.search);
+  var fromUrl = q.get('event_id') || q.get('fb_event_id');
+  if (fromUrl) {
+    try {
+      localStorage.setItem('ns_funnel_event_id', fromUrl);
+    } catch (e) {}
+    return fromUrl;
+  }
+  try {
+    var s = localStorage.getItem('ns_funnel_event_id');
+    if (s) {
+      return s;
+    }
+  } catch (e2) {}
+  var fresh = genFunnelEventId();
+  try {
+    localStorage.setItem('ns_funnel_event_id', fresh);
+  } catch (e3) {}
+  return fresh;
+}
+
+function pushEventIdToUrlIfMissing(eventId) {
+  if (!eventId) {
+    return;
+  }
+  try {
+    var u = new URL(window.location.href);
+    if (u.searchParams.get('event_id') || u.searchParams.get('fb_event_id')) {
+      return;
+    }
+    u.searchParams.set('event_id', eventId);
+    history.replaceState({}, '', u.pathname + u.search + u.hash);
+  } catch (e) {}
+}
+
+function funnelPixelOpts() {
+  var id = getOrCreateFunnelEventId();
+  return id && String(id).length ? { eventID: id } : {};
+}
+
+function hyrosIdFromCookie() {
+  var parts = document.cookie.split(';');
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i].trim();
+    if (/hyros|click_id|_ha/i.test(p)) {
+      var eq = p.indexOf('=');
+      if (eq > 0) {
+        return decodeURIComponent(p.slice(eq + 1));
+      }
+    }
+  }
+  return '';
+}
+
+function sha256Hex(plain) {
+  if (!plain || !window.crypto || !window.crypto.subtle) {
+    return Promise.resolve('');
+  }
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(plain)).then(function (buf) {
+    return Array.from(new Uint8Array(buf))
+      .map(function (b) {
+        return b.toString(16).padStart(2, '0');
+      })
+      .join('');
+  });
+}
+
+function normalizePhoneForMetaHash(phone) {
+  var d = String(phone || '').replace(/\D/g, '');
+  if (d.length === 10) {
+    return '1' + d;
+  }
+  if (d.length === 11 && d.charAt(0) === '1') {
+    return d;
+  }
+  return d;
+}
+
+function phoneToE164US(raw) {
+  var d = String(raw || '').replace(/\D/g, '');
+  if (d.length === 10) {
+    return '+1' + d;
+  }
+  if (d.length === 11 && d.charAt(0) === '1') {
+    return '+' + d;
+  }
+  return null;
+}
+
+function firstTokenName(name) {
+  var t = (name || '').trim().split(/\s+/);
+  return t[0] || '';
+}
+
+function applyPhoneMaskInput(el) {
+  if (!el) {
+    return;
+  }
+  var d = el.value.replace(/\D/g, '').slice(0, 10);
+  var out = '';
+  if (d.length > 0) {
+    out = '(' + d.slice(0, 3);
+  }
+  if (d.length >= 3) {
+    out += ') ';
+  }
+  if (d.length > 3) {
+    out += d.slice(3, 6);
+  }
+  if (d.length > 6) {
+    out += '-' + d.slice(6, 10);
+  }
+  el.value = out;
+}
+
+function readFunnelPersist() {
+  try {
+    var raw = localStorage.getItem(LS_FUNNEL_MODAL);
+    if (!raw) {
+      return null;
+    }
+    var o = JSON.parse(raw);
+    if (!o || !o.t || Date.now() - o.t > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(LS_FUNNEL_MODAL);
+      return null;
+    }
+    return o;
+  } catch (e) {
+    return null;
+  }
+}
+
+function writeFunnelPersist(data) {
+  try {
+    var prev = readFunnelPersist() || {};
+    var next = Object.assign({}, prev, data, { t: Date.now() });
+    localStorage.setItem(LS_FUNNEL_MODAL, JSON.stringify(next));
+  } catch (e) {}
+}
+
+function hydrateFunnelFromPersist() {
+  var o = readFunnelPersist();
+  if (!o) {
+    return;
+  }
+  var fn = document.getElementById('modal-full-name');
+  var ph = document.getElementById('modal-phone');
+  var em = document.getElementById('modal-lead-email');
+  var zf = document.getElementById('modal-zip-flow-input');
+  if (fn && o.fullName) {
+    fn.value = o.fullName;
+  }
+  if (ph && o.phone) {
+    ph.value = o.phone;
+    applyPhoneMaskInput(ph);
+  }
+  if (em && o.email) {
+    em.value = o.email;
+  }
+  if (zf && o.zipFlow) {
+    zf.value = o.zipFlow;
+  }
+}
+
+function hasModalContactFields() {
+  var n = document.getElementById('modal-full-name');
+  var p = document.getElementById('modal-phone');
+  if (!n || !p) {
+    return false;
+  }
+  return (n.value || '').trim().length > 0 && !!phoneToE164US((p.value || '').trim());
+}
+
+function updateFunnelProgressUI(n) {
+  [1, 2, 3].forEach(function (i) {
+    var el = document.getElementById('mf-seg-' + i);
+    if (el) {
+      el.classList.toggle('is-on', i === n);
+    }
+  });
+}
+
+function setModalCloseVisible(on) {
+  var btn = document.getElementById('checkout-modal-close');
+  if (!btn) {
+    return;
+  }
+  if (on) {
+    btn.removeAttribute('hidden');
+  } else {
+    btn.setAttribute('hidden', '');
+  }
+}
+
+function setModalPayChromeVisible(on) {
+  var sum = document.getElementById('modal-summary-wrap');
+  var body = document.getElementById('checkout-modal-body');
+  if (sum) {
+    sum.classList.toggle('funnel-hide-summary', !on);
+  }
+  if (body) {
+    body.classList.toggle('funnel-hide-pay-foot', !on);
+  }
+}
+
+function setCheckoutModalHead(title, sub) {
+  var h = document.getElementById('modal-checkout-title');
+  var s = document.getElementById('modal-checkout-sub');
+  if (h) {
+    h.textContent = title || '';
+  }
+  if (s) {
+    s.textContent = sub || '';
+    s.style.display = sub ? '' : 'none';
+  }
+}
+
+function canModalEscapeKeyClose() {
+  if (__checkoutModal.funnelPhase === 'out') {
+    return true;
+  }
+  if (__checkoutModal.funnelPhase === 'zip' && __checkoutModal.zipEligibilityResolved) {
+    return true;
+  }
+  return false;
+}
+
+function canModalDismissViaChrome() {
+  if (__checkoutModal.funnelPhase === 'pay') {
+    return true;
+  }
+  if (__checkoutModal.funnelPhase === 'out') {
+    return true;
+  }
+  return false;
+}
+
+function fireFunnelStep1Lead(zip, phoneOpt, emailOpt) {
+  var eventId = getOrCreateFunnelEventId();
+  pushEventIdToUrlIfMissing(eventId);
+  var consentTs = new Date().toISOString();
+  var consent = {
+    consent_tcpa: true,
+    consent_timestamp: consentTs,
+    consent_method: 'modal_zip_eligibility'
+  };
+  var zipDigits = String(zip || '').replace(/\D/g, '').slice(0, 5);
+  var body = Object.assign(
+    {
+      type: 'lead_modal_zip',
+      service_zip: zipDigits,
+      hyros_id: hyrosIdFromCookie(),
+      event_id: eventId,
+      jobber_event_id: eventId,
+      source: 'checkout-modal-zip',
+      status: 'zip_eligible'
+    },
+    consent
+  );
+  if (GHL_WEBHOOK_URL && /^https:\/\//.test(GHL_WEBHOOK_URL)) {
+    fetch(GHL_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).catch(function () {});
+  }
+  var em = (emailOpt || '').toLowerCase().trim();
+  var ph = normalizePhoneForMetaHash(phoneOpt || '');
+  var zp = zipDigits;
+  return Promise.all([sha256Hex(em), sha256Hex(ph), sha256Hex(zp)]).then(function (hashes) {
+    if (typeof fbq !== 'undefined') {
+      var match = {};
+      if (hashes[0]) {
+        match.em = hashes[0];
+      }
+      if (hashes[1]) {
+        match.ph = hashes[1];
+      }
+      if (hashes[2]) {
+        match.zp = hashes[2];
+      }
+      if (Object.keys(match).length) {
+        fbq('init', META_PIXEL_ID_FUNNEL, match);
+      }
+      fbq(
+        'track',
+        'Lead',
+        Object.assign(
+          {
+            content_name: 'Verify ZIP — modal step 1',
+            value: PRICING[2].annual,
+            currency: 'USD',
+            consent_tcpa: consent.consent_tcpa,
+            consent_timestamp: consent.consent_timestamp,
+            consent_method: consent.consent_method
+          },
+          zipDigits ? { content_category: zipDigits } : {}
+        ),
+        funnelPixelOpts()
+      );
+    }
+    if (typeof fbq !== 'undefined') {
+      fbq(
+        'trackCustom',
+        'HyrosLead',
+        { event_id: eventId, hyros_id: hyrosIdFromCookie(), step: 1 },
+        funnelPixelOpts()
+      );
+    }
+  });
+}
+
+function fireOutAreaWaitlistLead(zipDigits, phoneE164) {
+  var eventId = getOrCreateFunnelEventId();
+  pushEventIdToUrlIfMissing(eventId);
+  var consentTs = new Date().toISOString();
+  var consent = {
+    consent_tcpa: true,
+    consent_timestamp: consentTs,
+    consent_method: 'modal_out_waitlist'
+  };
+  var z = String(zipDigits || '').replace(/\D/g, '').slice(0, 5);
+  if (GHL_WEBHOOK_URL && /^https:\/\//.test(GHL_WEBHOOK_URL)) {
+    fetch(GHL_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(
+        Object.assign(
+          {
+            type: 'lead_modal_out_waitlist',
+            service_zip: z,
+            phone_e164: phoneE164,
+            hyros_id: hyrosIdFromCookie(),
+            event_id: eventId,
+            jobber_event_id: eventId,
+            source: 'checkout-modal-out',
+            status: 'waitlist_routes'
+          },
+          consent
+        )
+      )
+    }).catch(function () {});
+  }
+  var ph = normalizePhoneForMetaHash(phoneE164);
+  return Promise.all([sha256Hex(ph), sha256Hex(z)]).then(function (hashes) {
+    if (typeof fbq !== 'undefined') {
+      var match = {};
+      if (hashes[0]) {
+        match.ph = hashes[0];
+      }
+      if (hashes[1]) {
+        match.zp = hashes[1];
+      }
+      if (Object.keys(match).length) {
+        fbq('init', META_PIXEL_ID_FUNNEL, match);
+      }
+      fbq(
+        'track',
+        'Lead',
+        Object.assign(
+          {
+            content_name: 'Out of area — waitlist',
+            value: 0,
+            currency: 'USD',
+            consent_tcpa: consent.consent_tcpa,
+            consent_timestamp: consent.consent_timestamp,
+            consent_method: consent.consent_method
+          },
+          z ? { content_category: z } : {}
+        ),
+        funnelPixelOpts()
+      );
+      fbq(
+        'trackCustom',
+        'HyrosLead',
+        { event_id: eventId, hyros_id: hyrosIdFromCookie(), step: 'out_waitlist' },
+        funnelPixelOpts()
+      );
+    }
+  });
+}
+
+function runModalZipEligibility() {
+  var err = document.getElementById('modal-err-zip-flow');
+  var zipIn = document.getElementById('modal-zip-flow-input');
+  var btn = document.getElementById('modal-check-eligibility-btn');
+  var spin = document.getElementById('modal-zip-spinner');
+  if (err) {
+    err.textContent = '';
+  }
+  var zip = (zipIn && zipIn.value ? zipIn.value : '').replace(/\D/g, '').slice(0, 5);
+  if (!/^\d{5}$/.test(zip)) {
+    if (err) {
+      err.textContent = 'Enter a valid 5-digit ZIP code.';
+    }
+    return;
+  }
+  if (zipIn) {
+    zipIn.disabled = true;
+  }
+  if (btn) {
+    btn.disabled = true;
+  }
+  if (spin) {
+    spin.style.display = 'inline-block';
+  }
+  window.setTimeout(function () {
+    if (spin) {
+      spin.style.display = 'none';
+    }
+    if (zipIn) {
+      zipIn.disabled = false;
+    }
+    if (btn) {
+      btn.disabled = false;
+    }
+    __checkoutModal.zipEligibilityResolved = true;
+    var inArea = SERVICE_ZIPS.has(zip);
+    if (!inArea) {
+      __checkoutModal.funnelPhase = 'out';
+      var fz = document.getElementById('modal-funnel-zip');
+      var fo = document.getElementById('modal-funnel-out');
+      if (fz) {
+        fz.setAttribute('hidden', '');
+      }
+      if (fo) {
+        fo.removeAttribute('hidden');
+      }
+      setCheckoutModalHead('We don’t route this ZIP yet', '');
+      var op = document.getElementById('modal-out-phone');
+      if (op) {
+        op.focus();
+      }
+      return;
+    }
+    fireFunnelStep1Lead(zip, '', '');
+    var pageZip = document.getElementById('zip-input');
+    if (pageZip) {
+      pageZip.value = zip;
+    }
+    zipVerified = true;
+    selectBins(2);
+    selectPlan('annual');
+    checkZip({ skipScroll: true, skipDefaultPlan: true });
+    refreshZipChrome();
+    updateAllCtas();
+    writeFunnelPersist({ zipFlow: zip });
+    var fz2 = document.getElementById('modal-funnel-zip');
+    if (fz2) {
+      fz2.setAttribute('hidden', '');
+    }
+    var s1 = document.getElementById('modal-step-1');
+    if (s1) {
+      s1.style.display = 'block';
+      s1.removeAttribute('aria-hidden');
+      s1.classList.remove('modal-step-leave');
+    }
+    __checkoutModal.funnelPhase = 'details';
+    updateFunnelProgressUI(2);
+    setCheckoutModalHead(
+      'Get routed this week',
+      'First clean can be as early as tomorrow. We’ll text confirmation.'
+    );
+    var mph = document.getElementById('modal-phone');
+    if (mph) {
+      applyPhoneMaskInput(mph);
+    }
+    window.setTimeout(function () {
+      var fn = document.getElementById('modal-full-name');
+      if (fn) {
+        fn.focus();
+      }
+    }, 0);
+  }, 380);
+}
+
+function modalBackToZip() {
+  __checkoutModal.zipEligibilityResolved = false;
+  __checkoutModal.funnelPhase = 'zip';
+  var fz = document.getElementById('modal-funnel-zip');
+  var fo = document.getElementById('modal-funnel-out');
+  if (fz) {
+    fz.removeAttribute('hidden');
+  }
+  if (fo) {
+    fo.setAttribute('hidden', '');
+  }
+  var s1 = document.getElementById('modal-step-1');
+  if (s1) {
+    s1.style.display = 'none';
+    s1.setAttribute('aria-hidden', 'true');
+    s1.classList.remove('modal-step-leave');
+  }
+  updateFunnelProgressUI(1);
+  setCheckoutModalHead('Verify your ZIP', 'We service after pickup. Takes 10 seconds.');
+  setModalCloseVisible(false);
+  var zi = document.getElementById('modal-zip-flow-input');
+  if (zi) {
+    zi.focus();
+  }
+}
+
+function modalBackToDetailsFromPay() {
+  var s1 = document.getElementById('modal-step-1');
+  var s2 = document.getElementById('modal-step-2');
+  if (s2) {
+    s2.classList.remove('modal-step-active');
+    s2.style.display = 'none';
+    s2.setAttribute('aria-hidden', 'true');
+  }
+  if (s1) {
+    s1.classList.remove('modal-step-leave');
+    s1.style.display = 'block';
+    s1.removeAttribute('aria-hidden');
+  }
+  __checkoutModal.checkoutStep = 1;
+  __checkoutModal.funnelPhase = 'details';
+  setModalCloseVisible(false);
+  setModalPayChromeVisible(false);
+  updateFunnelProgressUI(2);
+  setCheckoutModalHead(
+    'Get routed this week',
+    'First clean can be as early as tomorrow. We’ll text confirmation.'
+  );
+  window.setTimeout(function () {
+    var fn = document.getElementById('modal-full-name');
+    if (fn) {
+      fn.focus();
+    }
+  }, 0);
+}
+
+function submitOutAreaWaitlist() {
+  var err = document.getElementById('modal-err-out-phone');
+  var phEl = document.getElementById('modal-out-phone');
+  if (err) {
+    err.textContent = '';
+  }
+  var e164 = phoneToE164US((phEl && phEl.value) || '');
+  if (!e164) {
+    if (err) {
+      err.textContent = 'Enter a valid mobile number.';
+    }
+    return;
+  }
+  var zipFlow = document.getElementById('modal-zip-flow-input');
+  var zip = (zipFlow && zipFlow.value ? zipFlow.value : '').replace(/\D/g, '').slice(0, 5);
+  fireOutAreaWaitlistLead(zip, e164);
+  closeCheckout();
+}
+
+function openVerifyZipModal() {
+  if (!getStripePublishableKey()) {
+    scrollToZipSection();
+    return;
+  }
+  __checkoutModal.payShortcut = false;
+  __checkoutModal.lastFocus = document.activeElement;
+  __checkoutModal.addPaymentTracked = false;
+  __checkoutModal.cardFieldDirty = false;
+  __checkoutModal.stripeFieldFocused = false;
+  var modal = document.getElementById('checkout-modal');
+  var panel = document.getElementById('checkout-modal-panel');
+  var loading = document.getElementById('checkout-embed-loading');
+  var wrap = document.getElementById('checkout-form-wrap');
+  var fallback = document.getElementById('checkout-embed-fallback');
+  if (!modal || !loading || !wrap) {
+    return;
+  }
+  ensureSingleChargeCheckoutState();
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+  document.body.setAttribute('data-modal-open', 'true');
+  fallback.classList.remove('show');
+  resetModalCheckoutSteps();
+  var zpage = document.getElementById('zip-input');
+  var zflow = document.getElementById('modal-zip-flow-input');
+  if (zflow) {
+    zflow.value =
+      zpage && /^\d{5}$/.test((zpage.value || '').trim()) ? zpage.value.trim() : zflow.value || '';
+  }
+  hydrateFunnelFromPersist();
+  setCheckoutModalHead('Verify your ZIP', 'We service after pickup. Takes 10 seconds.');
+  __checkoutModal.funnelPhase = 'zip';
+  __checkoutModal.zipEligibilityResolved = false;
+  setModalSummaryReadyState(true);
+  loading.style.display = 'none';
+  loading.textContent = 'Preparing secure payment…';
+  wrap.style.display = 'block';
+  __checkoutModal.trapHandler = onCheckoutModalKeydown;
+  document.addEventListener('keydown', __checkoutModal.trapHandler, true);
+  window.setTimeout(function () {
+    if (zflow) {
+      zflow.focus();
+    } else if (panel) {
+      panel.focus();
+    }
+  }, 0);
+}
+
+function fireFunnelStep2Update(fullName, phoneE164, emailOpt) {
+  var eventId = getOrCreateFunnelEventId();
+  var zip = document.getElementById('zip-input') ? document.getElementById('zip-input').value.trim() : '';
+  var cust = {
+    full_name: fullName,
+    phone_e164: phoneE164,
+    email: emailOpt || undefined,
+    service_zip: zip
+  };
+  if (GHL_WEBHOOK_URL && /^https:\/\//.test(GHL_WEBHOOK_URL)) {
+    fetch(GHL_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'lead_modal_detail',
+        customer_data: cust,
+        event_id: eventId,
+        jobber_event_id: eventId,
+        hyros_id: hyrosIdFromCookie(),
+        source: 'checkout-modal-details',
+        status: 'lead_detail'
+      })
+    }).catch(function () {});
+  }
+  if (__checkoutModal.funnelStep2Sent) {
+    return Promise.resolve();
+  }
+  __checkoutModal.funnelStep2Sent = true;
+  var em = (emailOpt || '').toLowerCase().trim();
+  var ph = normalizePhoneForMetaHash(phoneE164);
+  var fn = firstTokenName(fullName).toLowerCase();
+  return Promise.all([sha256Hex(em), sha256Hex(ph), sha256Hex(fn)]).then(function (hashes) {
+    if (typeof fbq !== 'undefined') {
+      var match = {};
+      if (hashes[0]) {
+        match.em = hashes[0];
+      }
+      if (hashes[1]) {
+        match.ph = hashes[1];
+      }
+      if (hashes[2]) {
+        match.fn = hashes[2];
+      }
+      if (Object.keys(match).length) {
+        fbq('init', META_PIXEL_ID_FUNNEL, match);
+      }
+      fbq(
+        'trackCustom',
+        'LeadDetail',
+        {
+          content_name: 'Checkout modal — contact detail',
+          full_name_present: true,
+          phone_present: true
+        },
+        funnelPixelOpts()
+      );
+      fbq(
+        'trackCustom',
+        'HyrosLeadDetail',
+        { event_id: eventId, hyros_id: hyrosIdFromCookie(), step: 2 },
+        funnelPixelOpts()
+      );
+    }
+  });
+}
+
+function showCheckoutSuccessBar() {
+  var bar = document.getElementById('checkout-success-bar');
+  if (!bar) {
+    return;
+  }
+  bar.removeAttribute('hidden');
+  window.setTimeout(function () {
+    bar.setAttribute('hidden', '');
+  }, 8000);
+}
+
+function syncModalPlanChips() {
+  var a = document.getElementById('modal-plan-chip-annual');
+  var m = document.getElementById('modal-plan-chip-monthly');
+  if (a) {
+    a.classList.toggle('is-sel', selectedPlan === 'annual');
+  }
+  if (m) {
+    m.classList.toggle('is-sel', selectedPlan === 'monthly');
+  }
+}
+
+function updateModalRouteOrderLine() {
+  var el = document.getElementById('modal-route-order-line');
+  if (!el) {
+    return;
+  }
+  var z = document.getElementById('zip-input') ? document.getElementById('zip-input').value.trim() : '';
+  el.textContent = z ? 'Your ZIP: ' + z + '. Route opens this week.' : 'Your ZIP: — Route opens this week.';
+}
 
 function getStripePublishableKey() {
   var host = (location.hostname || '').toLowerCase();
@@ -2971,11 +3784,35 @@ function syncNameOnCardFromStep1() {
 
 function resetModalCheckoutSteps() {
   __ghlModalLeadLastHash = '';
+  __checkoutModal.funnelStep2Sent = false;
+  __checkoutModal.zipEligibilityResolved = false;
+  __checkoutModal.funnelPhase = 'closed';
+  var zipP = document.getElementById('modal-funnel-zip');
+  var outP = document.getElementById('modal-funnel-out');
+  var spin = document.getElementById('modal-zip-spinner');
+  var zipIn = document.getElementById('modal-zip-flow-input');
+  var zipBtn = document.getElementById('modal-check-eligibility-btn');
+  if (zipP) {
+    zipP.removeAttribute('hidden');
+  }
+  if (outP) {
+    outP.setAttribute('hidden', '');
+  }
+  if (spin) {
+    spin.style.display = 'none';
+  }
+  if (zipIn) {
+    zipIn.disabled = false;
+  }
+  if (zipBtn) {
+    zipBtn.disabled = false;
+  }
   var s1 = document.getElementById('modal-step-1');
   var s2 = document.getElementById('modal-step-2');
   if (s1) {
     s1.classList.remove('modal-step-leave');
-    s1.removeAttribute('aria-hidden');
+    s1.style.display = 'none';
+    s1.setAttribute('aria-hidden', 'true');
   }
   if (s2) {
     s2.classList.remove('modal-step-active');
@@ -2983,6 +3820,10 @@ function resetModalCheckoutSteps() {
     s2.setAttribute('aria-hidden', 'true');
   }
   __checkoutModal.checkoutStep = 1;
+  __checkoutModal.payShortcut = false;
+  setModalCloseVisible(false);
+  setModalPayChromeVisible(false);
+  updateFunnelProgressUI(1);
 }
 
 function applyWalletFirstLayout() {
@@ -3153,13 +3994,27 @@ function firePurchaseDeduped(pi) {
   var val = typeof amt === 'number' ? amt / 100 : getChargeAmountDollars();
   var cur = (pi.currency || 'usd').toUpperCase();
   if (typeof fbq !== 'undefined') {
-    fbq('track', 'Purchase', {
-      value: val,
-      currency: cur,
-      content_ids: [pi.id],
-      content_type: 'product',
-      content_name: selectedPlan + ' · ' + selectedBins + ' bins'
-    });
+    fbq(
+      'track',
+      'Purchase',
+      {
+        value: val,
+        currency: cur,
+        content_ids: [pi.id],
+        content_type: 'product',
+        content_name: selectedPlan + ' · ' + selectedBins + ' bins'
+      },
+      funnelPixelOpts()
+    );
+    fbq(
+      'trackCustom',
+      'HyrosPurchase',
+      {
+        event_id: getOrCreateFunnelEventId(),
+        transaction_id: pi.id
+      },
+      funnelPixelOpts()
+    );
   }
   clearPiResume();
   __checkoutModal.resumeClientSecret = null;
@@ -3309,7 +4164,9 @@ function fireModalGHLPurchaseSuccess() {
     zip: zip,
     price: getChargeAmountDollars(),
     source: 'checkout-modal-paid',
-    status: 'paid'
+    status: 'paid',
+    event_id: getOrCreateFunnelEventId(),
+    stripe_transaction_id: __checkoutModal.lastPurchasePiId || undefined
   };
   fetch(GHL_WEBHOOK_URL, {
     method: 'POST',
@@ -3319,7 +4176,11 @@ function fireModalGHLPurchaseSuccess() {
 }
 
 function onCheckoutSuccess(pi) {
+  if (pi && pi.id) {
+    __checkoutModal.lastPurchasePiId = pi.id;
+  }
   fireModalGHLPurchaseSuccess();
+  showCheckoutSuccessBar();
   closeCheckout();
 }
 
@@ -3432,7 +4293,8 @@ function buildPaymentIntentRequestBody(emailOpt) {
   var cents = Math.round(charge * 100);
   var idem = getOrCreateIdempotencyKey();
   var phoneEl = document.getElementById('modal-phone');
-  var phoneVal = phoneEl ? (phoneEl.value || '').trim() : '';
+  var phoneRaw = phoneEl ? (phoneEl.value || '').trim() : '';
+  var phoneVal = phoneToE164US(phoneRaw) || phoneRaw;
   var meta = {
     plan: selectedPlan,
     bins: String(selectedBins),
@@ -3567,8 +4429,24 @@ function getModalFocusables() {
     if (el.getAttribute('aria-hidden') === 'true') {
       return false;
     }
+    var anc = el.closest('[hidden]');
+    if (anc) {
+      return false;
+    }
     var s2 = document.getElementById('modal-step-2');
     if (s2 && s2.getAttribute('aria-hidden') === 'true' && s2.contains(el)) {
+      return false;
+    }
+    var s1 = document.getElementById('modal-step-1');
+    if (s1 && s1.getAttribute('aria-hidden') === 'true' && s1.contains(el)) {
+      return false;
+    }
+    var fz = document.getElementById('modal-funnel-zip');
+    if (fz && fz.hasAttribute('hidden') && fz.contains(el)) {
+      return false;
+    }
+    var fo = document.getElementById('modal-funnel-out');
+    if (fo && fo.hasAttribute('hidden') && fo.contains(el)) {
       return false;
     }
     return el.offsetParent !== null;
@@ -3582,6 +4460,9 @@ function onCheckoutModalKeydown(e) {
   }
   if (e.key === 'Escape') {
     e.preventDefault();
+    if (!canModalEscapeKeyClose()) {
+      return;
+    }
     if (confirmModalCloseIfNeeded()) {
       closeCheckout();
     }
@@ -3625,13 +4506,9 @@ function setPricingUnlocked(on) {
 
 function getDynamicContinueCtaText() {
   if (!zipVerified) {
-    return 'Check My Area';
+    return 'Verify your ZIP';
   }
-  var p = PRICING[selectedBins];
-  if (selectedPlan === 'annual') {
-    return 'Continue with Annual Plan — $' + p.annual + '/year';
-  }
-  return 'Continue with Monthly Plan — $' + p.monthly + '/month';
+  return 'Pay and lock your route';
 }
 
 function updateMainPricingCtaLabel() {
@@ -3695,7 +4572,7 @@ function scrollToZipSection() {
 
 function handleFooterCta() {
   if (!zipVerified) {
-    scrollToZipSection();
+    openVerifyZipModal();
     return;
   }
   openCheckout();
@@ -3844,7 +4721,7 @@ function submitWaitlist() {
 /* ── CHECKOUT MODAL ── */
 function openCheckout() {
   if (!zipVerified) {
-    scrollToZipSection();
+    openVerifyZipModal();
     return;
   }
   if (!getStripePublishableKey()) {
@@ -3855,6 +4732,7 @@ function openCheckout() {
     if (resumed) {
       return;
     }
+    __checkoutModal.payShortcut = true;
     openCheckoutModalShell();
   });
 }
@@ -3865,11 +4743,10 @@ function openCheckoutModalShell() {
   var loading = document.getElementById('checkout-embed-loading');
   var wrap = document.getElementById('checkout-form-wrap');
   var fallback = document.getElementById('checkout-embed-fallback');
+  if (!modal || !loading || !wrap) {
+    return;
+  }
   ensureSingleChargeCheckoutState();
-  var displayPrice = getChargeAmountDollars();
-  var planLabels = { annual:'Annual Plan', monthly:'Monthly Plan' };
-
-  maybeFireInitiateCheckout(displayPrice, planLabels);
 
   __checkoutModal.lastFocus = document.activeElement;
   __checkoutModal.addPaymentTracked = false;
@@ -3888,19 +4765,64 @@ function openCheckoutModalShell() {
   fallback.classList.remove('show');
   resetModalCheckoutSteps();
 
+  var fz = document.getElementById('modal-funnel-zip');
+  var fo = document.getElementById('modal-funnel-out');
+  if (fz) {
+    fz.setAttribute('hidden', '');
+  }
+  if (fo) {
+    fo.setAttribute('hidden', '');
+  }
+  __checkoutModal.zipEligibilityResolved = true;
+  hydrateFunnelFromPersist();
+
+  if (hasModalContactFields()) {
+    __checkoutModal.funnelStep2Sent = true;
+    refreshCheckoutModalSummary();
+    persistCheckoutContext();
+    setModalSummaryReadyState(true);
+    loading.style.display = 'none';
+    wrap.style.display = 'block';
+    __checkoutModal.trapHandler = onCheckoutModalKeydown;
+    document.addEventListener('keydown', __checkoutModal.trapHandler, true);
+    enterModalPaymentStepFromDetails();
+    window.setTimeout(function () {
+      var emEl = document.getElementById('modal-email');
+      if (emEl && emEl.offsetParent !== null) {
+        emEl.focus();
+      }
+    }, 100);
+    return;
+  }
+
+  var s1 = document.getElementById('modal-step-1');
+  if (s1) {
+    s1.style.display = 'block';
+    s1.removeAttribute('aria-hidden');
+    s1.classList.remove('modal-step-leave');
+  }
+  __checkoutModal.funnelPhase = 'details';
+  updateFunnelProgressUI(2);
+  setCheckoutModalHead(
+    'Get routed this week',
+    'First clean can be as early as tomorrow. We’ll text confirmation.'
+  );
+  setModalCloseVisible(false);
+  setModalPayChromeVisible(false);
+  var mph = document.getElementById('modal-phone');
+  if (mph) {
+    applyPhoneMaskInput(mph);
+  }
   refreshCheckoutModalSummary();
   persistCheckoutContext();
-
   setModalSummaryReadyState(true);
   loading.style.display = 'none';
   wrap.style.display = 'block';
-
   __checkoutModal.trapHandler = onCheckoutModalKeydown;
   document.addEventListener('keydown', __checkoutModal.trapHandler, true);
-
-  setTimeout(function() {
+  window.setTimeout(function () {
     var first = document.getElementById('modal-full-name');
-    if (wrap.style.display !== 'none' && first) {
+    if (wrap.style.display !== 'none' && first && first.offsetParent !== null) {
       first.focus();
     } else {
       var focusables = getModalFocusables();
@@ -3914,13 +4836,16 @@ function openCheckoutModalShell() {
 }
 
 function shouldConfirmAbandonPayment() {
-  if (__checkoutModal.checkoutStep !== 2) {
-    return false;
+  if (__checkoutModal.funnelPhase === 'pay' && __checkoutModal.checkoutStep === 2) {
+    return !!(__checkoutModal.stripeFieldFocused || __checkoutModal.cardFieldDirty);
   }
-  return !!(__checkoutModal.stripeFieldFocused || __checkoutModal.cardFieldDirty);
+  return false;
 }
 
 function confirmModalCloseIfNeeded() {
+  if (__checkoutModal.funnelPhase === 'details' || __checkoutModal.funnelPhase === 'zip' || __checkoutModal.funnelPhase === 'out') {
+    return true;
+  }
   if (!shouldConfirmAbandonPayment()) {
     return true;
   }
@@ -3943,6 +4868,7 @@ function closeCheckout() {
   }
   __checkoutModal.cardFieldDirty = false;
   __checkoutModal.stripeFieldFocused = false;
+  __checkoutModal.funnelPhase = 'closed';
   resetModalCheckoutSteps();
   if (__checkoutModal.lastFocus && typeof __checkoutModal.lastFocus.focus === 'function') {
     __checkoutModal.lastFocus.focus();
@@ -3951,7 +4877,7 @@ function closeCheckout() {
 
 function handleStickyAction() {
   if (!zipVerified) {
-    scrollToZipSection();
+    openVerifyZipModal();
     return;
   }
   openCheckout();
@@ -3964,34 +4890,18 @@ function toggleScienceTab(tabId, btn) {
   document.getElementById('science-' + tabId).classList.add('active');
 }
 
-function goModalCheckoutStep2() {
-  var eName = document.getElementById('modal-err-full-name');
-  var ePhone = document.getElementById('modal-err-phone');
-  if (eName) {
-    eName.textContent = '';
-  }
-  if (ePhone) {
-    ePhone.textContent = '';
-  }
-  var fullName = (document.getElementById('modal-full-name').value || '').trim();
-  var phone = (document.getElementById('modal-phone').value || '').trim();
-  var ok = true;
-  if (!fullName) {
-    if (eName) {
-      eName.textContent = 'Required';
-    }
-    ok = false;
-  }
-  if (!phone) {
-    if (ePhone) {
-      ePhone.textContent = 'Required';
-    }
-    ok = false;
-  }
-  if (!ok) {
-    return;
-  }
+function enterModalPaymentStepFromDetails() {
   syncNameOnCardFromStep1();
+  var leadEm = document.getElementById('modal-lead-email');
+  var cardEm = document.getElementById('modal-email');
+  if (leadEm && cardEm && (leadEm.value || '').trim()) {
+    cardEm.value = (leadEm.value || '').trim();
+  }
+  var billZip = document.getElementById('modal-billing-zip');
+  var pageZip = document.getElementById('zip-input');
+  if (billZip && pageZip) {
+    billZip.value = (pageZip.value || '').trim();
+  }
   var s1 = document.getElementById('modal-step-1');
   var s2 = document.getElementById('modal-step-2');
   if (!s1 || !s2) {
@@ -4004,6 +4914,17 @@ function goModalCheckoutStep2() {
   void s2.offsetWidth;
   s2.classList.add('modal-step-active');
   __checkoutModal.checkoutStep = 2;
+  __checkoutModal.funnelPhase = 'pay';
+  setModalCloseVisible(true);
+  setModalPayChromeVisible(true);
+  setCheckoutModalHead('Secure checkout', 'Native card & wallet · Billed via Stripe · We never store your full card number');
+  updateFunnelProgressUI(3);
+  syncModalPlanChips();
+  updateModalRouteOrderLine();
+  refreshCheckoutModalSummary();
+  var displayPrice = getChargeAmountDollars();
+  var planLabels = { annual: 'Annual Plan', monthly: 'Monthly Plan' };
+  maybeFireInitiateCheckout(displayPrice, planLabels);
   requestAnimationFrame(function() {
     requestAnimationFrame(function() {
       var okMount = mountOrUpdateStripeInModal();
@@ -4027,18 +4948,72 @@ function goModalCheckoutStep2() {
   });
 }
 
+function goModalCheckoutStep2() {
+  var eName = document.getElementById('modal-err-full-name');
+  var ePhone = document.getElementById('modal-err-phone');
+  var eLeadEm = document.getElementById('modal-err-lead-email');
+  if (eName) {
+    eName.textContent = '';
+  }
+  if (ePhone) {
+    ePhone.textContent = '';
+  }
+  if (eLeadEm) {
+    eLeadEm.textContent = '';
+  }
+  var fullName = (document.getElementById('modal-full-name').value || '').trim();
+  var phoneRaw = (document.getElementById('modal-phone').value || '').trim();
+  var leadEmail = (document.getElementById('modal-lead-email') && document.getElementById('modal-lead-email').value || '').trim();
+  var ok = true;
+  if (!fullName) {
+    if (eName) {
+      eName.textContent = 'Required';
+    }
+    ok = false;
+  }
+  var e164 = phoneToE164US(phoneRaw);
+  if (!e164) {
+    if (ePhone) {
+      ePhone.textContent = 'Enter a valid US mobile number.';
+    }
+    ok = false;
+  }
+  if (leadEmail && !/\S+@\S+\.\S+/.test(leadEmail)) {
+    if (eLeadEm) {
+      eLeadEm.textContent = 'Enter a valid email or leave blank.';
+    }
+    ok = false;
+  }
+  if (!ok) {
+    return;
+  }
+  writeFunnelPersist({
+    fullName: fullName,
+    phone: phoneRaw,
+    email: leadEmail || ''
+  });
+  fireFunnelStep2Update(fullName, e164, leadEmail);
+  enterModalPaymentStepFromDetails();
+}
+
 function initCheckoutModal() {
   var modal = document.getElementById('checkout-modal');
   if (modal) {
     modal.style.willChange = 'transform, opacity';
   }
   document.getElementById('checkout-modal-close').addEventListener('click', function() {
+    if (!canModalDismissViaChrome()) {
+      return;
+    }
     if (confirmModalCloseIfNeeded()) {
       closeCheckout();
     }
   });
   document.getElementById('checkout-modal').addEventListener('click', function(e) {
     if (e.target === this) {
+      if (!canModalDismissViaChrome()) {
+        return;
+      }
       if (confirmModalCloseIfNeeded()) {
         closeCheckout();
       }
@@ -4066,7 +5041,61 @@ function initCheckoutModal() {
       goModalCheckoutStep2();
     });
   }
-  ['modal-full-name', 'modal-phone'].forEach(function(fid) {
+  var zElig = document.getElementById('modal-check-eligibility-btn');
+  if (zElig) {
+    zElig.addEventListener('click', runModalZipEligibility);
+  }
+  var zFlow = document.getElementById('modal-zip-flow-input');
+  if (zFlow) {
+    zFlow.addEventListener('input', function() {
+      zFlow.value = zFlow.value.replace(/\D/g, '').slice(0, 5);
+    });
+    zFlow.addEventListener('keydown', function(ev) {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        runModalZipEligibility();
+      }
+    });
+  }
+  var outBtn = document.getElementById('modal-out-waitlist-btn');
+  if (outBtn) {
+    outBtn.addEventListener('click', submitOutAreaWaitlist);
+  }
+  var outPh = document.getElementById('modal-out-phone');
+  if (outPh) {
+    outPh.addEventListener('input', function() {
+      applyPhoneMaskInput(outPh);
+    });
+  }
+  var backZip = document.getElementById('modal-back-to-zip');
+  if (backZip) {
+    backZip.addEventListener('click', modalBackToZip);
+  }
+  var backDet = document.getElementById('modal-back-to-details');
+  if (backDet) {
+    backDet.addEventListener('click', modalBackToDetailsFromPay);
+  }
+  function wirePlanChip(el, plan) {
+    if (!el) {
+      return;
+    }
+    el.addEventListener('click', function() {
+      selectPlan(plan);
+      syncModalPlanChips();
+      refreshCheckoutModalSummary();
+      mountOrUpdateStripeInModal();
+      persistCheckoutContext();
+    });
+  }
+  wirePlanChip(document.getElementById('modal-plan-chip-annual'), 'annual');
+  wirePlanChip(document.getElementById('modal-plan-chip-monthly'), 'monthly');
+  var mphOn = document.getElementById('modal-phone');
+  if (mphOn) {
+    mphOn.addEventListener('input', function() {
+      applyPhoneMaskInput(mphOn);
+    });
+  }
+  ['modal-full-name', 'modal-phone', 'modal-lead-email'].forEach(function(fid) {
     var el = document.getElementById(fid);
     if (el) {
       el.addEventListener('input', scheduleModalGHLPartialLead);
@@ -4085,13 +5114,20 @@ function initCheckoutModal() {
         return;
       }
       var email = document.getElementById('modal-email').value.trim();
+      var leadEmEl = document.getElementById('modal-lead-email');
+      if ((!email || !/\S+@\S+\.\S+/.test(email)) && leadEmEl && (leadEmEl.value || '').trim()) {
+        email = (leadEmEl.value || '').trim();
+        document.getElementById('modal-email').value = email;
+      }
       var name = document.getElementById('modal-name').value.trim();
-      var phone = (document.getElementById('modal-phone') && document.getElementById('modal-phone').value.trim()) || '';
+      var phoneRaw = (document.getElementById('modal-phone') && document.getElementById('modal-phone').value.trim()) || '';
+      var phone = phoneToE164US(phoneRaw) || phoneRaw;
       var zipBill = document.getElementById('modal-billing-zip').value.trim();
       document.getElementById('modal-err-email').textContent = '';
       document.getElementById('modal-err-card-general').textContent = '';
       if (!email || !/\S+@\S+\.\S+/.test(email)) {
-        document.getElementById('modal-err-email').textContent = 'Enter a valid email.';
+        document.getElementById('modal-err-email').textContent =
+          'Enter an email for your receipt (or add it on the previous step).';
         return;
       }
       if (!name) {
