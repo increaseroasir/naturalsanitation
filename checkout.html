@@ -383,16 +383,6 @@ head.appendChild(script);
           <div class="field-error" id="err-address"></div>
         </div>
 
-        <!-- Coupon (QA / staff testing — validated on server) -->
-        <div class="field-group">
-          <label for="coupon-code">Coupon code <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-          <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
-            <input type="text" id="coupon-code" placeholder="NS-TEST-99" autocomplete="off" style="flex:1;min-width:140px" />
-            <button type="button" class="submit-btn" id="coupon-apply" style="padding:10px 16px;white-space:nowrap">Apply</button>
-          </div>
-          <div id="coupon-msg" style="font-size:13px;margin-top:6px;color:var(--muted)"></div>
-          <p style="font-size:11px;color:var(--muted);margin:8px 0 0;line-height:1.4">Staff testing: <code>NS-TEST-99</code> = 99% off (you pay <strong>$0.50</strong> minimum)</p>
-        </div>
 
         <!-- Card -->
         <div class="field-group">
@@ -749,7 +739,6 @@ const selectedPrice = parseInt(
 );
 const BASE_CHARGE_CENTS = Math.round(selectedPrice * 100);
 let currentChargeCents = BASE_CHARGE_CENTS;
-let appliedCouponRaw = '';
 const urlZip = (params.get('zip') || '').trim();
 
 function readStoredCheckoutNames() {
@@ -812,16 +801,6 @@ const splits    = {
 document.getElementById('s-plan-name').textContent = planNames[selectedPlan] || 'Annual Plan';
 document.getElementById('s-period').textContent = periods[selectedPlan] || 'per year';
 document.getElementById('s-bins').textContent = selectedBins+' bin'+(selectedBins>1?'s':'')+' · Oakland & Macomb County';
-
-function normalizeCouponPreview(raw) {
-  return String(raw || '').trim().toUpperCase().replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
-}
-function previewTestCoupon(baseCents, raw) {
-  const norm = normalizeCouponPreview(raw);
-  if (!norm) return { ok: true, cents: baseCents };
-  if (norm === 'NSTEST99') return { ok: true, cents: Math.max(50, Math.floor(baseCents * 0.01)) };
-  return { ok: false, cents: baseCents };
-}
 function getCheckoutChargeDollars() {
   return Math.round(currentChargeCents) / 100;
 }
@@ -852,31 +831,6 @@ function refreshCheckoutPricing() {
 }
 updateCheckoutSummaryDom();
 
-document.getElementById('coupon-apply').addEventListener('click', function () {
-  const input = document.getElementById('coupon-code');
-  const msg = document.getElementById('coupon-msg');
-  const raw = input.value.trim();
-  if (!raw) {
-    appliedCouponRaw = '';
-    currentChargeCents = BASE_CHARGE_CENTS;
-    msg.style.color = '';
-    msg.textContent = 'Coupon cleared. Totals reset to list price.';
-    refreshCheckoutPricing();
-    return;
-  }
-  const r = previewTestCoupon(BASE_CHARGE_CENTS, raw);
-  if (!r.ok) {
-    msg.style.color = '#dc2626';
-    msg.textContent = 'That code is not valid.';
-    return;
-  }
-  appliedCouponRaw = raw;
-  currentChargeCents = r.cents;
-  msg.style.color = '#16a34a';
-  msg.textContent = 'Applied. Charge will be $' + (r.cents / 100).toFixed(2) + '.';
-  refreshCheckoutPricing();
-});
-
 function buildCheckoutPaymentIntentPayload(emailOpt) {
   const cents = currentChargeCents;
   const dollars = getCheckoutChargeDollars();
@@ -895,9 +849,6 @@ function buildCheckoutPaymentIntentPayload(emailOpt) {
       ? { ns_journey_event_id: String(NSTracking.journeyId()).slice(0, 500) }
       : {}
   );
-  if (appliedCouponRaw) {
-    meta.coupon_code = appliedCouponRaw.slice(0, 80);
-  }
   const out = {
     plan: selectedPlan,
     bins: selectedBins,
@@ -912,7 +863,6 @@ function buildCheckoutPaymentIntentPayload(emailOpt) {
     email: emailOpt || undefined,
     metadata: meta
   };
-  if (appliedCouponRaw) out.coupon = appliedCouponRaw;
   return out;
 }
 
@@ -1217,7 +1167,6 @@ function onSuccess({ name, email, phone, address, paymentIntentId }) {
         bins: selectedBins,
         price: getCheckoutChargeDollars(),
         service_zip: getCheckoutServiceZipDigits(),
-        coupon: appliedCouponRaw || undefined,
         stripe_transaction_id: piId,
         source: 'checkout-page',
         status: 'paid',
