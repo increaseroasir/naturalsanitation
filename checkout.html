@@ -14,6 +14,7 @@
   ============================================================ -->
   <script>
     window.__NS_META_PIXEL_ID = window.__NS_META_PIXEL_ID || '499919262310418';
+    window.__NS_META_TEST_EVENT_CODE = window.__NS_META_TEST_EVENT_CODE || 'TEST28089';
     !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
     n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
@@ -375,6 +376,17 @@ head.appendChild(script);
           <div class="field-error" id="err-address"></div>
         </div>
 
+        <!-- Coupon (QA / staff testing — validated on server) -->
+        <div class="field-group">
+          <label for="coupon-code">Coupon code <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+          <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+            <input type="text" id="coupon-code" placeholder="NS-TEST-99" autocomplete="off" style="flex:1;min-width:140px" />
+            <button type="button" class="submit-btn" id="coupon-apply" style="padding:10px 16px;white-space:nowrap">Apply</button>
+          </div>
+          <div id="coupon-msg" style="font-size:13px;margin-top:6px;color:var(--muted)"></div>
+          <p style="font-size:11px;color:var(--muted);margin:8px 0 0;line-height:1.4">Staff testing: <code>NS-TEST-99</code> = 99% off (you pay <strong>$0.50</strong> minimum)</p>
+        </div>
+
         <!-- Card -->
         <div class="field-group">
           <label>Card Number</label>
@@ -518,7 +530,26 @@ const selectedPrice = parseInt(
   params.get('price') || String(tierPrice(selectedPlan, selectedBins)),
   10
 );
+const BASE_CHARGE_CENTS = Math.round(selectedPrice * 100);
+let currentChargeCents = BASE_CHARGE_CENTS;
+let appliedCouponRaw = '';
 const urlZip = (params.get('zip') || '').trim();
+
+function readStoredCheckoutNames() {
+  try {
+    return {
+      first: localStorage.getItem('ns_checkout_first_name') || '',
+      last: localStorage.getItem('ns_checkout_last_name') || ''
+    };
+  } catch (eLs) {
+    return { first: '', last: '' };
+  }
+}
+var _storedCheckoutNm = readStoredCheckoutNames();
+var prefNameFirst =
+  (params.get('first') || params.get('firstname') || '').trim() || _storedCheckoutNm.first || '';
+var prefNameLast =
+  (params.get('last') || params.get('lastname') || '').trim() || _storedCheckoutNm.last || '';
 
 document.addEventListener('DOMContentLoaded', function () {
   if (window.NSTracking && NSTracking.updateContext) {
@@ -531,6 +562,17 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 });
 
+(function fillCheckoutNameFromPreviousStep() {
+  var fe = document.getElementById('first-name');
+  var le = document.getElementById('last-name');
+  if (fe && prefNameFirst) {
+    fe.value = prefNameFirst;
+  }
+  if (le && prefNameLast) {
+    le.value = prefNameLast;
+  }
+})();
+
 /* ── POPULATE ORDER SUMMARY ── */
 const planNames = { annual:'Annual Plan', quarterly:'Quarterly Plan', monthly:'Monthly Plan' };
 const periods   = { annual:'per year', quarterly:'per quarter', monthly:'per month' };
@@ -541,43 +583,110 @@ const splits    = {
 };
 
 document.getElementById('s-plan-name').textContent = planNames[selectedPlan] || 'Annual Plan';
-document.getElementById('s-price').textContent = '$'+selectedPrice;
 document.getElementById('s-period').textContent = periods[selectedPlan] || 'per year';
 document.getElementById('s-bins').textContent = selectedBins+' bin'+(selectedBins>1?'s':'')+' · Oakland & Macomb County';
-document.getElementById('s-split').innerHTML = splits[selectedPlan] || splits.annual;
 
-/* Update submit button text */
-document.getElementById('submit-btn').textContent =
-  'Pay $'+selectedPrice+' — Lock In My Spot →';
+function normalizeCouponPreview(raw) {
+  return String(raw || '').trim().toUpperCase().replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
+}
+function previewTestCoupon(baseCents, raw) {
+  const norm = normalizeCouponPreview(raw);
+  if (!norm) return { ok: true, cents: baseCents };
+  if (norm === 'NSTEST99') return { ok: true, cents: Math.max(50, Math.floor(baseCents * 0.01)) };
+  return { ok: false, cents: baseCents };
+}
+function getCheckoutChargeDollars() {
+  return Math.round(currentChargeCents) / 100;
+}
+function formatCheckoutMoney(d) {
+  return (Math.abs(d - Math.round(d)) < 1e-9) ? String(Math.round(d)) : d.toFixed(2);
+}
+function updateCheckoutSummaryDom() {
+  const d = getCheckoutChargeDollars();
+  const dStr = formatCheckoutMoney(d);
+  document.getElementById('s-price').textContent = '$' + dStr;
+  document.getElementById('submit-btn').textContent = 'Pay $' + dStr + ' — Lock In My Spot →';
+  if (selectedPlan === 'annual') {
+    document.getElementById('s-split').innerHTML =
+      '<strong>$' + dStr + ' today</strong><br>Annual $' + dStr + '/yr billed today.<br>No contract · Cancel any time';
+  } else {
+    document.getElementById('s-split').innerHTML = splits[selectedPlan] || splits.annual;
+  }
+}
+function refreshCheckoutPricing() {
+  updateCheckoutSummaryDom();
+  if (typeof paymentRequest !== 'undefined' && paymentRequest && typeof paymentRequest.update === 'function') {
+    try {
+      paymentRequest.update({
+        total: { label: planNames[selectedPlan] + ' — Natural Sanitation', amount: currentChargeCents }
+      });
+    } catch (ePr) {}
+  }
+}
+updateCheckoutSummaryDom();
+
+document.getElementById('coupon-apply').addEventListener('click', function () {
+  const input = document.getElementById('coupon-code');
+  const msg = document.getElementById('coupon-msg');
+  const raw = input.value.trim();
+  if (!raw) {
+    appliedCouponRaw = '';
+    currentChargeCents = BASE_CHARGE_CENTS;
+    msg.style.color = '';
+    msg.textContent = 'Coupon cleared. Totals reset to list price.';
+    refreshCheckoutPricing();
+    return;
+  }
+  const r = previewTestCoupon(BASE_CHARGE_CENTS, raw);
+  if (!r.ok) {
+    msg.style.color = '#dc2626';
+    msg.textContent = 'That code is not valid.';
+    return;
+  }
+  appliedCouponRaw = raw;
+  currentChargeCents = r.cents;
+  msg.style.color = '#16a34a';
+  msg.textContent = 'Applied. Charge will be $' + (r.cents / 100).toFixed(2) + '.';
+  refreshCheckoutPricing();
+});
 
 function buildCheckoutPaymentIntentPayload(emailOpt) {
-  const cents = Math.round(selectedPrice * 100);
-  return {
+  const cents = currentChargeCents;
+  const dollars = getCheckoutChargeDollars();
+  const meta = Object.assign(
+    {
+      plan: selectedPlan,
+      bins: String(selectedBins),
+      service_zip: urlZip,
+      charge_dollars: String(dollars),
+      charge_cents: String(cents),
+      base_charge_cents: String(BASE_CHARGE_CENTS),
+      single_charge: 'true',
+      next_charge: ''
+    },
+    window.NSTracking && NSTracking.journeyId
+      ? { ns_journey_event_id: String(NSTracking.journeyId()).slice(0, 500) }
+      : {}
+  );
+  if (appliedCouponRaw) {
+    meta.coupon_code = appliedCouponRaw.slice(0, 80);
+  }
+  const out = {
     plan: selectedPlan,
     bins: selectedBins,
     zip: urlZip,
-    price: selectedPrice,
+    price: dollars,
     amount: cents,
     charge_cents: cents,
+    base_charge_cents: BASE_CHARGE_CENTS,
     single_charge: true,
     next_charge: null,
     capture_method: 'automatic',
     email: emailOpt || undefined,
-    metadata: Object.assign(
-      {
-        plan: selectedPlan,
-        bins: String(selectedBins),
-        service_zip: urlZip,
-        charge_dollars: String(selectedPrice),
-        charge_cents: String(cents),
-        single_charge: 'true',
-        next_charge: ''
-      },
-      window.NSTracking && NSTracking.journeyId
-        ? { ns_journey_event_id: String(NSTracking.journeyId()).slice(0, 500) }
-        : {}
-    )
+    metadata: meta
   };
+  if (appliedCouponRaw) out.coupon = appliedCouponRaw;
+  return out;
 }
 
 /* ── STRIPE INIT ── */
@@ -624,7 +733,7 @@ const paymentRequest = stripe.paymentRequest({
   currency: 'usd',
   total: {
     label: planNames[selectedPlan]+' — Natural Sanitation',
-    amount: selectedPrice * 100
+    amount: currentChargeCents
   },
   requestPayerName: true,
   requestPayerEmail: true,
@@ -639,6 +748,7 @@ const prButton = elements.create('paymentRequestButton', {
 paymentRequest.canMakePayment().then(result => {
   if (result) {
     prButton.mount('#payment-request-button');
+    refreshCheckoutPricing();
   } else {
     document.getElementById('express-pay-section').classList.add('hidden');
   }
@@ -652,24 +762,42 @@ paymentRequest.on('paymentmethod', async (ev) => {
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(buildCheckoutPaymentIntentPayload(ev.payerEmail))
     });
-    const { clientSecret } = await res.json();
-    const { error, paymentIntent } = await stripe.confirmCardPayment(
+    const piJson = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(piJson.error || 'Server error');
+    const clientSecret = piJson.clientSecret;
+    if (!clientSecret) throw new Error(piJson.error || 'Missing payment session');
+    let { error, paymentIntent } = await stripe.confirmCardPayment(
       clientSecret, { payment_method: ev.paymentMethod.id }, { handleActions:false }
     );
-    if (error) { ev.complete('fail'); showProcessing(false); return; }
-    ev.complete('success');
-    var piFinal = paymentIntent;
-    if (piFinal && piFinal.status === 'requires_action') {
-      const r2 = await stripe.confirmCardPayment(clientSecret);
-      piFinal = r2.paymentIntent;
+    if (error) {
+      ev.complete('fail');
+      showProcessing(false);
+      return;
     }
+    if (paymentIntent && paymentIntent.status === 'requires_action') {
+      const r2 = await stripe.confirmCardPayment(clientSecret);
+      error = r2.error;
+      paymentIntent = r2.paymentIntent;
+    }
+    if (error) {
+      ev.complete('fail');
+      showProcessing(false);
+      return;
+    }
+    const piFinal = assertSucceededCheckoutPaymentIntent(paymentIntent);
+    ev.complete('success');
     onSuccess({
       name: ev.payerName,
       email: ev.payerEmail,
       phone: ev.payerPhone,
-      paymentIntentId: piFinal && piFinal.id ? piFinal.id : ''
+      paymentIntentId: piFinal.id
     });
-  } catch(e) { ev.complete('fail'); showProcessing(false); }
+  } catch (e) {
+    try {
+      ev.complete('fail');
+    } catch (e2) {}
+    showProcessing(false);
+  }
 });
 
 /* ── FORM SUBMIT ── */
@@ -712,11 +840,12 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
       body: JSON.stringify(buildCheckoutPaymentIntentPayload(email))
     });
 
-    if (!res.ok) throw new Error('Server error');
-    const { clientSecret, error: serverError } = await res.json();
-    if (serverError) throw new Error(serverError);
+    const data = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(data.error || 'Server error');
+    const clientSecret = data.clientSecret;
+    if (!clientSecret) throw new Error(data.error || 'Missing payment session');
 
-    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+    let { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
       payment_method:{
         card: cardNumber,
         billing_details:{
@@ -726,7 +855,7 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
           address:{ postal_code: zip }
         }
       }
-    });
+    }, { handleActions: false });
 
     if (error) {
       document.getElementById('err-card-general').textContent = error.message;
@@ -734,13 +863,24 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
       document.getElementById('submit-btn').disabled = false;
       return;
     }
-
+    if (paymentIntent && paymentIntent.status === 'requires_action') {
+      const r2 = await stripe.confirmCardPayment(clientSecret);
+      error = r2.error;
+      paymentIntent = r2.paymentIntent;
+    }
+    if (error) {
+      document.getElementById('err-card-general').textContent = error.message;
+      showProcessing(false);
+      document.getElementById('submit-btn').disabled = false;
+      return;
+    }
+    const piOk = assertSucceededCheckoutPaymentIntent(paymentIntent);
     onSuccess({
       name: firstName + ' ' + lastName,
       email,
       phone,
       address,
-      paymentIntentId: paymentIntent && paymentIntent.id ? paymentIntent.id : ''
+      paymentIntentId: piOk.id
     });
 
   } catch(e) {
@@ -752,14 +892,53 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
 });
 
 /* ── SUCCESS ── */
+var SS_PURCHASE_PI_CHECKOUT = 'ns_purchase_pi';
+
+function isStripePaymentIntentId(id) {
+  return typeof id === 'string' && id.indexOf('pi_') === 0;
+}
+
+function assertSucceededCheckoutPaymentIntent(paymentIntent) {
+  if (!paymentIntent || paymentIntent.status !== 'succeeded' || !isStripePaymentIntentId(paymentIntent.id)) {
+    throw new Error('Payment could not be confirmed');
+  }
+  return paymentIntent;
+}
+
+function showCheckoutSuccessUi() {
+  document.getElementById('checkout-form').style.display = 'none';
+  document.getElementById('success-screen').classList.add('show');
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
 function onSuccess({ name, email, phone, address, paymentIntentId }) {
   showProcessing(false);
 
-  var piId = paymentIntentId || 'checkout_' + Date.now();
+  var piId = isStripePaymentIntentId(paymentIntentId) ? paymentIntentId : '';
+  if (!piId) {
+    var msg =
+      'Payment could not be verified (missing Stripe receipt ID). Contact support with your email.';
+    document.getElementById('err-card-general').textContent = msg;
+    try {
+      document.getElementById('submit-btn').disabled = false;
+    } catch (eBtn) {}
+    return;
+  }
+  try {
+    if (sessionStorage.getItem(SS_PURCHASE_PI_CHECKOUT) === piId) {
+      showCheckoutSuccessUi();
+      return;
+    }
+    sessionStorage.setItem(SS_PURCHASE_PI_CHECKOUT, piId);
+  } catch (eSs) {
+    /* still fire once if sessionStorage blocked */
+  }
+
+  var paidDollars = getCheckoutChargeDollars();
   if (window.NSTracking) {
     NSTracking.firePurchaseStandard(
       {
-        value: selectedPrice,
+        value: paidDollars,
         currency: 'USD',
         content_name: planNames[selectedPlan],
         num_items: selectedBins,
@@ -774,16 +953,27 @@ function onSuccess({ name, email, phone, address, paymentIntentId }) {
       {
         event_id: typeof NSTracking.journeyId === 'function' ? NSTracking.journeyId() : '',
         transaction_id: piId,
-        value: selectedPrice
+        value: paidDollars
       },
       {}
     );
   } else if (typeof fbq !== 'undefined') {
-    fbq('track', 'Purchase', {
-      value: selectedPrice,
-      currency: 'USD',
-      content_name: planNames[selectedPlan]
-    });
+    var pixOpts = {};
+    if (window.NSTracking && NSTracking.dedupeId) {
+      pixOpts = { eventID: NSTracking.dedupeId('Purchase_' + piId) };
+    }
+    fbq(
+      'track',
+      'Purchase',
+      {
+        value: paidDollars,
+        currency: 'USD',
+        content_name: planNames[selectedPlan],
+        num_items: selectedBins,
+        transaction_id: piId
+      },
+      pixOpts
+    );
   }
 
   // GHL webhook
@@ -795,17 +985,16 @@ function onSuccess({ name, email, phone, address, paymentIntentId }) {
         name, email, phone, address,
         plan: selectedPlan,
         bins: selectedBins,
-        price: selectedPrice,
+        price: getCheckoutChargeDollars(),
+        coupon: appliedCouponRaw || undefined,
+        stripe_transaction_id: piId,
         source: 'checkout-page',
         status: 'paid'
       })
     }).catch(()=>{});
   }
 
-  // Show success
-  document.getElementById('checkout-form').style.display = 'none';
-  document.getElementById('success-screen').classList.add('show');
-  window.scrollTo({ top:0, behavior:'smooth' });
+  showCheckoutSuccessUi();
 }
 
 /* ── HELPERS ── */

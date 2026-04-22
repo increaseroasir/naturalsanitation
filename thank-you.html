@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
   <script>
     window.__NS_META_PIXEL_ID = window.__NS_META_PIXEL_ID || '499919262310418';
+    window.__NS_META_TEST_EVENT_CODE = window.__NS_META_TEST_EVENT_CODE || 'TEST28089';
     window.__NS_TRACKING_BOOTSTRAP_MODE = 'confirmation';
   </script>
   <script>
@@ -165,11 +166,15 @@
   });
 
   if (typeof gtag !== 'undefined') {
-    gtag('event', 'thank_you_confirmation', {
-      transaction_id: eventId || p.get('txn') || 'ty_' + Date.now(),
+    var txnParam = (p.get('txn') || '').trim();
+    var gtagPayload = {
       value: parseFloat(String(amount).replace(/[^0-9.]/g, '')) || 0,
       currency: 'USD',
-    });
+    };
+    if (/^pi_/.test(txnParam)) {
+      gtagPayload.transaction_id = txnParam;
+    }
+    gtag('event', 'thank_you_confirmation', gtagPayload);
   }
 
   var vcard = [

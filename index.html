@@ -12,6 +12,8 @@
   <!-- META PIXEL — PageView + ViewContent fire from tracking-runtime.js (CAPI-deduped). -->
   <script>
     window.__NS_META_PIXEL_ID = window.__NS_META_PIXEL_ID || '499919262310418';
+    /* Meta Test Events (CAPI): server events show under Events Manager → Test events. Clear when done QA. */
+    window.__NS_META_TEST_EVENT_CODE = window.__NS_META_TEST_EVENT_CODE || 'TEST28089';
     !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
     n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
@@ -2843,7 +2845,7 @@ head.appendChild(script);
             <div id="modal-step-2" class="modal-step-panel" aria-hidden="true">
               <button type="button" class="modal-funnel-back" id="modal-back-to-details">Back</button>
               <div class="modal-pay-hero">
-                <h4>2 bins • $250/year — $39/month available</h4>
+                <h4 id="modal-pay-hero-title">2 bins • $250/year — $39/month available</h4>
                 <p>After pickup service. 400° steam. Photos texted.</p>
               </div>
               <p class="modal-route-line" id="modal-route-order-line">Your ZIP: — Route opens this week.</p>
@@ -2867,6 +2869,15 @@ head.appendChild(script);
                     <label for="modal-email">EMAIL</label>
                     <input type="email" id="modal-email" name="email" autocomplete="email" required />
                     <div class="modal-field-error" id="modal-err-email"></div>
+                  </div>
+                  <div class="modal-field">
+                    <label for="modal-coupon-code">Coupon <span style="font-weight:600;color:var(--muted)">(optional)</span></label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+                      <input type="text" id="modal-coupon-code" placeholder="NS-TEST-99" autocomplete="off" style="flex:1;min-width:120px" />
+                      <button type="button" class="modal-submit-secondary" id="modal-coupon-apply" style="padding:8px 14px">Apply</button>
+                    </div>
+                    <p class="modal-field-error" id="modal-coupon-msg" style="min-height:0;margin-top:4px;color:var(--muted)"></p>
+                    <p style="font-size:11px;color:var(--muted);margin:2px 0 0;line-height:1.35">Staff test: <code>NS-TEST-99</code> = 99% off (min $0.50)</p>
                   </div>
                   <div class="modal-field">
                     <label>Card number</label>
@@ -3038,7 +3049,14 @@ function syncPreZipQualifyCopy() {
 /* Stripe publishable keys — live for production hostnames, test for local (match checkout.html account) */
 const STRIPE_PK_LIVE = 'pk_live_51IZeLCHhyjMV1WTXFgxViPoMxrhHcpgXY0tgggShjYE0wI2o88gds9xzvnFzjrw0inNNETA2FxtMxVrsCZxaDPY700Y7GyJLQx';
 const STRIPE_PK_TEST = 'YOUR_STRIPE_PUBLISHABLE_KEY_TEST';
-const LS_CHECKOUT = { plan:'ns_checkout_plan', bins:'ns_checkout_bins', zip:'ns_checkout_zip', price:'ns_checkout_price_dollars' };
+const LS_CHECKOUT = {
+  plan: 'ns_checkout_plan',
+  bins: 'ns_checkout_bins',
+  zip: 'ns_checkout_zip',
+  price: 'ns_checkout_price_dollars',
+  firstName: 'ns_checkout_first_name',
+  lastName: 'ns_checkout_last_name'
+};
 const SS_IC_HASH = 'ns_ic_hash';
 const SS_PI_RESUME = 'ns_pi_resume';
 const SS_IDEM_CART = 'ns_idem_cart';
@@ -3672,7 +3690,8 @@ const __checkoutModal = {
   zipEligibilityResolved: false,
   funnelStep2Sent: false,
   payShortcut: false,
-  lastPurchasePiId: null
+  lastPurchasePiId: null,
+  appliedCouponRaw: ''
 };
 
 const LS_FUNNEL_MODAL = 'ns_modal_funnel_state';
@@ -4497,6 +4516,7 @@ function selectPlan(plan) {
   if (plan !== 'annual' && plan !== 'monthly') {
     return;
   }
+  resetModalCouponPricing();
   selectedPlan = plan;
   ['annual','monthly'].forEach(function(p) {
     var t = document.getElementById('tile-' + p);
@@ -4525,6 +4545,7 @@ function selectPlan(plan) {
 
 /* ── PRICING UPDATE ── */
 function updatePricing() {
+  resetModalCouponPricing();
   const p = PRICING[selectedBins];
   var binWord = selectedBins === 1 ? 'bin' : 'bins';
 
@@ -4560,6 +4581,94 @@ function getChargeAmountDollars() {
   return p.monthly;
 }
 
+function getModalBaseChargeCents() {
+  return Math.round(getChargeAmountDollars() * 100);
+}
+
+function normalizeModalCouponPreview(raw) {
+  return String(raw || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '')
+    .replace(/-/g, '')
+    .replace(/_/g, '');
+}
+
+function previewModalTestCoupon(baseCents, raw) {
+  var norm = normalizeModalCouponPreview(raw);
+  if (!norm) {
+    return { ok: true, cents: baseCents };
+  }
+  if (norm === 'NSTEST99') {
+    return { ok: true, cents: Math.max(50, Math.floor(baseCents * 0.01)) };
+  }
+  return { ok: false, cents: baseCents };
+}
+
+function getModalChargeCents() {
+  var base = getModalBaseChargeCents();
+  var raw = (__checkoutModal.appliedCouponRaw || '').trim();
+  if (!raw) {
+    return base;
+  }
+  var r = previewModalTestCoupon(base, raw);
+  if (!r.ok) {
+    __checkoutModal.appliedCouponRaw = '';
+    return base;
+  }
+  return r.cents;
+}
+
+function getModalChargeDollars() {
+  return Math.round(getModalChargeCents()) / 100;
+}
+
+function formatModalMoney(d) {
+  return Math.abs(d - Math.round(d)) < 1e-9 ? String(Math.round(d)) : d.toFixed(2);
+}
+
+function resetModalCouponPricing() {
+  __checkoutModal.appliedCouponRaw = '';
+  var input = document.getElementById('modal-coupon-code');
+  var msg = document.getElementById('modal-coupon-msg');
+  if (input) {
+    input.value = '';
+  }
+  if (msg) {
+    msg.textContent = '';
+    msg.style.color = '';
+  }
+}
+
+function readCheckoutNameForStorage() {
+  var gate = document.getElementById('gate-first-name');
+  var fullEl = document.getElementById('modal-full-name');
+  var gv = gate ? (gate.value || '').trim() : '';
+  var fv = fullEl ? (fullEl.value || '').trim() : '';
+  var parts = fv ? fv.split(/\s+/).filter(Boolean) : [];
+  var first = '';
+  var last = '';
+  if (fv && gv && fv.toLowerCase().indexOf(gv.toLowerCase() + ' ') === 0) {
+    first = gv;
+    last = fv.slice(gv.length).trim();
+  } else if (fv && gv && parts.length && parts[0].toLowerCase() === gv.toLowerCase()) {
+    first = gv;
+    last = parts.length > 1 ? parts.slice(1).join(' ') : '';
+  } else if (fv) {
+    first = parts[0] || '';
+    last = parts.length > 1 ? parts.slice(1).join(' ') : '';
+  } else if (gv) {
+    var sp = gv.indexOf(' ');
+    if (sp > 0) {
+      first = gv.slice(0, sp).trim();
+      last = gv.slice(sp + 1).trim();
+    } else {
+      first = gv;
+    }
+  }
+  return { first: first, last: last };
+}
+
 function persistCheckoutContext() {
   try {
     const zip = document.getElementById('zip-input').value.trim();
@@ -4567,6 +4676,17 @@ function persistCheckoutContext() {
     localStorage.setItem(LS_CHECKOUT.bins, String(selectedBins));
     localStorage.setItem(LS_CHECKOUT.zip, zip);
     localStorage.setItem(LS_CHECKOUT.price, String(getChargeAmountDollars()));
+    var nm = readCheckoutNameForStorage();
+    if (nm.first) {
+      localStorage.setItem(LS_CHECKOUT.firstName, nm.first);
+    } else {
+      localStorage.removeItem(LS_CHECKOUT.firstName);
+    }
+    if (nm.last) {
+      localStorage.setItem(LS_CHECKOUT.lastName, nm.last);
+    } else {
+      localStorage.removeItem(LS_CHECKOUT.lastName);
+    }
   } catch (e) {}
 }
 
@@ -4617,6 +4737,13 @@ function buildCheckoutUrl() {
     price: String(getChargeAmountDollars()),
     zip: zip
   });
+  var nm = readCheckoutNameForStorage();
+  if (nm.first) {
+    q.set('first', nm.first);
+  }
+  if (nm.last) {
+    q.set('last', nm.last);
+  }
   var base = 'checkout.html?' + q.toString();
   if (window.NSTracking && NSTracking.appendParamsToUrl) {
     return NSTracking.appendParamsToUrl(base);
@@ -4631,16 +4758,33 @@ function refreshCheckoutModalSummary() {
   }
   var p = PRICING[selectedBins];
   var planLabels = { annual:'Annual Plan', monthly:'Monthly Plan' };
-  var dollars = getChargeAmountDollars();
+  var dollars = getModalChargeDollars();
+  var dStr = formatModalMoney(dollars);
   var priceLine;
   if (selectedPlan === 'annual') {
-    priceLine = 'Annual $' + dollars + '/yr billed today.';
+    priceLine = 'Annual $' + dStr + '/yr billed today.';
   } else {
-    priceLine = 'Monthly $' + dollars + '/month.';
+    priceLine = 'Monthly $' + dStr + '/month.';
   }
   document.getElementById('modal-plan-label').textContent =
     planLabels[selectedPlan] + ' · ' + selectedBins + ' bin' + (selectedBins === 1 ? '' : 's');
   document.getElementById('modal-plan-price').textContent = priceLine;
+  var heroEl = document.getElementById('modal-pay-hero-title');
+  if (heroEl) {
+    heroEl.textContent =
+      selectedBins +
+      ' bin' +
+      (selectedBins > 1 ? 's' : '') +
+      ' · $' +
+      p.annual +
+      '/year — $' +
+      p.monthly +
+      '/month available';
+  }
+  var payBtn = document.getElementById('modal-pay-btn');
+  if (payBtn) {
+    payBtn.textContent = 'Pay and lock your route — $' + dStr;
+  }
   var zipVal = document.getElementById('zip-input').value.trim();
   document.getElementById('modal-summary-meta').textContent =
     (zipVal ? zipVal + ' · ' : '') + 'Oakland & Macomb County';
@@ -4656,7 +4800,7 @@ function refreshCheckoutModalSummary() {
       __checkoutModal.paymentRequest.update({
         total: {
           label: planLabels[selectedPlan] + ' — Natural Sanitation',
-          amount: Math.round(dollars * 100)
+          amount: getModalChargeCents()
         }
       });
     } catch (err) {}
@@ -4676,6 +4820,9 @@ function clearCheckoutFallbackTimer() {
 
 function goToFallbackCheckout() {
   clearCheckoutFallbackTimer();
+  try {
+    persistCheckoutContext();
+  } catch (eGo) {}
   window.location.href = buildCheckoutUrl();
 }
 
@@ -4806,6 +4953,7 @@ function resetModalCheckoutSteps() {
   }
   __checkoutModal.checkoutStep = 1;
   __checkoutModal.payShortcut = false;
+  resetModalCouponPricing();
   setModalCloseVisible(false);
   setModalPayChromeVisible(false);
   updateFunnelProgressUI(1);
@@ -4884,7 +5032,7 @@ function mountOrUpdateStripeInModal() {
       refreshCheckoutModalSummary();
     }
     var planLabels = { annual:'Annual Plan', monthly:'Monthly Plan' };
-    var cents = Math.round(getChargeAmountDollars() * 100);
+    var cents = getModalChargeCents();
     if (!__checkoutModal.paymentRequest) {
       var pr = __checkoutModal.stripe.paymentRequest({
         country: 'US',
@@ -4966,7 +5114,7 @@ function finishPrButtonMount(express) {
 }
 
 function firePurchaseDeduped(pi) {
-  if (!pi || pi.status !== 'succeeded') {
+  if (!pi || pi.status !== 'succeeded' || !/^pi_/.test(String(pi.id || ''))) {
     return false;
   }
   try {
@@ -4976,7 +5124,7 @@ function firePurchaseDeduped(pi) {
     sessionStorage.setItem(SS_PURCHASE_PI, pi.id);
   } catch (e) {}
   var amt = pi.amount_received != null ? pi.amount_received : pi.amount;
-  var val = typeof amt === 'number' ? amt / 100 : getChargeAmountDollars();
+  var val = typeof amt === 'number' ? amt / 100 : getModalChargeDollars();
   var cur = (pi.currency || 'usd').toUpperCase();
   var purchaseCustom = {
     value: val,
@@ -5029,7 +5177,7 @@ function assertPaymentIntentSucceeded(result) {
     throw result.error;
   }
   var pi = result.paymentIntent;
-  if (!pi || pi.status !== 'succeeded') {
+  if (!pi || pi.status !== 'succeeded' || !/^pi_/.test(String(pi.id || ''))) {
     throw new Error('Payment not succeeded');
   }
   return pi;
@@ -5046,7 +5194,7 @@ function tryResumePaymentIntentBeforeMount() {
     clearPiResume();
     return Promise.resolve(false);
   }
-  var expectCents = Math.round(getChargeAmountDollars() * 100);
+  var expectCents = getModalChargeCents();
   if (rec.single_charge !== true || typeof rec.charge_cents !== 'number' || rec.charge_cents !== expectCents) {
     clearPiResume();
     return Promise.resolve(false);
@@ -5104,9 +5252,11 @@ async function handleWalletPayment(ev) {
       },
       body: JSON.stringify(body)
     });
-    var data = await res.json();
-    if (!data.clientSecret) {
-      throw new Error('No clientSecret');
+    var data = await res.json().catch(function () {
+      return {};
+    });
+    if (!res.ok || !data.clientSecret) {
+      throw new Error(data.error || 'No clientSecret');
     }
     if (data.idempotencyKeyEcho && data.idempotencyKeyEcho !== idem) {
       throw new Error('Idempotency echo mismatch');
@@ -5164,7 +5314,8 @@ function fireModalGHLPurchaseSuccess() {
     plan: selectedPlan,
     bins: selectedBins,
     zip: zip,
-    price: getChargeAmountDollars(),
+    price: getModalChargeDollars(),
+    coupon: (__checkoutModal.appliedCouponRaw || '').trim() || undefined,
     source: 'checkout-modal-paid',
     status: 'paid',
     event_id: getOrCreateFunnelEventId(),
@@ -5178,7 +5329,7 @@ function fireModalGHLPurchaseSuccess() {
 }
 
 function onCheckoutSuccess(pi) {
-  if (pi && pi.id) {
+  if (pi && pi.id && /^pi_/.test(String(pi.id))) {
     __checkoutModal.lastPurchasePiId = pi.id;
   }
   fireModalGHLPurchaseSuccess();
@@ -5209,13 +5360,24 @@ function startCheckoutFallbackTimer() {
 }
 
 function getCheckoutIntentHash() {
-  var cents = Math.round(getChargeAmountDollars() * 100);
-  return selectedPlan + '|' + selectedBins + '|' + (document.getElementById('zip-input').value.trim() || '') + '|' + cents;
+  var cents = getModalChargeCents();
+  var ctag = (__checkoutModal.appliedCouponRaw || '').trim();
+  return (
+    selectedPlan +
+    '|' +
+    selectedBins +
+    '|' +
+    (document.getElementById('zip-input').value.trim() || '') +
+    '|' +
+    cents +
+    '|' +
+    ctag
+  );
 }
 
 /* Drop half-now / second-charge resumes, stale PI resume, and installment-priced localStorage so a new PaymentIntent is created. */
 function ensureSingleChargeCheckoutState() {
-  var cents = Math.round(getChargeAmountDollars() * 100);
+  var cents = getModalChargeCents();
   var rec = readPiResume();
   if (rec) {
     var stale =
@@ -5297,8 +5459,9 @@ function getOrCreateIdempotencyKey() {
 function buildPaymentIntentRequestBody(emailOpt) {
   ensureSingleChargeCheckoutState();
   var zip = document.getElementById('zip-input').value.trim();
-  var charge = getChargeAmountDollars();
-  var cents = Math.round(charge * 100);
+  var baseCents = getModalBaseChargeCents();
+  var cents = getModalChargeCents();
+  var charge = Math.round(cents) / 100;
   var idem = getOrCreateIdempotencyKey();
   var phoneEl = document.getElementById('modal-phone');
   var phoneRaw = phoneEl ? (phoneEl.value || '').trim() : '';
@@ -5309,6 +5472,7 @@ function buildPaymentIntentRequestBody(emailOpt) {
     service_zip: zip,
     charge_dollars: String(charge),
     charge_cents: String(cents),
+    base_charge_cents: String(baseCents),
     single_charge: 'true',
     next_charge: '',
     idempotency_key: idem
@@ -5337,13 +5501,17 @@ function buildPaymentIntentRequestBody(emailOpt) {
   if (phoneVal) {
     meta.phone = phoneVal.slice(0, 40);
   }
-  return {
+  if (__checkoutModal.appliedCouponRaw) {
+    meta.coupon_code = String(__checkoutModal.appliedCouponRaw).slice(0, 80);
+  }
+  var out = {
     plan: selectedPlan,
     bins: selectedBins,
     zip: zip,
     price: charge,
     amount: cents,
     charge_cents: cents,
+    base_charge_cents: baseCents,
     single_charge: true,
     next_charge: null,
     capture_method: 'automatic',
@@ -5351,6 +5519,10 @@ function buildPaymentIntentRequestBody(emailOpt) {
     idempotencyKey: idem,
     metadata: meta
   };
+  if (__checkoutModal.appliedCouponRaw) {
+    out.coupon = __checkoutModal.appliedCouponRaw;
+  }
+  return out;
 }
 
 function savePiResume(clientSecret, idempotencyKeyEcho) {
@@ -5361,7 +5533,7 @@ function savePiResume(clientSecret, idempotencyKeyEcho) {
       plan: selectedPlan,
       bins: selectedBins,
       zip: document.getElementById('zip-input').value.trim(),
-      charge_cents: Math.round(getChargeAmountDollars() * 100),
+      charge_cents: getModalChargeCents(),
       single_charge: true,
       ts: Date.now()
     }));
@@ -6124,6 +6296,37 @@ function initCheckoutModal() {
   }
   wirePlanChip(document.getElementById('modal-plan-chip-annual'), 'annual');
   wirePlanChip(document.getElementById('modal-plan-chip-monthly'), 'monthly');
+  var couponApply = document.getElementById('modal-coupon-apply');
+  if (couponApply) {
+    couponApply.addEventListener('click', function () {
+      var input = document.getElementById('modal-coupon-code');
+      var msg = document.getElementById('modal-coupon-msg');
+      if (!input || !msg) {
+        return;
+      }
+      var raw = (input.value || '').trim();
+      var base = getModalBaseChargeCents();
+      if (!raw) {
+        resetModalCouponPricing();
+        refreshCheckoutModalSummary();
+        mountOrUpdateStripeInModal();
+        msg.style.color = '';
+        msg.textContent = 'Coupon cleared.';
+        return;
+      }
+      var r = previewModalTestCoupon(base, raw);
+      if (!r.ok) {
+        msg.style.color = '#dc2626';
+        msg.textContent = 'That code is not valid.';
+        return;
+      }
+      __checkoutModal.appliedCouponRaw = raw;
+      msg.style.color = '#16a34a';
+      msg.textContent = 'Applied — you pay $' + (r.cents / 100).toFixed(2) + ' today.';
+      refreshCheckoutModalSummary();
+      mountOrUpdateStripeInModal();
+    });
+  }
   var mphOn = document.getElementById('modal-phone');
   if (mphOn) {
     mphOn.addEventListener('input', function() {
@@ -6208,13 +6411,16 @@ function initCheckoutModal() {
             'Idempotency-Key': idem
           },
           body: JSON.stringify(body)
-        }).then(function(res) { return res.json(); }).then(function(data) {
-          if (!data.clientSecret) {
-            throw new Error('missing secret');
-          }
-          if (data.idempotencyKeyEcho && data.idempotencyKeyEcho !== idem) {
-            throw new Error('idem echo');
-          }
+        }).then(function(res) {
+          return res.json().catch(function () {
+            return {};
+          }).then(function(data) {
+            if (!res.ok || !data.clientSecret) {
+              throw new Error(data.error || 'missing secret');
+            }
+            if (data.idempotencyKeyEcho && data.idempotencyKeyEcho !== idem) {
+              throw new Error('idem echo');
+            }
           savePiResume(data.clientSecret, data.idempotencyKeyEcho || idem);
           return __checkoutModal.stripe.confirmCardPayment(data.clientSecret, {
             payment_method: {
@@ -6231,6 +6437,7 @@ function initCheckoutModal() {
               return __checkoutModal.stripe.confirmCardPayment(data.clientSecret);
             }
             return result;
+          });
           });
         });
       }

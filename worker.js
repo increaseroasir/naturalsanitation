@@ -5,7 +5,13 @@
  *   POST /create-payment-intent — Stripe PaymentIntent (env STRIPE_SECRET_KEY)
  *   POST /meta-capi — Meta Conversions API (env META_CAPI_ACCESS_TOKEN, never expose to browser)
  *
- * Set META_CAPI_ACCESS_TOKEN in the Worker / Pages dashboard (Secrets). Do not commit tokens.
+ * Secrets / vars (Cloudflare dashboard → Worker → Settings → Variables):
+ *   STRIPE_SECRET_KEY           — required for PaymentIntents
+ *   META_CAPI_ACCESS_TOKEN      — required for /meta-capi (never in the browser)
+ *   META_TEST_EVENT_CODE        — optional, e.g. TEST28089 → Meta Graph `test_event_code` (Test Events only)
+ *
+ * Optional: browser may send `test_event_code` in the JSON body; the Worker forwards it only if it
+ * matches /^TEST[A-Z0-9]+$/i (same format as Events Manager test codes).
  */
 
 function corsHeaders() {
@@ -30,6 +36,38 @@ function isCreatePaymentIntentPath(pathname) {
 
 function isMetaCapiPath(pathname) {
   return pathname === '/meta-capi' || pathname.endsWith('/meta-capi');
+}
+
+/** Authoritative tier totals (cents) — must match checkout.html / index PRICING. */
+function expectedTierCents(plan, bins) {
+  const p = String(plan || '').toLowerCase();
+  const b = Math.min(4, Math.max(1, parseInt(String(bins), 10) || 1));
+  const annual = { 1: 19900, 2: 25000, 3: 29900, 4: 34900 };
+  const monthly = { 1: 3300, 2: 3900, 3: 4500, 4: 5000 };
+  const quarterly = { 1: 9400, 2: 12400, 3: 14900, 4: 16400 };
+  if (p === 'annual') return annual[b] ?? null;
+  if (p === 'monthly') return monthly[b] ?? null;
+  if (p === 'quarterly') return quarterly[b] ?? null;
+  return null;
+}
+
+function normalizeCouponInput(raw) {
+  return String(raw || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '')
+    .replace(/-/g, '')
+    .replace(/_/g, '');
+}
+
+/** Staff / QA test coupon only — 99% off, min Stripe charge 50¢. Not a public promo. */
+function applyStaffTestCoupon(baseCents, rawCoupon) {
+  const norm = normalizeCouponInput(rawCoupon);
+  if (!norm) return { ok: true, cents: baseCents, tag: '' };
+  if (norm === 'NSTEST99') {
+    return { ok: true, cents: Math.max(50, Math.floor(baseCents * 0.01)), tag: 'NS_TEST_99' };
+  }
+  return { ok: false, cents: baseCents, tag: '' };
 }
 
 async function sha256HexLower(plain) {
@@ -73,6 +111,13 @@ async function hashUserDataPlain(plain) {
   const zp = normalizeZipDigits(plain.zp || plain.zip || plain.postal_code);
   if (zp.length === 5) out.zp = [await sha256HexLower(zp)];
   return out;
+}
+
+function sanitizeMetaTestEventCode(raw) {
+  const s = String(raw || '').trim();
+  if (!s || s.length > 40) return '';
+  if (!/^TEST[A-Z0-9]+$/i.test(s)) return '';
+  return s;
 }
 
 async function handleMetaCapi(request, env) {
@@ -124,6 +169,13 @@ async function handleMetaCapi(request, env) {
       },
     ],
   };
+
+  const testEventCode =
+    sanitizeMetaTestEventCode(env.META_TEST_EVENT_CODE) ||
+    sanitizeMetaTestEventCode(body.test_event_code);
+  if (testEventCode) {
+    payload.test_event_code = testEventCode;
+  }
 
   const graphUrl =
     'https://graph.facebook.com/v21.0/' +
@@ -186,11 +238,24 @@ export default {
       return json({ error: 'Invalid JSON body' }, 400, h);
     }
 
-    const amount = typeof body.amount === 'number' ? body.amount : body.charge_cents;
+    const rawAmount = typeof body.amount === 'number' ? body.amount : body.charge_cents;
     const currency = (body.currency || 'usd').toString().toLowerCase();
 
-    if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < 50) {
+    if (typeof rawAmount !== 'number' || !Number.isInteger(rawAmount) || rawAmount < 50) {
       return json({ error: 'Invalid or missing amount (cents, min 50)' }, 400, h);
+    }
+
+    const expectedBase = expectedTierCents(body.plan, body.bins);
+    const base = expectedBase !== null ? expectedBase : rawAmount;
+
+    const applied = applyStaffTestCoupon(base, body.coupon);
+    if (String(body.coupon || '').trim() && !applied.ok) {
+      return json({ error: 'Invalid coupon' }, 400, h);
+    }
+    const amount = applied.cents;
+
+    if (Math.abs(rawAmount - amount) > 1) {
+      return json({ error: 'Amount does not match server price; refresh checkout.' }, 400, h);
     }
 
     const params = new URLSearchParams();
@@ -206,6 +271,10 @@ export default {
         if (!key) continue;
         params.set(`metadata[${key}]`, v.slice(0, 500));
       }
+    }
+    if (applied.tag) {
+      params.set('metadata[ns_coupon]', applied.tag);
+      params.set('metadata[ns_base_charge_cents]', String(base));
     }
 
     const idem =

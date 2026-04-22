@@ -6,6 +6,8 @@
  *
  * Config (optional on window before this script):
  *   __NS_META_PIXEL_ID, __NS_CAPI_URL
+ *   __NS_META_TEST_EVENT_CODE — e.g. TEST28089; forwarded to the Worker as test_event_code (Meta Test Events stream).
+ *     Remove or empty for production once CAPI is verified.
  */
 (function (global) {
   'use strict';
@@ -199,6 +201,10 @@
       fbp: getCookie('_fbp'),
       fbc: getCookie('_fbc')
     };
+    var capiTest = global.__NS_META_TEST_EVENT_CODE;
+    if (capiTest != null && String(capiTest).trim()) {
+      payload.test_event_code = String(capiTest).trim();
+    }
     fetch(CAPI_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -380,7 +386,10 @@
   }
 
   function firePurchaseStandard(customData, userPlain, piId) {
-    var slug = 'Purchase_' + (piId || 'noid');
+    if (!piId || String(piId).indexOf('pi_') !== 0) {
+      return;
+    }
+    var slug = 'Purchase_' + piId;
     trackStandard('Purchase', slug, customData || {}, userPlain || {});
   }
 

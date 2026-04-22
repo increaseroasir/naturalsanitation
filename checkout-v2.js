@@ -218,7 +218,14 @@
     };
   }
 
+  function isStripePi(id) {
+    return typeof id === 'string' && id.indexOf('pi_') === 0;
+  }
+
   function firePurchasePixel(amount, paymentIntentId) {
+    if (!isStripePi(paymentIntentId)) {
+      return;
+    }
     var em = draft.email.toLowerCase().trim();
     var ph = normalizePhoneForMetaHash(draft.phone);
     Promise.all([sha256Hex(em), sha256Hex(ph), sha256Hex(firstNameFromFull(draft.fullName).toLowerCase())]).then(function (hashes) {
@@ -237,13 +244,14 @@
           currency: 'USD',
           content_name: planLabel(),
           num_items: draft.bins,
+          transaction_id: paymentIntentId,
         },
         opts
       );
     });
     if (typeof gtag !== 'undefined') {
       gtag('event', 'purchase', {
-        transaction_id: paymentIntentId || SESSION_EVENT_ID || 'co_' + Date.now(),
+        transaction_id: paymentIntentId,
         value: amount,
         currency: 'USD',
       });
@@ -251,6 +259,10 @@
   }
 
   function onPaid(name, email, phone, paymentIntentId) {
+    if (!isStripePi(paymentIntentId)) {
+      alert('Payment could not be confirmed. Please try again or contact support.');
+      return;
+    }
     var amt = getChargeDollars();
     firePurchasePixel(amt, paymentIntentId);
     if (GHL_WEBHOOK_URL && /^https:\/\//.test(GHL_WEBHOOK_URL)) {
@@ -268,6 +280,7 @@
           source: 'checkout-v2-paid',
           status: 'paid',
           event_id: SESSION_EVENT_ID,
+          stripe_transaction_id: paymentIntentId,
         }),
       }).catch(function () {});
     }
@@ -281,7 +294,7 @@
       phone: phone || draft.phone,
       city: city,
       zip: draft.zip,
-      txn: paymentIntentId || 'v2_' + Date.now(),
+      txn: paymentIntentId,
       event_id: SESSION_EVENT_ID,
       from: 'checkout',
     });
@@ -318,9 +331,12 @@
       })
       .then(function (result) {
         if (result && result.error) throw result.error;
+        var piObj = result && result.paymentIntent;
+        if (!piObj || piObj.status !== 'succeeded' || !isStripePi(piObj.id)) {
+          throw new Error('Payment not completed');
+        }
         ev.complete('success');
-        var pi = result && result.paymentIntent ? result.paymentIntent.id : '';
-        onPaid(ev.payerName, ev.payerEmail, ev.payerPhone, pi);
+        onPaid(ev.payerName, ev.payerEmail, ev.payerPhone, piObj.id);
       })
       .catch(function (err) {
         try {
@@ -416,8 +432,11 @@
         })
         .then(function (result) {
           if (result && result.error) throw result.error;
-          var pi = result && result.paymentIntent ? result.paymentIntent.id : '';
-          onPaid(fn, em, ph, pi);
+          var piObj = result && result.paymentIntent;
+          if (!piObj || piObj.status !== 'succeeded' || !isStripePi(piObj.id)) {
+            throw new Error('Payment not completed');
+          }
+          onPaid(fn, em, ph, piObj.id);
         })
         .catch(function (err) {
           document.getElementById('err-card').textContent = err.message || 'Could not charge card';
