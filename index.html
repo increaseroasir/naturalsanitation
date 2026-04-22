@@ -3413,6 +3413,19 @@ function fireGateStep2LeadDetail(firstName, phoneRaw, phoneE164, zipDigits) {
     utms
   );
   postObservedGhlLead(ghlBody, 'landing_lead_detail').catch(function () {});
+  if (window.NSTracking && NSTracking.postLeadReceipt) {
+    NSTracking.postLeadReceipt({
+      stage: 'landing_lead_detail',
+      source: 'landing-lead-gate',
+      full_name: String(firstName || '').trim(),
+      phone: phoneE164,
+      phone_e164: phoneE164,
+      service_zip: z,
+      event_id: eventId,
+      email: '',
+      status: 'lead_detail'
+    });
+  }
   if (window.NSTracking) {
     if (!NSTracking.standardLeadAlreadyFired()) {
       NSTracking.fireLeadStandard(
@@ -4316,6 +4329,19 @@ function fireFunnelStep2Update(fullName, phoneE164, emailOpt) {
     },
     'modal_lead_detail'
   ).catch(function () {});
+  if (window.NSTracking && NSTracking.postLeadReceipt) {
+    NSTracking.postLeadReceipt({
+      stage: 'modal_lead_detail',
+      source: 'checkout-modal-details',
+      full_name: fullName,
+      phone: phoneE164,
+      phone_e164: phoneE164,
+      service_zip: zip,
+      event_id: eventId,
+      email: emailOpt || '',
+      status: 'lead_detail'
+    });
+  }
   if (__checkoutModal.funnelStep2Sent) {
     return Promise.resolve();
   }

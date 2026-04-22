@@ -6,6 +6,7 @@
  *   POST /meta-capi — Meta Conversions API (env META_CAPI_ACCESS_TOKEN, never expose to browser)
  *   POST /ghl-lead — GoHighLevel Contacts API upsert (env GHL_API_TOKEN, GHL_LOCATION_ID; never in browser)
  *   POST /client-observe — lightweight browser/lead observability sink for debugging failed lead delivery
+ *   POST /lead-receipt — Worker-side backup logging of submitted lead details for recovery outside GoHighLevel
  *
  * Secrets / vars (Cloudflare dashboard → Worker → Settings → Variables):
  *   STRIPE_SECRET_KEY           — required for PaymentIntents
@@ -49,6 +50,10 @@ function isGhlLeadPath(pathname) {
 
 function isClientObservePath(pathname) {
   return pathname === '/client-observe' || pathname.endsWith('/client-observe');
+}
+
+function isLeadReceiptPath(pathname) {
+  return pathname === '/lead-receipt' || pathname.endsWith('/lead-receipt');
 }
 
 const GHL_FORWARD_MAX_BYTES = 131072;
@@ -342,6 +347,42 @@ async function handleClientObserve(request) {
   } catch (err) {
     console.warn('[client-observe] handler error', err && err.message ? String(err.message) : err);
     return json({ ok: false, error: 'Observability handler failed' }, 500, corsHeaders());
+  }
+}
+
+async function handleLeadReceipt(request) {
+  try {
+    const raw = await request.text();
+    if (raw.length > 32768) {
+      return json({ ok: false, error: 'Payload too large' }, 413, corsHeaders());
+    }
+    let parsed;
+    try {
+      parsed = raw ? JSON.parse(raw) : {};
+    } catch {
+      return json({ ok: false, error: 'Invalid JSON' }, 400, corsHeaders());
+    }
+    if (!parsed || typeof parsed !== 'object') {
+      return json({ ok: false, error: 'Invalid body' }, 400, corsHeaders());
+    }
+    const receiptId = crypto.randomUUID();
+    const payload = {
+      receiptId,
+      stage: String(parsed.stage || parsed.status || parsed.type || '').slice(0, 120),
+      source: String(parsed.source || '').slice(0, 120),
+      full_name: String(parsed.full_name || parsed.name || '').slice(0, 160),
+      phone: String(parsed.phone_e164 || parsed.phone || '').slice(0, 40),
+      email: String(parsed.email || '').slice(0, 250),
+      service_zip: String(parsed.service_zip || parsed.zip || '').slice(0, 20),
+      event_id: String(parsed.event_id || parsed.jobber_event_id || parsed.journey_event_id || '').slice(0, 160),
+      page_url: String(parsed.page_url || '').slice(0, 500),
+      ts: parsed.ts || Date.now()
+    };
+    console.warn('[lead-receipt]', JSON.stringify(payload));
+    return json({ ok: true, receiptId }, 200, corsHeaders());
+  } catch (err) {
+    console.warn('[lead-receipt] handler error', err && err.message ? String(err.message) : err);
+    return json({ ok: false, error: 'Lead receipt handler failed' }, 500, corsHeaders());
   }
 }
 
@@ -719,6 +760,10 @@ export default {
 
     if (isClientObservePath(url.pathname)) {
       return handleClientObserve(request);
+    }
+
+    if (isLeadReceiptPath(url.pathname)) {
+      return handleLeadReceipt(request);
     }
 
     if (!isCreatePaymentIntentPath(url.pathname)) {

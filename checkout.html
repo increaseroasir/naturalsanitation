@@ -576,6 +576,19 @@ function postCheckoutGhlPartialToWorker(body) {
     type: body.type,
     phoneLast4: checkoutDigitsOnly(body.phone || body.phone_e164 || '').slice(-4)
   });
+  if (window.NSTracking && NSTracking.postLeadReceipt) {
+    NSTracking.postLeadReceipt({
+      stage: body.type || body.status || body.source || 'checkout',
+      source: body.source || '',
+      full_name: body.full_name || body.name || '',
+      phone: body.phone_e164 || body.phone || '',
+      phone_e164: body.phone_e164 || body.phone || '',
+      service_zip: body.service_zip || body.zip || '',
+      event_id: body.event_id || body.jobber_event_id || '',
+      email: body.email || '',
+      status: body.status || ''
+    });
+  }
   fetch(GHL_LEAD_PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: h })
     .then(function (res) {
       console.log('[checkout GHL partial] response status', res.status);

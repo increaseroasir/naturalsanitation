@@ -21,6 +21,9 @@
   var OBSERVE_URL =
     global.__NS_OBSERVE_URL ||
     'https://ns-payment.increase-roas.workers.dev/client-observe';
+  var LEAD_RECEIPT_URL =
+    global.__NS_LEAD_RECEIPT_URL ||
+    'https://ns-payment.increase-roas.workers.dev/lead-receipt';
 
   var LS_ATTR = 'ns_attribution_bundle';
   var LS_JOURNEY = 'ns_funnel_event_id';
@@ -250,6 +253,29 @@
         extra || {}
       )
     );
+  }
+
+  function postLeadReceipt(payload) {
+    if (!LEAD_RECEIPT_URL || !/^https:\/\//.test(LEAD_RECEIPT_URL)) {
+      return;
+    }
+    var body = Object.assign(
+      {
+        journey_event_id: journeyId() || '',
+        page_url: String(location.href || ''),
+        referrer: String(document.referrer || ''),
+        user_agent: typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '',
+        ts: Date.now()
+      },
+      payload || {}
+    );
+    fetch(LEAD_RECEIPT_URL, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      keepalive: true
+    }).catch(function () {});
   }
 
   function installGlobalObserveHandlers() {
@@ -540,9 +566,11 @@
     postObserve: postObserve,
     observeLeadRequest: observeLeadRequest,
     observeException: observeException,
+    postLeadReceipt: postLeadReceipt,
     META_PIXEL_ID: META_PIXEL_ID,
     CAPI_URL: CAPI_URL,
-    OBSERVE_URL: OBSERVE_URL
+    OBSERVE_URL: OBSERVE_URL,
+    LEAD_RECEIPT_URL: LEAD_RECEIPT_URL
   };
 
   if (document.readyState === 'loading') {
