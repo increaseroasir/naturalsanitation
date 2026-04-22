@@ -39,7 +39,7 @@ head.appendChild(script);
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
       /* Color system: orange = unlock, blue = checkout, green = verified, white cards, gray chrome */
-      /* Orange = pre-qual “Verify your ZIP” only (.cta-qualify). Blue = post-ZIP + checkout. Green = verified/success. */
+      /* Orange = pre-qual CTA (.cta-qualify): A/B “Check My Area” vs “Verify your ZIP”. Blue = post-ZIP + checkout. Green = verified/success. */
       --qualify:#C86422;
       --qualify-hover:#a6541c;
       --qualify-active:#8f4618;
@@ -1365,11 +1365,218 @@ head.appendChild(script);
       .sticky-mobile-bar{display:block}
       body{padding-bottom:76px}
     }
+
+    /* ── LEAD GATE (blur-lock until name + phone) ── */
+    .lead-gate-sticky{
+      position:sticky;
+      top:0;
+      z-index:9997;
+      padding:12px 16px 10px;
+      background:linear-gradient(180deg,rgba(244,246,249,.97) 0%,rgba(244,246,249,.88) 72%,transparent 100%);
+    }
+    .lead-gate-sticky--minimal{
+      padding:8px 16px 6px;
+      background:rgba(244,246,249,.95);
+    }
+    .lead-gate-card{
+      max-width:440px;
+      margin:0 auto;
+      background:#fff;
+      border-radius:14px;
+      box-shadow:0 8px 32px rgba(22,50,92,.12),0 1px 0 rgba(22,50,92,.06);
+      border:1px solid var(--border);
+      padding:20px 20px 18px;
+    }
+    .lead-gate-heading{
+      font-size:clamp(18px,4vw,22px);
+      font-weight:900;
+      color:var(--navy);
+      line-height:1.2;
+      margin:0 0 8px;
+    }
+    .lead-gate-support{
+      font-size:14px;
+      color:var(--muted);
+      line-height:1.45;
+      margin:0 0 14px;
+    }
+    .lead-gate-field{margin-bottom:10px}
+    .lead-gate-field label{
+      display:block;
+      font-size:12px;
+      font-weight:800;
+      color:var(--navy);
+      margin-bottom:4px;
+      letter-spacing:.02em;
+    }
+    .lead-gate-input{
+      width:100%;
+      padding:12px 14px;
+      border:1px solid var(--border);
+      border-radius:var(--r);
+      font-size:16px;
+      font-family:inherit;
+      box-sizing:border-box;
+    }
+    .lead-gate-input:focus{
+      outline:none;
+      border-color:var(--blue);
+      box-shadow:0 0 0 3px var(--blue-light);
+    }
+    .lead-gate-zip-wrap{
+      border-radius:var(--r);
+      border:1px solid var(--border);
+      transition:border-color .2s,box-shadow .2s;
+      overflow:hidden;
+    }
+    .lead-gate-zip-wrap.is-in-area{
+      border:2px solid var(--green);
+      box-shadow:0 0 0 3px var(--green-light);
+    }
+    .lead-gate-zip-wrap .lead-gate-input{border:none;border-radius:0}
+    .lead-gate-btn{
+      width:100%;
+      margin-top:14px;
+      padding:14px 16px;
+      border:none;
+      border-radius:var(--r);
+      font-size:16px;
+      font-weight:800;
+      cursor:pointer;
+      font-family:inherit;
+    }
+    .lead-gate-btn-orange{
+      background:var(--qualify);
+      color:#fff;
+      box-shadow:var(--qualify-shadow);
+    }
+    .lead-gate-btn-orange:hover{background:var(--qualify-hover)}
+    .lead-gate-btn-orange:active{background:var(--qualify-active)}
+    .lead-gate-btn-orange:disabled{opacity:.55;cursor:not-allowed}
+    .lead-gate-err{
+      font-size:13px;
+      color:#dc2626;
+      margin:6px 0 0;
+      min-height:1.2em;
+    }
+    .lead-gate-micro{
+      font-size:12px;
+      color:var(--muted);
+      margin:10px 0 0;
+      line-height:1.4;
+      text-align:center;
+    }
+    .lead-gate-success-line{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:13px;
+      font-weight:700;
+      color:var(--green);
+      margin:0 0 12px;
+    }
+    .lead-gate-done-strip{
+      margin:0;
+      padding:12px 14px;
+      background:var(--green-light);
+      border:1px solid var(--green-border);
+      border-radius:10px;
+      font-size:14px;
+      font-weight:700;
+      color:var(--charcoal);
+      text-align:center;
+      line-height:1.4;
+    }
+    .page-behind-gate{
+      position:relative;
+      transition:filter .35s ease;
+    }
+    .page-behind-gate--locked{
+      filter:blur(7px);
+      -webkit-filter:blur(7px);
+      user-select:none;
+      -webkit-user-select:none;
+    }
+    .page-behind-gate--locked::after{
+      content:'';
+      position:absolute;
+      left:0;
+      right:0;
+      top:0;
+      min-height:100%;
+      background:rgba(248,250,252,.58);
+      z-index:50;
+      pointer-events:auto;
+    }
+    .page-behind-gate--unlocked{
+      filter:none!important;
+      -webkit-filter:none!important;
+      user-select:auto;
+      -webkit-user-select:auto;
+    }
+    .page-behind-gate--unlocked::after{display:none}
   </style>
 </head>
 <body>
 <!-- Off-DOM parking for idle Payment Request Button mount (moved to visible slot on first open) -->
 <div id="prb-parking" aria-hidden="true"><div id="payment-request-button-parking"></div></div>
+
+<div class="lead-gate-sticky" id="lead-gate-sticky">
+  <div class="lead-gate-card" id="lead-gate-card" role="region" aria-label="Verify your service area">
+    <div id="lead-gate-step-zip">
+      <h2 class="lead-gate-heading">Verify your ZIP</h2>
+      <p class="lead-gate-support">We're already cleaning bins in this area. Enter your ZIP to continue.</p>
+      <div class="lead-gate-field">
+        <label for="gate-zip-input">ZIP code</label>
+        <div class="lead-gate-zip-wrap" id="gate-zip-wrap">
+          <input
+            type="text"
+            id="gate-zip-input"
+            class="lead-gate-input"
+            maxlength="5"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            autocomplete="postal-code"
+            placeholder="48009"
+            aria-label="ZIP code"
+          />
+        </div>
+      </div>
+      <p class="lead-gate-err" id="gate-zip-err"></p>
+      <button type="button" class="lead-gate-btn lead-gate-btn-orange" id="gate-zip-btn">Verify your ZIP</button>
+      <div id="lead-gate-out-wrap" hidden style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+        <p class="lead-gate-support" style="margin-bottom:10px">
+          We're not on this week's route for that ZIP yet. Add your mobile and we'll text you when routes expand.
+        </p>
+        <div class="lead-gate-field">
+          <label for="gate-out-phone">Mobile number</label>
+          <input type="tel" id="gate-out-phone" class="lead-gate-input" inputmode="tel" autocomplete="tel" />
+        </div>
+        <p class="lead-gate-err" id="gate-out-err"></p>
+        <button type="button" class="lead-gate-btn lead-gate-btn-orange" id="gate-out-btn">Join the waitlist</button>
+      </div>
+    </div>
+    <div id="lead-gate-step-contact" hidden>
+      <p class="lead-gate-success-line" aria-live="polite"><span aria-hidden="true">✓</span> ZIP verified — we service your area</p>
+      <h2 class="lead-gate-heading">Good news — we service your area.</h2>
+      <p class="lead-gate-support">Where should we send your route details and before-and-after updates?</p>
+      <div class="lead-gate-field">
+        <label for="gate-first-name">First name</label>
+        <input type="text" id="gate-first-name" class="lead-gate-input" autocomplete="given-name" />
+      </div>
+      <div class="lead-gate-field">
+        <label for="gate-phone">Mobile phone number</label>
+        <input type="tel" id="gate-phone" class="lead-gate-input" inputmode="tel" autocomplete="tel" />
+      </div>
+      <p class="lead-gate-err" id="gate-contact-err"></p>
+      <button type="button" class="lead-gate-btn lead-gate-btn-orange" id="gate-contact-btn">See Plans &amp; Pricing</button>
+      <p class="lead-gate-micro">No spam. We only use this for service updates and your cleaning details.</p>
+    </div>
+    <div id="lead-gate-done" hidden class="lead-gate-done-strip" role="status"></div>
+  </div>
+</div>
+
+<div id="page-behind-gate" class="page-behind-gate">
 
 <!-- TOP BAR -->
 <div class="topbar">
@@ -1391,9 +1598,12 @@ head.appendChild(script);
 <!-- HERO -->
 <section class="hero">
   <div class="hero-inner">
-    <h1 class="hero-headline">I clean garbage bins in Macomb and Oakland County.</h1>
-    <p class="hero-sub">No smell. No maggots. 400° steam after pickup. We text before/after photos.</p>
-    <p class="hero-cta-note" style="margin-top:6px;margin-bottom:10px">2 bins • $250/year — $39/month available.</p>
+    <h1 class="hero-headline">No smell. No maggots. No more dreading your garbage bins.</h1>
+    <p class="hero-sub">400° steam after pickup. We text before/after photos — same proof behind 250+ five-star Google reviews.</p>
+    <div id="hero-gated-pricing" class="hero-gated-pricing" hidden aria-hidden="true">
+      <p class="hero-cta-note" style="margin-top:6px;margin-bottom:10px">2 bins • $250/year — $39/month available.</p>
+      <p class="hero-cta-note">From $33/mo or $199/yr (1 bin). 2 bins $39/mo or $250/yr. No contract.</p>
+    </div>
     <p class="hero-proof-bar">127,000+ bins cleaned · 250+ five-star reviews · Secure billing through Jobber</p>
 
     <div class="hero-columns">
@@ -1408,11 +1618,10 @@ head.appendChild(script);
           <img src="./hero-steam-proof.jpg" alt="Before and after trash bin steam cleaning proof" fetchpriority="high" loading="eager" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
           <div class="vsl-play-overlay" aria-hidden="true"><span class="vsl-play-btn">▶</span></div>
         </div>
-        <button type="button" class="cta-btn cta-qualify" id="vsl-cta" onclick="openVerifyZipModal()" style="margin-top:12px;width:100%;max-width:340px">
+        <button type="button" class="cta-btn cta-qualify" id="vsl-cta" onclick="handleVslCta()" style="margin-top:12px;width:100%;max-width:340px">
           Verify your ZIP
         </button>
-        <p class="hero-cta-note" style="margin-top:6px">Takes 10 seconds. Next step is payment.</p>
-        <p class="hero-cta-note">From $33/mo or $199/yr (1 bin). 2 bins $39/mo or $250/yr. No contract.</p>
+        <p class="hero-cta-note" style="margin-top:6px">Takes 10 seconds. Plans unlock instantly.</p>
       </div>
 
       <!-- PLAN SELECTOR -->
@@ -1421,7 +1630,7 @@ head.appendChild(script);
         <!-- ZIP -->
         <div class="zip-wrap" id="zip-wrap">
           <div id="zip-expanded">
-            <h2 class="zip-section-title">Verify your ZIP</h2>
+            <h2 class="zip-section-title" id="zip-section-title-el">Verify your ZIP</h2>
             <p class="zip-section-helper">Enter your ZIP to unlock plans and pricing.</p>
             <div class="zip-row">
               <input
@@ -2504,6 +2713,8 @@ head.appendChild(script);
   <p style="margin-top:5px"><a href="#">Privacy Policy</a> &nbsp;·&nbsp; <a href="#">Terms of Service</a></p>
 </footer>
 
+</div><!-- /page-behind-gate -->
+
 <!-- CHECKOUT MODAL — native Stripe Elements + Payment Request (no iframe) -->
 <div
   class="modal-overlay"
@@ -2517,7 +2728,7 @@ head.appendChild(script);
     <button type="button" class="modal-close" id="checkout-modal-close" hidden aria-label="Close checkout">✕</button>
     <div class="modal-head" id="checkout-modal-head">
       <h3 id="modal-checkout-title">Verify your ZIP</h3>
-      <p id="modal-checkout-sub">We service after pickup. Takes 10 seconds.</p>
+      <p id="modal-checkout-sub">We service after pickup. Plans unlock instantly.</p>
     </div>
     <div class="modal-summary-wrap is-loading funnel-hide-summary" id="modal-summary-wrap">
       <div class="modal-summary-skel" aria-hidden="true">
@@ -2549,8 +2760,8 @@ head.appendChild(script);
             </div>
 
             <div id="modal-funnel-zip" class="modal-funnel-panel">
-              <p class="modal-lead-title">Verify your ZIP</p>
-              <p class="modal-lead-copy">We service after pickup. Takes 10 seconds.</p>
+              <p class="modal-lead-title" id="modal-funnel-zip-title">Verify your ZIP</p>
+              <p class="modal-lead-copy">We service after pickup. Plans unlock instantly.</p>
               <div class="modal-field">
                 <label for="modal-zip-flow-input">ZIP code</label>
                 <input type="text" id="modal-zip-flow-input" maxlength="5" inputmode="numeric" pattern="[0-9]*" autocomplete="postal-code" placeholder="48009" required />
@@ -2738,6 +2949,56 @@ const PRICING = {
 let selectedBins = 1;
 let selectedPlan = 'annual';
 let zipVerified = false;
+let leadGateUnlocked = false;
+let pendingGateZip = '';
+
+function getQualifyCtaLabel() {
+  return 'Verify your ZIP';
+}
+
+var QUALIFY_MODAL_SUB = 'We service after pickup. Plans unlock instantly.';
+
+function isZipServiceConfirmed() {
+  if (!leadGateUnlocked) {
+    return false;
+  }
+  var z = document.getElementById('zip-input') ? document.getElementById('zip-input').value.trim() : '';
+  return zipVerified === true && /^\d{5}$/.test(z) && SERVICE_ZIPS.has(z);
+}
+
+function syncHeroPriceVisibility() {
+  var box = document.getElementById('hero-gated-pricing');
+  if (!box) {
+    return;
+  }
+  if (isZipServiceConfirmed()) {
+    box.removeAttribute('hidden');
+    box.setAttribute('aria-hidden', 'false');
+  } else {
+    box.setAttribute('hidden', '');
+    box.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function syncPreZipQualifyCopy() {
+  var label = getQualifyCtaLabel();
+  var z = document.getElementById('zip-section-title-el');
+  if (z) {
+    z.textContent = label;
+  }
+  var m = document.getElementById('modal-funnel-zip-title');
+  if (m) {
+    m.textContent = label;
+  }
+  var mc = document.querySelector('#modal-funnel-zip .modal-lead-copy');
+  if (mc) {
+    mc.textContent = QUALIFY_MODAL_SUB;
+  }
+  var mod = document.getElementById('checkout-modal');
+  if (mod && mod.classList.contains('open') && __checkoutModal.funnelPhase === 'zip' && !__checkoutModal.zipEligibilityResolved) {
+    setCheckoutModalHead(label, QUALIFY_MODAL_SUB);
+  }
+}
 
 /* Stripe publishable keys — live for production hostnames, test for local (match checkout.html account) */
 const STRIPE_PK_LIVE = 'pk_live_51IZeLCHhyjMV1WTXFgxViPoMxrhHcpgXY0tgggShjYE0wI2o88gds9xzvnFzjrw0inNNETA2FxtMxVrsCZxaDPY700Y7GyJLQx';
@@ -2751,6 +3012,521 @@ const SS_PURCHASE_PI = 'ns_purchase_pi';
 
 /* GoHighLevel — partial lead capture from checkout modal (Step 1); same webhook as checkout.html */
 const GHL_WEBHOOK_URL = 'https://services.leadconnectorhq.com/hooks/pit-6925afab-67ff-47f1-b732-63b00ff3d3e8/webhook-trigger/';
+const LS_LEAD_GATE_DONE = 'ns_lead_gate_done';
+const SMS_NOTIFY_TO = '(586) 500-6794';
+
+function collectLeadGateUtms() {
+  var keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid'];
+  var out = {};
+  try {
+    var q = new URLSearchParams(location.search);
+    keys.forEach(function (k) {
+      var v = q.get(k);
+      if (v) {
+        out[k] = v;
+      }
+    });
+  } catch (e) {}
+  out.page_url = String(location.href || '');
+  out.referrer = String(document.referrer || '');
+  return out;
+}
+
+function readLeadGateDone() {
+  try {
+    var raw = localStorage.getItem(LS_LEAD_GATE_DONE);
+    if (!raw) {
+      return null;
+    }
+    var o = JSON.parse(raw);
+    if (!o || !o.t || Date.now() - o.t > 7 * 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(LS_LEAD_GATE_DONE);
+      return null;
+    }
+    if (!o.zip || !/^\d{5}$/.test(o.zip) || !SERVICE_ZIPS.has(o.zip)) {
+      return null;
+    }
+    return o;
+  } catch (e2) {
+    return null;
+  }
+}
+
+function writeLeadGateDone(payload) {
+  try {
+    localStorage.setItem(LS_LEAD_GATE_DONE, JSON.stringify(Object.assign({ t: Date.now() }, payload)));
+  } catch (e) {}
+}
+
+function setPageBehindGateLocked(locked) {
+  var shell = document.getElementById('page-behind-gate');
+  if (!shell) {
+    return;
+  }
+  if (locked) {
+    shell.classList.add('page-behind-gate--locked');
+    shell.classList.remove('page-behind-gate--unlocked');
+    shell.setAttribute('inert', '');
+    shell.setAttribute('aria-hidden', 'true');
+  } else {
+    shell.classList.remove('page-behind-gate--locked');
+    shell.classList.add('page-behind-gate--unlocked');
+    shell.removeAttribute('inert');
+    shell.removeAttribute('aria-hidden');
+  }
+}
+
+function scrollToLeadGate() {
+  var g = document.getElementById('lead-gate-sticky');
+  if (g) {
+    g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  window.setTimeout(function () {
+    var c = document.getElementById('lead-gate-step-contact');
+    if (c && !c.hasAttribute('hidden')) {
+      var fn = document.getElementById('gate-first-name');
+      if (fn) {
+        fn.focus();
+      }
+      return;
+    }
+    var zi = document.getElementById('gate-zip-input');
+    if (zi) {
+      zi.focus();
+    }
+  }, 380);
+}
+
+function syncVslCta() {
+  var v = document.getElementById('vsl-cta');
+  if (!v) {
+    return;
+  }
+  if (!leadGateUnlocked || !isZipServiceConfirmed()) {
+    v.textContent = getQualifyCtaLabel();
+    v.classList.add('cta-qualify');
+    return;
+  }
+  v.textContent = 'See plans & pricing';
+  v.classList.remove('cta-qualify');
+}
+
+function handleVslCta() {
+  if (!leadGateUnlocked) {
+    scrollToLeadGate();
+    return;
+  }
+  if (!isZipServiceConfirmed()) {
+    scrollToZipSection();
+    return;
+  }
+  var anchor = document.getElementById('pricing-unlocked-block') || document.getElementById('zip-wrap');
+  if (anchor) {
+    anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function onGateZipInput() {
+  var el = document.getElementById('gate-zip-input');
+  var wrap = document.getElementById('gate-zip-wrap');
+  var outWrap = document.getElementById('lead-gate-out-wrap');
+  if (!el || !wrap) {
+    return;
+  }
+  var z = String(el.value || '').replace(/\D/g, '').slice(0, 5);
+  el.value = z;
+  if (outWrap) {
+    outWrap.setAttribute('hidden', '');
+  }
+  var err = document.getElementById('gate-zip-err');
+  if (err) {
+    err.textContent = '';
+  }
+  if (/^\d{5}$/.test(z) && SERVICE_ZIPS.has(z)) {
+    wrap.classList.add('is-in-area');
+  } else {
+    wrap.classList.remove('is-in-area');
+  }
+}
+
+function onGateZipContinue() {
+  var err = document.getElementById('gate-zip-err');
+  var outErr = document.getElementById('gate-out-err');
+  var outWrap = document.getElementById('lead-gate-out-wrap');
+  if (err) {
+    err.textContent = '';
+  }
+  if (outErr) {
+    outErr.textContent = '';
+  }
+  var el = document.getElementById('gate-zip-input');
+  var zip = el ? String(el.value || '').replace(/\D/g, '').slice(0, 5) : '';
+  if (!/^\d{5}$/.test(zip)) {
+    if (err) {
+      err.textContent = 'Enter a valid 5-digit ZIP code.';
+    }
+    return;
+  }
+  if (!SERVICE_ZIPS.has(zip)) {
+    if (err) {
+      err.textContent = "That ZIP isn't on this week's route.";
+    }
+    if (outWrap) {
+      outWrap.removeAttribute('hidden');
+    }
+    var op = document.getElementById('gate-out-phone');
+    if (op) {
+      applyPhoneMaskInput(op);
+      window.setTimeout(function () {
+        op.focus();
+      }, 0);
+    }
+    return;
+  }
+  pendingGateZip = zip;
+  if (outWrap) {
+    outWrap.setAttribute('hidden', '');
+  }
+  var s1 = document.getElementById('lead-gate-step-zip');
+  var s2 = document.getElementById('lead-gate-step-contact');
+  if (s1) {
+    s1.setAttribute('hidden', '');
+  }
+  if (s2) {
+    s2.removeAttribute('hidden');
+  }
+  var ph = document.getElementById('gate-phone');
+  if (ph) {
+    applyPhoneMaskInput(ph);
+  }
+  window.setTimeout(function () {
+    var fn = document.getElementById('gate-first-name');
+    if (fn) {
+      fn.focus();
+    }
+  }, 0);
+  if (typeof fbq !== 'undefined') {
+    fbq('trackCustom', 'ZipCongruence', { step: 'gate_zip_ok' }, funnelPixelOpts());
+  }
+}
+
+function onGateOutWaitlist() {
+  var err = document.getElementById('gate-out-err');
+  if (err) {
+    err.textContent = '';
+  }
+  var phEl = document.getElementById('gate-out-phone');
+  var zipEl = document.getElementById('gate-zip-input');
+  var zip = zipEl ? String(zipEl.value || '').replace(/\D/g, '').slice(0, 5) : '';
+  var e164 = phoneToE164US((phEl && phEl.value) || '');
+  if (!e164) {
+    if (err) {
+      err.textContent = 'Enter a valid mobile number.';
+    }
+    return;
+  }
+  fireOutAreaWaitlistLead(zip, e164);
+  if (err) {
+    err.textContent = '';
+  }
+  var ow = document.getElementById('lead-gate-out-wrap');
+  if (ow) {
+    ow.innerHTML =
+      '<p class="lead-gate-support" style="margin:0;color:var(--green);font-weight:800">Thanks — we will text you when we expand routes.</p>';
+    ow.removeAttribute('hidden');
+  }
+}
+
+function fireLeadGatePartialLead(firstName, phoneRaw, phoneE164, zipDigits) {
+  var eventId = getOrCreateFunnelEventId();
+  pushEventIdToUrlIfMissing(eventId);
+  var consentTs = new Date().toISOString();
+  var consent = {
+    consent_tcpa: true,
+    consent_timestamp: consentTs,
+    consent_method: 'lead_gate_name_phone'
+  };
+  var z = String(zipDigits || '').replace(/\D/g, '').slice(0, 5);
+  var utms = collectLeadGateUtms();
+  var smsBody =
+    'PARTIAL LEAD (gate): ' +
+    (firstName || '') +
+    ' · ZIP ' +
+    z +
+    ' · ' +
+    (phoneRaw || '') +
+    ' · Event ' +
+    eventId +
+    ' · SMS follow-up';
+  var ghlBody = Object.assign(
+    {
+      type: 'lead_gate_partial',
+      tags: ['partial_lead', 'lead_gate'],
+      status: 'partial_lead',
+      first_name: firstTokenName(firstName),
+      full_name: String(firstName || '').trim(),
+      phone: phoneRaw,
+      phone_e164: phoneE164,
+      service_zip: z,
+      hyros_id: hyrosIdFromCookie(),
+      event_id: eventId,
+      jobber_event_id: eventId,
+      source: 'landing-lead-gate',
+      manny_sms_body: smsBody,
+      sms_notify_to: SMS_NOTIFY_TO,
+      sms_urgent_follow_up: true
+    },
+    consent,
+    utms
+  );
+  if (GHL_WEBHOOK_URL && /^https:\/\//.test(GHL_WEBHOOK_URL)) {
+    fetch(GHL_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ghlBody)
+    }).catch(function () {});
+  }
+  var em = '';
+  var ph = normalizePhoneForMetaHash(phoneE164 || '');
+  var zp = z;
+  return Promise.all([sha256Hex(em), sha256Hex(ph), sha256Hex(zp), sha256Hex(String(firstName || '').trim().toLowerCase())]).then(function (hashes) {
+    if (typeof fbq !== 'undefined') {
+      var match = {};
+      if (hashes[1]) {
+        match.ph = hashes[1];
+      }
+      if (hashes[2]) {
+        match.zp = hashes[2];
+      }
+      if (hashes[3]) {
+        match.fn = hashes[3];
+      }
+      if (Object.keys(match).length) {
+        fbq('init', META_PIXEL_ID_FUNNEL, match);
+      }
+      fbq(
+        'track',
+        'Lead',
+        Object.assign(
+          {
+            content_name: 'Lead gate — name + phone',
+            value: PRICING[2].annual,
+            currency: 'USD',
+            consent_tcpa: consent.consent_tcpa,
+            consent_timestamp: consent.consent_timestamp,
+            consent_method: consent.consent_method
+          },
+          z ? { content_category: z } : {}
+        ),
+        funnelPixelOpts()
+      );
+      fbq(
+        'trackCustom',
+        'HyrosLead',
+        { event_id: eventId, hyros_id: hyrosIdFromCookie(), step: 'lead_gate_partial' },
+        funnelPixelOpts()
+      );
+    }
+  });
+}
+
+function onGateContactSubmit() {
+  var err = document.getElementById('gate-contact-err');
+  if (err) {
+    err.textContent = '';
+  }
+  var fnEl = document.getElementById('gate-first-name');
+  var phEl = document.getElementById('gate-phone');
+  var firstName = fnEl ? String(fnEl.value || '').trim() : '';
+  var phoneRaw = phEl ? String(phEl.value || '').trim() : '';
+  var e164 = phoneToE164US(phoneRaw);
+  if (!firstName) {
+    if (err) {
+      err.textContent = 'Please enter your first name.';
+    }
+    return;
+  }
+  if (!e164) {
+    if (err) {
+      err.textContent = 'Enter a valid mobile number.';
+    }
+    return;
+  }
+  var zip = pendingGateZip || '';
+  if (!/^\d{5}$/.test(zip) || !SERVICE_ZIPS.has(zip)) {
+    if (err) {
+      err.textContent = 'ZIP session expired. Verify your ZIP again.';
+    }
+    var s1 = document.getElementById('lead-gate-step-zip');
+    var s2 = document.getElementById('lead-gate-step-contact');
+    if (s2) {
+      s2.setAttribute('hidden', '');
+    }
+    if (s1) {
+      s1.removeAttribute('hidden');
+    }
+    pendingGateZip = '';
+    return;
+  }
+  var btn = document.getElementById('gate-contact-btn');
+  if (btn) {
+    btn.disabled = true;
+  }
+  var zi = document.getElementById('zip-input');
+  if (zi) {
+    zi.value = zip;
+  }
+  var mfn = document.getElementById('modal-full-name');
+  var mph = document.getElementById('modal-phone');
+  if (mfn) {
+    mfn.value = firstName;
+  }
+  if (mph) {
+    mph.value = phoneRaw;
+    applyPhoneMaskInput(mph);
+  }
+  writeFunnelPersist({ fullName: firstName, phone: phoneRaw, zipFlow: zip });
+  fireLeadGatePartialLead(firstName, phoneRaw, e164, zip);
+  leadGateUnlocked = true;
+  zipVerified = true;
+  setPageBehindGateLocked(false);
+  selectBins(2);
+  selectPlan('annual');
+  checkZip({ skipScroll: true, skipDefaultPlan: true });
+  refreshZipChrome();
+  persistCheckoutContext();
+  updateAllCtas();
+  syncHeroPriceVisibility();
+  writeLeadGateDone({ zip: zip, firstName: firstName, phoneRaw: phoneRaw });
+  var s1 = document.getElementById('lead-gate-step-zip');
+  var s2 = document.getElementById('lead-gate-step-contact');
+  var done = document.getElementById('lead-gate-done');
+  var card = document.getElementById('lead-gate-card');
+  var sticky = document.getElementById('lead-gate-sticky');
+  if (s1) {
+    s1.setAttribute('hidden', '');
+  }
+  if (s2) {
+    s2.setAttribute('hidden', '');
+  }
+  if (done) {
+    done.textContent = "You're in — live pricing for ZIP " + zip + " is below.";
+    done.removeAttribute('hidden');
+  }
+  if (card) {
+    card.style.paddingBottom = '14px';
+  }
+  if (sticky) {
+    sticky.classList.add('lead-gate-sticky--minimal');
+  }
+  window.setTimeout(function () {
+    var anchor = document.getElementById('pricing-unlocked-block');
+    if (anchor) {
+      anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, 120);
+  if (btn) {
+    btn.disabled = false;
+  }
+}
+
+function wireLeadGateDom() {
+  var gz = document.getElementById('gate-zip-input');
+  if (gz) {
+    gz.addEventListener('input', onGateZipInput);
+    gz.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onGateZipContinue();
+      }
+    });
+  }
+  var zb = document.getElementById('gate-zip-btn');
+  if (zb) {
+    zb.addEventListener('click', onGateZipContinue);
+  }
+  var cb = document.getElementById('gate-contact-btn');
+  if (cb) {
+    cb.addEventListener('click', onGateContactSubmit);
+  }
+  var ob = document.getElementById('gate-out-btn');
+  if (ob) {
+    ob.addEventListener('click', onGateOutWaitlist);
+  }
+  var gp = document.getElementById('gate-phone');
+  if (gp) {
+    gp.addEventListener('input', function () {
+      applyPhoneMaskInput(gp);
+    });
+    gp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onGateContactSubmit();
+      }
+    });
+  }
+  var gfn = document.getElementById('gate-first-name');
+  if (gfn) {
+    gfn.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onGateContactSubmit();
+      }
+    });
+  }
+  var gop = document.getElementById('gate-out-phone');
+  if (gop) {
+    gop.addEventListener('input', function () {
+      applyPhoneMaskInput(gop);
+    });
+  }
+}
+
+function initLeadGate() {
+  wireLeadGateDom();
+  var saved = readLeadGateDone();
+  if (saved) {
+    leadGateUnlocked = true;
+    pendingGateZip = saved.zip;
+    var zi = document.getElementById('zip-input');
+    if (zi) {
+      zi.value = saved.zip;
+    }
+    var mfn = document.getElementById('modal-full-name');
+    var mph = document.getElementById('modal-phone');
+    if (mfn && saved.firstName) {
+      mfn.value = saved.firstName;
+    }
+    if (mph && saved.phoneRaw) {
+      mph.value = saved.phoneRaw;
+      applyPhoneMaskInput(mph);
+    }
+    zipVerified = true;
+    setPageBehindGateLocked(false);
+    var s1 = document.getElementById('lead-gate-step-zip');
+    var s2 = document.getElementById('lead-gate-step-contact');
+    var done = document.getElementById('lead-gate-done');
+    var sticky = document.getElementById('lead-gate-sticky');
+    if (s1) {
+      s1.setAttribute('hidden', '');
+    }
+    if (s2) {
+      s2.setAttribute('hidden', '');
+    }
+    if (done) {
+      done.textContent = "You're in — live pricing for ZIP " + saved.zip + " is below.";
+      done.removeAttribute('hidden');
+    }
+    if (sticky) {
+      sticky.classList.add('lead-gate-sticky--minimal');
+    }
+    checkZip({ skipScroll: true, skipDefaultPlan: true });
+    updatePricing();
+    return;
+  }
+  setPageBehindGateLocked(true);
+}
+
 var __ghlModalLeadTimer = null;
 var __ghlModalLeadLastHash = '';
 
@@ -3294,7 +4070,7 @@ function modalBackToZip() {
     s1.classList.remove('modal-step-leave');
   }
   updateFunnelProgressUI(1);
-  setCheckoutModalHead('Verify your ZIP', 'We service after pickup. Takes 10 seconds.');
+  setCheckoutModalHead(getQualifyCtaLabel(), QUALIFY_MODAL_SUB);
   setModalCloseVisible(false);
   var zi = document.getElementById('modal-zip-flow-input');
   if (zi) {
@@ -3352,6 +4128,10 @@ function submitOutAreaWaitlist() {
 }
 
 function openVerifyZipModal() {
+  if (!leadGateUnlocked) {
+    scrollToLeadGate();
+    return;
+  }
   if (!getStripePublishableKey()) {
     scrollToZipSection();
     return;
@@ -3383,7 +4163,7 @@ function openVerifyZipModal() {
       zpage && /^\d{5}$/.test((zpage.value || '').trim()) ? zpage.value.trim() : zflow.value || '';
   }
   hydrateFunnelFromPersist();
-  setCheckoutModalHead('Verify your ZIP', 'We service after pickup. Takes 10 seconds.');
+  setCheckoutModalHead(getQualifyCtaLabel(), QUALIFY_MODAL_SUB);
   __checkoutModal.funnelPhase = 'zip';
   __checkoutModal.zipEligibilityResolved = false;
   setModalSummaryReadyState(true);
@@ -3513,6 +4293,10 @@ function announcePricingLive() {
   if (!el) {
     return;
   }
+  if (!isZipServiceConfirmed()) {
+    el.textContent = '';
+    return;
+  }
   var p = PRICING[selectedBins];
   el.textContent =
     selectedBins + ' bin' + (selectedBins === 1 ? '' : 's') +
@@ -3522,6 +4306,9 @@ function announcePricingLive() {
 
 /* ── BIN COUNT ── */
 function selectBins(n) {
+  if (!isZipServiceConfirmed()) {
+    return;
+  }
   selectedBins = n;
   document.querySelectorAll('.bin-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('[data-bins="'+n+'"]').classList.add('active');
@@ -3530,6 +4317,9 @@ function selectBins(n) {
 
 /* ── PLAN SELECTION ── */
 function selectPlan(plan) {
+  if (!isZipServiceConfirmed()) {
+    return;
+  }
   if (plan !== 'annual' && plan !== 'monthly') {
     return;
   }
@@ -3612,7 +4402,6 @@ function restoreCheckoutContext() {
         btn.classList.toggle('active', parseInt(btn.getAttribute('data-bins'), 10) === selectedBins);
       });
     }
-    updatePricing();
     ['annual','monthly'].forEach(function(pp) {
       var t = document.getElementById('tile-' + pp);
       if (t) {
@@ -3622,7 +4411,11 @@ function restoreCheckoutContext() {
     if (z && /^\d{5}$/.test(z)) {
       document.getElementById('zip-input').value = z;
       checkZip({ skipScroll: true, skipDefaultPlan: true });
+    } else {
+      zipVerified = false;
+      setPricingUnlocked(false);
     }
+    updatePricing();
     ensureSingleChargeCheckoutState();
     persistCheckoutContext();
   } catch (e) {}
@@ -3660,7 +4453,7 @@ function refreshCheckoutModalSummary() {
   document.getElementById('modal-summary-meta').textContent =
     (zipVal ? zipVal + ' · ' : '') + 'Oakland & Macomb County';
   var badge = document.getElementById('modal-zip-badge');
-  if (zipVerified && zipVal.length === 5) {
+  if (isZipServiceConfirmed() && zipVal.length === 5) {
     badge.style.display = 'inline-flex';
     badge.textContent = 'ZIP ' + zipVal + ' verified';
   } else {
@@ -4505,8 +5298,8 @@ function setPricingUnlocked(on) {
 }
 
 function getDynamicContinueCtaText() {
-  if (!zipVerified) {
-    return 'Verify your ZIP';
+  if (!isZipServiceConfirmed()) {
+    return getQualifyCtaLabel();
   }
   return 'Pay and lock your route';
 }
@@ -4536,7 +5329,7 @@ function updateStickyCtaLabel() {
 }
 
 function syncQualifyCtaClasses() {
-  var qualifyPhase = !zipVerified;
+  var qualifyPhase = !isZipServiceConfirmed();
   ['bottom-cta-btn', 'sticky-mobile-btn'].forEach(function(id) {
     var b = document.getElementById(id);
     if (!b) {
@@ -4551,10 +5344,12 @@ function syncQualifyCtaClasses() {
 }
 
 function updateAllCtas() {
+  syncPreZipQualifyCopy();
   updateMainPricingCtaLabel();
   updateFooterCtaLabel();
   updateStickyCtaLabel();
   syncQualifyCtaClasses();
+  syncVslCta();
 }
 
 function scrollToZipSection() {
@@ -4571,7 +5366,7 @@ function scrollToZipSection() {
 }
 
 function handleFooterCta() {
-  if (!zipVerified) {
+  if (!isZipServiceConfirmed()) {
     openVerifyZipModal();
     return;
   }
@@ -4586,7 +5381,7 @@ function refreshZipChrome() {
   if (!ex || !comp || !line) {
     return;
   }
-  var ok = zipVerified && zip.length === 5 && SERVICE_ZIPS.has(zip);
+  var ok = isZipServiceConfirmed();
   if (ok) {
     line.textContent = 'ZIP ' + zip + ' — Oakland & Macomb County';
     ex.setAttribute('hidden', '');
@@ -4623,6 +5418,7 @@ function expandZipForEdit() {
   setPricingUnlocked(false);
   refreshZipChrome();
   updateAllCtas();
+  syncHeroPriceVisibility();
   if (inputEl) {
     inputEl.focus();
   }
@@ -4649,6 +5445,7 @@ function checkZip(opts) {
     setPricingUnlocked(false);
     refreshZipChrome();
     updateAllCtas();
+    syncHeroPriceVisibility();
     return;
   }
 
@@ -4662,6 +5459,7 @@ function checkZip(opts) {
     setPricingUnlocked(false);
     refreshZipChrome();
     updateAllCtas();
+    syncHeroPriceVisibility();
     return;
   }
 
@@ -4671,9 +5469,9 @@ function checkZip(opts) {
     inputEl.classList.add('verified');
     waitlistEl.style.display = 'none';
     zipVerified = true;
-    setPricingUnlocked(true);
+    setPricingUnlocked(!!leadGateUnlocked);
     if (ctaBtn) {
-      ctaBtn.disabled = false;
+      ctaBtn.disabled = !leadGateUnlocked;
     }
     refreshZipChrome();
     if (!opts.skipDefaultPlan) {
@@ -4701,6 +5499,7 @@ function checkZip(opts) {
     refreshZipChrome();
   }
   updateAllCtas();
+  syncHeroPriceVisibility();
 }
 
 /* Also validate on Enter key */
@@ -4720,7 +5519,7 @@ function submitWaitlist() {
 
 /* ── CHECKOUT MODAL ── */
 function openCheckout() {
-  if (!zipVerified) {
+  if (!isZipServiceConfirmed()) {
     openVerifyZipModal();
     return;
   }
@@ -4876,7 +5675,7 @@ function closeCheckout() {
 }
 
 function handleStickyAction() {
-  if (!zipVerified) {
+  if (!isZipServiceConfirmed()) {
     openVerifyZipModal();
     return;
   }
@@ -5241,6 +6040,7 @@ function toggleFaq(btn) {
 }
 
 /* ── INIT ── */
+initLeadGate();
 try {
   restoreCheckoutContext();
 } catch (e) {
@@ -5249,6 +6049,7 @@ try {
 refreshZipChrome();
 updateAllCtas();
 announcePricingLive();
+syncHeroPriceVisibility();
 initCheckoutModal();
 
 /* Pixel: ViewContent */
