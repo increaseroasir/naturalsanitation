@@ -8,7 +8,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
-  <script>window.__NS_META_PIXEL_ID = window.__NS_META_PIXEL_ID || '499919262310418';</script>
+  <script>
+    window.__NS_META_PIXEL_ID = window.__NS_META_PIXEL_ID || '499919262310418';
+    window.__NS_TRACKING_BOOTSTRAP_MODE = 'confirmation';
+  </script>
   <script>
     !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
@@ -16,8 +19,8 @@
     t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
     document,'script','https://connect.facebook.net/en_US/fbevents.js');
     fbq('init', window.__NS_META_PIXEL_ID);
-    fbq('track','PageView');
   </script>
+  <script src="./tracking-runtime.js" defer></script>
   <noscript><img height="1" width="1" style="display:none" alt=""
     src="https://www.facebook.com/tr?id=499919262310418&ev=PageView&noscript=1"/></noscript>
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
@@ -159,8 +162,6 @@
     if (hashes[0]) match.em = hashes[0];
     if (hashes[1]) match.ph = hashes[1];
     if (Object.keys(match).length) fbq('init', META_PIXEL_ID, match);
-    var opts = eventId ? { eventID: eventId + '_ty_view' } : {};
-    fbq('track', 'ViewContent', { content_name: 'thank_you_confirmation' }, opts);
   });
 
   if (typeof gtag !== 'undefined') {

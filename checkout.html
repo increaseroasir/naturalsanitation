@@ -13,14 +13,15 @@
   TRACKING — REPLACE PLACEHOLDERS BEFORE GOING LIVE
   ============================================================ -->
   <script>
+    window.__NS_META_PIXEL_ID = window.__NS_META_PIXEL_ID || '499919262310418';
     !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
     n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
     t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
     document,'script','https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init','499919262310418');
-    fbq('track','PageView');
+    fbq('init', window.__NS_META_PIXEL_ID);
   </script>
+  <script src="./tracking-runtime.js" defer></script>
   <script>
 var head = document.head;
 var script = document.createElement('script');
@@ -519,6 +520,17 @@ const selectedPrice = parseInt(
 );
 const urlZip = (params.get('zip') || '').trim();
 
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.NSTracking && NSTracking.updateContext) {
+    NSTracking.updateContext({
+      service_zip: urlZip,
+      plan_intent: selectedPlan,
+      bins: selectedBins
+    });
+    NSTracking.hydrateHiddenFields();
+  }
+});
+
 /* ── POPULATE ORDER SUMMARY ── */
 const planNames = { annual:'Annual Plan', quarterly:'Quarterly Plan', monthly:'Monthly Plan' };
 const periods   = { annual:'per year', quarterly:'per quarter', monthly:'per month' };
@@ -551,15 +563,20 @@ function buildCheckoutPaymentIntentPayload(emailOpt) {
     next_charge: null,
     capture_method: 'automatic',
     email: emailOpt || undefined,
-    metadata: {
-      plan: selectedPlan,
-      bins: String(selectedBins),
-      service_zip: urlZip,
-      charge_dollars: String(selectedPrice),
-      charge_cents: String(cents),
-      single_charge: 'true',
-      next_charge: ''
-    }
+    metadata: Object.assign(
+      {
+        plan: selectedPlan,
+        bins: String(selectedBins),
+        service_zip: urlZip,
+        charge_dollars: String(selectedPrice),
+        charge_cents: String(cents),
+        single_charge: 'true',
+        next_charge: ''
+      },
+      window.NSTracking && NSTracking.journeyId
+        ? { ns_journey_event_id: String(NSTracking.journeyId()).slice(0, 500) }
+        : {}
+    )
   };
 }
 
@@ -641,10 +658,17 @@ paymentRequest.on('paymentmethod', async (ev) => {
     );
     if (error) { ev.complete('fail'); showProcessing(false); return; }
     ev.complete('success');
-    if (paymentIntent.status === 'requires_action') {
-      await stripe.confirmCardPayment(clientSecret);
+    var piFinal = paymentIntent;
+    if (piFinal && piFinal.status === 'requires_action') {
+      const r2 = await stripe.confirmCardPayment(clientSecret);
+      piFinal = r2.paymentIntent;
     }
-    onSuccess({ name: ev.payerName, email: ev.payerEmail, phone: ev.payerPhone });
+    onSuccess({
+      name: ev.payerName,
+      email: ev.payerEmail,
+      phone: ev.payerPhone,
+      paymentIntentId: piFinal && piFinal.id ? piFinal.id : ''
+    });
   } catch(e) { ev.complete('fail'); showProcessing(false); }
 });
 
@@ -711,7 +735,13 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
       return;
     }
 
-    onSuccess({ name:firstName+' '+lastName, email, phone, address });
+    onSuccess({
+      name: firstName + ' ' + lastName,
+      email,
+      phone,
+      address,
+      paymentIntentId: paymentIntent && paymentIntent.id ? paymentIntent.id : ''
+    });
 
   } catch(e) {
     document.getElementById('err-card-general').textContent = e.message || 'Could not reach payment server. Try again.';
@@ -722,14 +752,36 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
 });
 
 /* ── SUCCESS ── */
-function onSuccess({ name, email, phone, address }) {
+function onSuccess({ name, email, phone, address, paymentIntentId }) {
   showProcessing(false);
 
-  // Meta Pixel: Purchase
-  if (typeof fbq !== 'undefined') {
-    fbq('track','Purchase',{
+  var piId = paymentIntentId || 'checkout_' + Date.now();
+  if (window.NSTracking) {
+    NSTracking.firePurchaseStandard(
+      {
+        value: selectedPrice,
+        currency: 'USD',
+        content_name: planNames[selectedPlan],
+        num_items: selectedBins,
+        transaction_id: piId
+      },
+      { email: email, phone: phone },
+      piId
+    );
+    NSTracking.trackCustom(
+      'HyrosPurchase',
+      'HyrosPurchase_' + piId,
+      {
+        event_id: typeof NSTracking.journeyId === 'function' ? NSTracking.journeyId() : '',
+        transaction_id: piId,
+        value: selectedPrice
+      },
+      {}
+    );
+  } else if (typeof fbq !== 'undefined') {
+    fbq('track', 'Purchase', {
       value: selectedPrice,
-      currency:'USD',
+      currency: 'USD',
       content_name: planNames[selectedPlan]
     });
   }
@@ -771,11 +823,22 @@ function clearErrors() {
   document.querySelectorAll('input.error').forEach(el => el.classList.remove('error'));
 }
 
-/* Pixel: BeginCheckout on page load */
-if (typeof fbq !== 'undefined') {
-  fbq('track','InitiateCheckout',{
+if (window.NSTracking) {
+  NSTracking.fireInitiateCheckoutStandard(
+    {
+      value: selectedPrice,
+      currency: 'USD',
+      content_name: planNames[selectedPlan],
+      num_items: selectedBins,
+      service_zip: urlZip,
+      journey_event_id: typeof NSTracking.journeyId === 'function' ? NSTracking.journeyId() : ''
+    },
+    {}
+  );
+} else if (typeof fbq !== 'undefined') {
+  fbq('track', 'InitiateCheckout', {
     value: selectedPrice,
-    currency:'USD',
+    currency: 'USD',
     content_name: planNames[selectedPlan],
     num_items: selectedBins
   });

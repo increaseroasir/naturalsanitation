@@ -9,18 +9,19 @@
   <!-- ============================================================
   TRACKING — REPLACE PLACEHOLDERS BEFORE GOING LIVE
   ============================================================ -->
-  <!-- META PIXEL — replace YOUR_PIXEL_ID -->
+  <!-- META PIXEL — PageView + ViewContent fire from tracking-runtime.js (CAPI-deduped). -->
   <script>
+    window.__NS_META_PIXEL_ID = window.__NS_META_PIXEL_ID || '499919262310418';
     !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
     n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
     t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
     document,'script','https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init','499919262310418');
-    fbq('track','PageView');
+    fbq('init', window.__NS_META_PIXEL_ID);
   </script>
   <noscript><img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=499919262310418&ev=PageView&noscript=1"/></noscript>
+  <script src="./tracking-runtime.js" defer></script>
   <!-- HYROS — paste your Hyros head script tag below -->
   <script>
 var head = document.head;
@@ -1523,55 +1524,89 @@ head.appendChild(script);
 
 <div class="lead-gate-sticky" id="lead-gate-sticky">
   <div class="lead-gate-card" id="lead-gate-card" role="region" aria-label="Verify your service area">
-    <div id="lead-gate-step-zip">
-      <h2 class="lead-gate-heading">Verify your ZIP</h2>
-      <p class="lead-gate-support">We're already cleaning bins in this area. Enter your ZIP to continue.</p>
-      <div class="lead-gate-field">
-        <label for="gate-zip-input">ZIP code</label>
-        <div class="lead-gate-zip-wrap" id="gate-zip-wrap">
+    <form id="lead-gate-form" autocomplete="on" novalidate>
+      <div class="sr-only" aria-hidden="true">
+        <input type="hidden" id="ns-attr-event-id" name="ns_event_id" value="" />
+        <input type="hidden" id="ns-attr-session-id" name="ns_session_id" value="" />
+        <input type="hidden" id="ns-attr-zip" name="ns_service_zip" value="" />
+        <input type="hidden" id="ns-attr-bins" name="ns_bins" value="" />
+        <input type="hidden" id="ns-attr-plan" name="ns_plan_intent" value="" />
+        <input type="hidden" id="ns-attr-utm_source" name="utm_source" value="" />
+        <input type="hidden" id="ns-attr-utm_medium" name="utm_medium" value="" />
+        <input type="hidden" id="ns-attr-utm_campaign" name="utm_campaign" value="" />
+        <input type="hidden" id="ns-attr-utm_content" name="utm_content" value="" />
+        <input type="hidden" id="ns-attr-utm_term" name="utm_term" value="" />
+        <input type="hidden" id="ns-attr-fbclid" name="fbclid" value="" />
+        <input type="hidden" id="ns-attr-gclid" name="gclid" value="" />
+        <input type="hidden" id="ns-attr-msclkid" name="msclkid" value="" />
+      </div>
+      <div id="lead-gate-step-zip">
+        <h2 class="lead-gate-heading">Verify your ZIP</h2>
+        <p class="lead-gate-support">We're already cleaning bins in this area. Enter your ZIP to continue.</p>
+        <div class="lead-gate-field">
+          <label for="gate-zip-input">ZIP code</label>
+          <div class="lead-gate-zip-wrap" id="gate-zip-wrap">
+            <input
+              type="text"
+              id="gate-zip-input"
+              name="postal-code"
+              class="lead-gate-input"
+              maxlength="5"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="postal-code"
+              placeholder="48009"
+              aria-label="ZIP code"
+            />
+          </div>
+        </div>
+        <p class="lead-gate-err" id="gate-zip-err"></p>
+        <button type="button" class="lead-gate-btn lead-gate-btn-orange" id="gate-zip-btn">Verify your ZIP</button>
+        <div id="lead-gate-out-wrap" hidden style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <p class="lead-gate-support" style="margin-bottom:10px">
+            We're not on this week's route for that ZIP yet. Add your mobile and we'll text you when routes expand.
+          </p>
+          <div class="lead-gate-field">
+            <label for="gate-out-phone">Mobile number</label>
+            <input
+              type="tel"
+              id="gate-out-phone"
+              name="phone"
+              class="lead-gate-input"
+              inputmode="tel"
+              autocomplete="tel"
+              enterkeyhint="done"
+            />
+          </div>
+          <p class="lead-gate-err" id="gate-out-err"></p>
+          <button type="button" class="lead-gate-btn lead-gate-btn-orange" id="gate-out-btn">Join the waitlist</button>
+        </div>
+      </div>
+      <div id="lead-gate-step-contact" hidden>
+        <p class="lead-gate-success-line" aria-live="polite"><span aria-hidden="true">✓</span> ZIP verified — we service your area</p>
+        <h2 class="lead-gate-heading">Good news — we service your area.</h2>
+        <p class="lead-gate-support">Where should we send your route details and before-and-after updates?</p>
+        <div class="lead-gate-field">
+          <label for="gate-first-name">First name</label>
+          <input type="text" id="gate-first-name" name="given-name" class="lead-gate-input" autocomplete="given-name" enterkeyhint="next" />
+        </div>
+        <div class="lead-gate-field">
+          <label for="gate-phone">Mobile phone number</label>
           <input
-            type="text"
-            id="gate-zip-input"
+            type="tel"
+            id="gate-phone"
+            name="tel"
             class="lead-gate-input"
-            maxlength="5"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            autocomplete="postal-code"
-            placeholder="48009"
-            aria-label="ZIP code"
+            inputmode="tel"
+            autocomplete="tel"
+            enterkeyhint="go"
           />
         </div>
+        <p class="lead-gate-err" id="gate-contact-err"></p>
+        <button type="button" class="lead-gate-btn lead-gate-btn-orange" id="gate-contact-btn">See Plans &amp; Pricing</button>
+        <p class="lead-gate-micro">No spam. We only use this for service updates and your cleaning details.</p>
       </div>
-      <p class="lead-gate-err" id="gate-zip-err"></p>
-      <button type="button" class="lead-gate-btn lead-gate-btn-orange" id="gate-zip-btn">Verify your ZIP</button>
-      <div id="lead-gate-out-wrap" hidden style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-        <p class="lead-gate-support" style="margin-bottom:10px">
-          We're not on this week's route for that ZIP yet. Add your mobile and we'll text you when routes expand.
-        </p>
-        <div class="lead-gate-field">
-          <label for="gate-out-phone">Mobile number</label>
-          <input type="tel" id="gate-out-phone" class="lead-gate-input" inputmode="tel" autocomplete="tel" />
-        </div>
-        <p class="lead-gate-err" id="gate-out-err"></p>
-        <button type="button" class="lead-gate-btn lead-gate-btn-orange" id="gate-out-btn">Join the waitlist</button>
-      </div>
-    </div>
-    <div id="lead-gate-step-contact" hidden>
-      <p class="lead-gate-success-line" aria-live="polite"><span aria-hidden="true">✓</span> ZIP verified — we service your area</p>
-      <h2 class="lead-gate-heading">Good news — we service your area.</h2>
-      <p class="lead-gate-support">Where should we send your route details and before-and-after updates?</p>
-      <div class="lead-gate-field">
-        <label for="gate-first-name">First name</label>
-        <input type="text" id="gate-first-name" class="lead-gate-input" autocomplete="given-name" />
-      </div>
-      <div class="lead-gate-field">
-        <label for="gate-phone">Mobile phone number</label>
-        <input type="tel" id="gate-phone" class="lead-gate-input" inputmode="tel" autocomplete="tel" />
-      </div>
-      <p class="lead-gate-err" id="gate-contact-err"></p>
-      <button type="button" class="lead-gate-btn lead-gate-btn-orange" id="gate-contact-btn">See Plans &amp; Pricing</button>
-      <p class="lead-gate-micro">No spam. We only use this for service updates and your cleaning details.</p>
-    </div>
+    </form>
     <div id="lead-gate-done" hidden class="lead-gate-done-strip" role="status"></div>
   </div>
 </div>
@@ -3149,6 +3184,74 @@ function onGateZipInput() {
   }
 }
 
+function fireGateStep1ZipEligible(zipDigits) {
+  var eventId = getOrCreateFunnelEventId();
+  pushEventIdToUrlIfMissing(eventId);
+  if (window.NSTracking && NSTracking.updateContext) {
+    NSTracking.updateContext({
+      service_zip: zipDigits,
+      county: 'Oakland_Macomb',
+      plan_intent: selectedPlan,
+      bins: selectedBins
+    });
+    NSTracking.syncUrl();
+    NSTracking.hydrateHiddenFields();
+  }
+  var consentTs = new Date().toISOString();
+  var consent = {
+    consent_tcpa: true,
+    consent_timestamp: consentTs,
+    consent_method: 'lead_gate_zip_eligible'
+  };
+  var z = String(zipDigits || '').replace(/\D/g, '').slice(0, 5);
+  var utms = collectLeadGateUtms();
+  var ghlBody = Object.assign(
+    {
+      type: 'lead_gate_zip_eligible',
+      service_zip: z,
+      hyros_id: hyrosIdFromCookie(),
+      event_id: eventId,
+      jobber_event_id: eventId,
+      source: 'landing-lead-gate',
+      status: 'zip_eligible',
+      plan_intent: selectedPlan,
+      bins: selectedBins
+    },
+    consent,
+    utms
+  );
+  if (GHL_WEBHOOK_URL && /^https:\/\//.test(GHL_WEBHOOK_URL)) {
+    fetch(GHL_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ghlBody)
+    }).catch(function () {});
+  }
+  if (window.NSTracking && !NSTracking.standardLeadAlreadyFired()) {
+    NSTracking.fireLeadStandard(
+      {
+        content_name: 'ZIP verified — in area (gate step 1)',
+        value: PRICING[2].annual,
+        currency: 'USD',
+        consent_tcpa: consent.consent_tcpa,
+        consent_timestamp: consent.consent_timestamp,
+        consent_method: consent.consent_method,
+        content_category: z
+      },
+      { zp: z }
+    );
+    NSTracking.markStandardLeadFired();
+  }
+  if (typeof fbq !== 'undefined') {
+    fbq(
+      'trackCustom',
+      'HyrosLead',
+      { event_id: eventId, hyros_id: hyrosIdFromCookie(), step: 'zip_eligible_gate' },
+      funnelPixelOpts('HyrosLead_zip_eligible')
+    );
+  }
+}
+
 function onGateZipContinue() {
   var err = document.getElementById('gate-zip-err');
   var outErr = document.getElementById('gate-out-err');
@@ -3184,6 +3287,7 @@ function onGateZipContinue() {
     return;
   }
   pendingGateZip = zip;
+  fireGateStep1ZipEligible(zip);
   if (outWrap) {
     outWrap.setAttribute('hidden', '');
   }
@@ -3205,9 +3309,6 @@ function onGateZipContinue() {
       fn.focus();
     }
   }, 0);
-  if (typeof fbq !== 'undefined') {
-    fbq('trackCustom', 'ZipCongruence', { step: 'gate_zip_ok' }, funnelPixelOpts());
-  }
 }
 
 function onGateOutWaitlist() {
@@ -3237,7 +3338,7 @@ function onGateOutWaitlist() {
   }
 }
 
-function fireLeadGatePartialLead(firstName, phoneRaw, phoneE164, zipDigits) {
+function fireGateStep2LeadDetail(firstName, phoneRaw, phoneE164, zipDigits) {
   var eventId = getOrCreateFunnelEventId();
   pushEventIdToUrlIfMissing(eventId);
   var consentTs = new Date().toISOString();
@@ -3249,7 +3350,7 @@ function fireLeadGatePartialLead(firstName, phoneRaw, phoneE164, zipDigits) {
   var z = String(zipDigits || '').replace(/\D/g, '').slice(0, 5);
   var utms = collectLeadGateUtms();
   var smsBody =
-    'PARTIAL LEAD (gate): ' +
+    'PARTIAL LEAD (gate step 2): ' +
     (firstName || '') +
     ' · ZIP ' +
     z +
@@ -3261,8 +3362,8 @@ function fireLeadGatePartialLead(firstName, phoneRaw, phoneE164, zipDigits) {
   var ghlBody = Object.assign(
     {
       type: 'lead_gate_partial',
-      tags: ['partial_lead', 'lead_gate'],
-      status: 'partial_lead',
+      tags: ['partial_lead', 'lead_gate', 'lead_detail'],
+      status: 'lead_detail',
       first_name: firstTokenName(firstName),
       full_name: String(firstName || '').trim(),
       phone: phoneRaw,
@@ -3286,48 +3387,35 @@ function fireLeadGatePartialLead(firstName, phoneRaw, phoneE164, zipDigits) {
       body: JSON.stringify(ghlBody)
     }).catch(function () {});
   }
-  var em = '';
-  var ph = normalizePhoneForMetaHash(phoneE164 || '');
-  var zp = z;
-  return Promise.all([sha256Hex(em), sha256Hex(ph), sha256Hex(zp), sha256Hex(String(firstName || '').trim().toLowerCase())]).then(function (hashes) {
-    if (typeof fbq !== 'undefined') {
-      var match = {};
-      if (hashes[1]) {
-        match.ph = hashes[1];
-      }
-      if (hashes[2]) {
-        match.zp = hashes[2];
-      }
-      if (hashes[3]) {
-        match.fn = hashes[3];
-      }
-      if (Object.keys(match).length) {
-        fbq('init', META_PIXEL_ID_FUNNEL, match);
-      }
-      fbq(
-        'track',
-        'Lead',
-        Object.assign(
-          {
-            content_name: 'Lead gate — name + phone',
-            value: PRICING[2].annual,
-            currency: 'USD',
-            consent_tcpa: consent.consent_tcpa,
-            consent_timestamp: consent.consent_timestamp,
-            consent_method: consent.consent_method
-          },
-          z ? { content_category: z } : {}
-        ),
-        funnelPixelOpts()
-      );
-      fbq(
-        'trackCustom',
-        'HyrosLead',
-        { event_id: eventId, hyros_id: hyrosIdFromCookie(), step: 'lead_gate_partial' },
-        funnelPixelOpts()
-      );
-    }
-  });
+  if (window.NSTracking) {
+    NSTracking.updateContext({
+      service_zip: z,
+      plan_intent: selectedPlan,
+      bins: selectedBins
+    });
+    NSTracking.fireLeadDetail(
+      {
+        content_name: 'Lead gate — name + phone (enrichment)',
+        event_id: eventId,
+        hyros_id: hyrosIdFromCookie(),
+        step: 'lead_gate_detail',
+        value: PRICING[2].annual,
+        currency: 'USD',
+        consent_tcpa: consent.consent_tcpa,
+        consent_timestamp: consent.consent_timestamp,
+        consent_method: consent.consent_method
+      },
+      { fn: firstTokenName(firstName), phone: phoneE164, zp: z },
+      'gate_step2'
+    );
+    NSTracking.trackCustom(
+      'HyrosLeadDetail',
+      'HyrosLeadDetail_gate',
+      { event_id: eventId, hyros_id: hyrosIdFromCookie(), step: 'lead_gate_detail' },
+      {}
+    );
+  }
+  return Promise.resolve();
 }
 
 function onGateContactSubmit() {
@@ -3386,7 +3474,7 @@ function onGateContactSubmit() {
     applyPhoneMaskInput(mph);
   }
   writeFunnelPersist({ fullName: firstName, phone: phoneRaw, zipFlow: zip });
-  fireLeadGatePartialLead(firstName, phoneRaw, e164, zip);
+  fireGateStep2LeadDetail(firstName, phoneRaw, e164, zip);
   leadGateUnlocked = true;
   zipVerified = true;
   setPageBehindGateLocked(false);
@@ -3395,6 +3483,14 @@ function onGateContactSubmit() {
   checkZip({ skipScroll: true, skipDefaultPlan: true });
   refreshZipChrome();
   persistCheckoutContext();
+  if (window.NSTracking) {
+    NSTracking.updateContext({
+      service_zip: zip,
+      plan_intent: selectedPlan,
+      bins: selectedBins
+    });
+    NSTracking.hydrateHiddenFields();
+  }
   updateAllCtas();
   syncHeroPriceVisibility();
   writeLeadGateDone({ zip: zip, firstName: firstName, phoneRaw: phoneRaw });
@@ -3443,6 +3539,21 @@ function wireLeadGateDom() {
   }
   var zb = document.getElementById('gate-zip-btn');
   if (zb) {
+    if (window.NSTracking) {
+      zb.addEventListener(
+        'pointerdown',
+        function () {
+          try {
+            if (sessionStorage.getItem('ns_click_cta_zip') === '1') {
+              return;
+            }
+            sessionStorage.setItem('ns_click_cta_zip', '1');
+          } catch (eC) {}
+          NSTracking.fireClickCta('gate_verify_zip');
+        },
+        { once: true }
+      );
+    }
     zb.addEventListener('click', onGateZipContinue);
   }
   var cb = document.getElementById('gate-contact-btn');
@@ -3522,6 +3633,9 @@ function initLeadGate() {
     }
     checkZip({ skipScroll: true, skipDefaultPlan: true });
     updatePricing();
+    if (window.NSTracking && NSTracking.markStandardLeadFired) {
+      NSTracking.markStandardLeadFired();
+    }
     return;
   }
   setPageBehindGateLocked(true);
@@ -3576,6 +3690,12 @@ function genFunnelEventId() {
 }
 
 function getOrCreateFunnelEventId() {
+  if (window.NSTracking && typeof NSTracking.journeyId === 'function') {
+    var jid = NSTracking.journeyId();
+    if (jid) {
+      return jid;
+    }
+  }
   var q = new URLSearchParams(location.search);
   var fromUrl = q.get('event_id') || q.get('fb_event_id');
   if (fromUrl) {
@@ -3601,6 +3721,14 @@ function pushEventIdToUrlIfMissing(eventId) {
   if (!eventId) {
     return;
   }
+  if (window.NSTracking && NSTracking.updateContext && NSTracking.syncUrl) {
+    NSTracking.updateContext({ journey_event_id: eventId });
+    try {
+      localStorage.setItem('ns_funnel_event_id', eventId);
+    } catch (e0) {}
+    NSTracking.syncUrl();
+    return;
+  }
   try {
     var u = new URL(window.location.href);
     if (u.searchParams.get('event_id') || u.searchParams.get('fb_event_id')) {
@@ -3611,7 +3739,11 @@ function pushEventIdToUrlIfMissing(eventId) {
   } catch (e) {}
 }
 
-function funnelPixelOpts() {
+function funnelPixelOpts(slug) {
+  slug = slug || 'Generic';
+  if (window.NSTracking && NSTracking.dedupeId) {
+    return { eventID: NSTracking.dedupeId(slug) };
+  }
   var id = getOrCreateFunnelEventId();
   return id && String(id).length ? { eventID: id } : {};
 }
@@ -3842,6 +3974,9 @@ function fireFunnelStep1Lead(zip, phoneOpt, emailOpt) {
       body: JSON.stringify(body)
     }).catch(function () {});
   }
+  if (window.NSTracking && NSTracking.standardLeadAlreadyFired()) {
+    return Promise.resolve();
+  }
   var em = (emailOpt || '').toLowerCase().trim();
   var ph = normalizePhoneForMetaHash(phoneOpt || '');
   var zp = zipDigits;
@@ -3860,6 +3995,22 @@ function fireFunnelStep1Lead(zip, phoneOpt, emailOpt) {
       if (Object.keys(match).length) {
         fbq('init', META_PIXEL_ID_FUNNEL, match);
       }
+    }
+    if (window.NSTracking && !NSTracking.standardLeadAlreadyFired()) {
+      NSTracking.fireLeadStandard(
+        {
+          content_name: 'Verify ZIP — modal step 1',
+          value: PRICING[2].annual,
+          currency: 'USD',
+          consent_tcpa: consent.consent_tcpa,
+          consent_timestamp: consent.consent_timestamp,
+          consent_method: consent.consent_method,
+          content_category: zipDigits || undefined
+        },
+        { zp: zp, email: em || undefined, phone: phoneOpt || undefined }
+      );
+      NSTracking.markStandardLeadFired();
+    } else if (typeof fbq !== 'undefined') {
       fbq(
         'track',
         'Lead',
@@ -3874,7 +4025,7 @@ function fireFunnelStep1Lead(zip, phoneOpt, emailOpt) {
           },
           zipDigits ? { content_category: zipDigits } : {}
         ),
-        funnelPixelOpts()
+        funnelPixelOpts('Lead_modal_zip')
       );
     }
     if (typeof fbq !== 'undefined') {
@@ -3882,7 +4033,7 @@ function fireFunnelStep1Lead(zip, phoneOpt, emailOpt) {
         'trackCustom',
         'HyrosLead',
         { event_id: eventId, hyros_id: hyrosIdFromCookie(), step: 1 },
-        funnelPixelOpts()
+        funnelPixelOpts('HyrosLead_modal_zip')
       );
     }
   });
@@ -3932,27 +4083,27 @@ function fireOutAreaWaitlistLead(zipDigits, phoneE164) {
       if (Object.keys(match).length) {
         fbq('init', META_PIXEL_ID_FUNNEL, match);
       }
-      fbq(
-        'track',
-        'Lead',
-        Object.assign(
-          {
-            content_name: 'Out of area — waitlist',
-            value: 0,
-            currency: 'USD',
-            consent_tcpa: consent.consent_tcpa,
-            consent_timestamp: consent.consent_timestamp,
-            consent_method: consent.consent_method
-          },
-          z ? { content_category: z } : {}
-        ),
-        funnelPixelOpts()
+    }
+    if (window.NSTracking) {
+      NSTracking.fireOutOfAreaLead(
+        {
+          content_name: 'Out of area — waitlist',
+          event_id: eventId,
+          hyros_id: hyrosIdFromCookie(),
+          step: 'out_waitlist',
+          consent_tcpa: consent.consent_tcpa,
+          consent_timestamp: consent.consent_timestamp,
+          consent_method: consent.consent_method
+        },
+        { phone: phoneE164, zp: z }
       );
+    }
+    if (typeof fbq !== 'undefined') {
       fbq(
         'trackCustom',
         'HyrosLead',
         { event_id: eventId, hyros_id: hyrosIdFromCookie(), step: 'out_waitlist' },
-        funnelPixelOpts()
+        funnelPixelOpts('HyrosLead_out_waitlist')
       );
     }
   });
@@ -4227,21 +4378,30 @@ function fireFunnelStep2Update(fullName, phoneE164, emailOpt) {
       if (Object.keys(match).length) {
         fbq('init', META_PIXEL_ID_FUNNEL, match);
       }
-      fbq(
-        'trackCustom',
-        'LeadDetail',
+    }
+    if (window.NSTracking) {
+      NSTracking.fireLeadDetail(
         {
           content_name: 'Checkout modal — contact detail',
           full_name_present: true,
-          phone_present: true
+          phone_present: true,
+          event_id: eventId,
+          hyros_id: hyrosIdFromCookie(),
+          step: 2
         },
-        funnelPixelOpts()
+        {
+          fn: firstTokenName(fullName),
+          phone: phoneE164,
+          zp: String(zip || '').replace(/\D/g, '').slice(0, 5),
+          email: em || undefined
+        },
+        'modal_step2_contact'
       );
-      fbq(
-        'trackCustom',
+      NSTracking.trackCustom(
         'HyrosLeadDetail',
+        'HyrosLeadDetail_modal',
         { event_id: eventId, hyros_id: hyrosIdFromCookie(), step: 2 },
-        funnelPixelOpts()
+        {}
       );
     }
   });
@@ -4313,6 +4473,20 @@ function selectBins(n) {
   document.querySelectorAll('.bin-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('[data-bins="'+n+'"]').classList.add('active');
   updatePricing();
+  if (window.NSTracking) {
+    NSTracking.updateContext({
+      bins: selectedBins,
+      plan_intent: selectedPlan,
+      service_zip: document.getElementById('zip-input') ? document.getElementById('zip-input').value.trim() : ''
+    });
+    NSTracking.hydrateHiddenFields();
+    NSTracking.fireSelectPlan({
+      plan: selectedPlan,
+      bins: selectedBins,
+      price_anchor: getChargeAmountDollars(),
+      zip: document.getElementById('zip-input') ? document.getElementById('zip-input').value.trim() : ''
+    });
+  }
 }
 
 /* ── PLAN SELECTION ── */
@@ -4333,6 +4507,20 @@ function selectPlan(plan) {
   persistCheckoutContext();
   refreshCheckoutModalSummary();
   updateAllCtas();
+  if (window.NSTracking) {
+    NSTracking.updateContext({
+      bins: selectedBins,
+      plan_intent: selectedPlan,
+      service_zip: document.getElementById('zip-input') ? document.getElementById('zip-input').value.trim() : ''
+    });
+    NSTracking.hydrateHiddenFields();
+    NSTracking.fireSelectPlan({
+      plan: selectedPlan,
+      bins: selectedBins,
+      price_anchor: getChargeAmountDollars(),
+      zip: document.getElementById('zip-input') ? document.getElementById('zip-input').value.trim() : ''
+    });
+  }
 }
 
 /* ── PRICING UPDATE ── */
@@ -4429,7 +4617,11 @@ function buildCheckoutUrl() {
     price: String(getChargeAmountDollars()),
     zip: zip
   });
-  return 'checkout.html?' + q.toString();
+  var base = 'checkout.html?' + q.toString();
+  if (window.NSTracking && NSTracking.appendParamsToUrl) {
+    return NSTracking.appendParamsToUrl(base);
+  }
+  return base;
 }
 
 function refreshCheckoutModalSummary() {
@@ -4786,19 +4978,36 @@ function firePurchaseDeduped(pi) {
   var amt = pi.amount_received != null ? pi.amount_received : pi.amount;
   var val = typeof amt === 'number' ? amt / 100 : getChargeAmountDollars();
   var cur = (pi.currency || 'usd').toUpperCase();
-  if (typeof fbq !== 'undefined') {
-    fbq(
-      'track',
-      'Purchase',
+  var purchaseCustom = {
+    value: val,
+    currency: cur,
+    content_ids: [pi.id],
+    content_type: 'product',
+    content_name: selectedPlan + ' · ' + selectedBins + ' bins',
+    transaction_id: pi.id
+  };
+  var emailEl = document.getElementById('modal-email');
+  var phoneEl = document.getElementById('modal-phone');
+  var nameEl = document.getElementById('modal-full-name');
+  var userPlain = {
+    email: emailEl ? (emailEl.value || '').trim().toLowerCase() : '',
+    phone: phoneEl ? phoneToE164US((phoneEl.value || '').trim()) || '' : '',
+    fn: nameEl ? firstTokenName((nameEl.value || '').trim()) : ''
+  };
+  if (window.NSTracking) {
+    NSTracking.firePurchaseStandard(purchaseCustom, userPlain, pi.id);
+    NSTracking.trackCustom(
+      'HyrosPurchase',
+      'HyrosPurchase_' + pi.id,
       {
-        value: val,
-        currency: cur,
-        content_ids: [pi.id],
-        content_type: 'product',
-        content_name: selectedPlan + ' · ' + selectedBins + ' bins'
+        event_id: getOrCreateFunnelEventId(),
+        transaction_id: pi.id,
+        hyros_id: hyrosIdFromCookie()
       },
-      funnelPixelOpts()
+      {}
     );
+  } else if (typeof fbq !== 'undefined') {
+    fbq('track', 'Purchase', purchaseCustom, funnelPixelOpts('Purchase_' + pi.id));
     fbq(
       'trackCustom',
       'HyrosPurchase',
@@ -4806,7 +5015,7 @@ function firePurchaseDeduped(pi) {
         event_id: getOrCreateFunnelEventId(),
         transaction_id: pi.id
       },
-      funnelPixelOpts()
+      funnelPixelOpts('HyrosPurchase_' + pi.id)
     );
   }
   clearPiResume();
@@ -5042,7 +5251,7 @@ function ensureSingleChargeCheckoutState() {
 }
 
 function maybeFireInitiateCheckout(displayPrice, planLabels) {
-  if (typeof fbq === 'undefined') {
+  if (typeof fbq === 'undefined' && !window.NSTracking) {
     return;
   }
   var h = getCheckoutIntentHash();
@@ -5052,12 +5261,18 @@ function maybeFireInitiateCheckout(displayPrice, planLabels) {
     }
     sessionStorage.setItem(SS_IC_HASH, h);
   } catch (e) {}
-  fbq('track', 'InitiateCheckout', {
+  var payload = {
     value: displayPrice,
     currency: 'USD',
     content_name: planLabels[selectedPlan],
-    num_items: selectedBins
-  });
+    num_items: selectedBins,
+    journey_event_id: getOrCreateFunnelEventId()
+  };
+  if (window.NSTracking) {
+    NSTracking.fireInitiateCheckoutStandard(payload, {});
+  } else if (typeof fbq !== 'undefined') {
+    fbq('track', 'InitiateCheckout', payload, funnelPixelOpts('InitiateCheckout'));
+  }
 }
 
 function getOrCreateIdempotencyKey() {
@@ -5098,6 +5313,27 @@ function buildPaymentIntentRequestBody(emailOpt) {
     next_charge: '',
     idempotency_key: idem
   };
+  if (window.NSTracking && NSTracking.journeyId) {
+    meta.ns_journey_event_id = String(NSTracking.journeyId()).slice(0, 500);
+  }
+  try {
+    if (window.NSTracking && NSTracking.getAttributionPayload) {
+      var ap = NSTracking.getAttributionPayload();
+      if (ap.session_id) {
+        meta.ns_session_id = String(ap.session_id).slice(0, 120);
+      }
+    }
+  } catch (eMeta) {}
+  if (window.NSTracking && NSTracking.syncUrl) {
+    try {
+      var b = JSON.parse(localStorage.getItem('ns_attribution_bundle') || '{}');
+      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid', 'msclkid'].forEach(function (k) {
+        if (b[k]) {
+          meta['ns_' + k] = String(b[k]).slice(0, 200);
+        }
+      });
+    } catch (e2) {}
+  }
   if (phoneVal) {
     meta.phone = phoneVal.slice(0, 40);
   }
@@ -6002,6 +6238,13 @@ function initCheckoutModal() {
         document.getElementById('modal-pay-btn').disabled = false;
         if (result.error) {
           document.getElementById('modal-err-card-general').textContent = result.error.message;
+          if (window.NSTracking) {
+            NSTracking.firePurchaseFailure({
+              processor_code: result.error.code || 'stripe_card',
+              message: result.error.message || '',
+              step: 'modal_card_payment'
+            });
+          }
           return;
         }
         try {
@@ -6013,11 +6256,25 @@ function initCheckoutModal() {
         } catch (verr) {
           document.getElementById('modal-err-card-general').textContent =
             'Payment could not be verified. Please try again or use the checkout link below.';
+          if (window.NSTracking) {
+            NSTracking.firePurchaseFailure({
+              processor_code: 'payment_intent_verify_failed',
+              message: verr && verr.message ? verr.message : 'verify_failed',
+              step: 'modal_card_payment'
+            });
+          }
         }
       }).catch(function(err) {
         document.getElementById('modal-pay-btn').disabled = false;
         var msg = err && err.message ? err.message : 'Could not reach payment server. Try the link below.';
         document.getElementById('modal-err-card-general').textContent = msg;
+        if (window.NSTracking) {
+          NSTracking.firePurchaseFailure({
+            processor_code: err && err.code ? err.code : 'catch',
+            message: msg,
+            step: 'modal_card_payment'
+          });
+        }
         console.error('Modal payment error:', err);
         document.getElementById('checkout-embed-fallback').classList.add('show');
         document.getElementById('checkout-fallback-link').href = buildCheckoutUrl();
@@ -6052,9 +6309,8 @@ announcePricingLive();
 syncHeroPriceVisibility();
 initCheckoutModal();
 
-/* Pixel: ViewContent */
-if (typeof fbq !== 'undefined') {
-  fbq('track','ViewContent',{ content_name:'Natural Sanitation Landing Page' });
+if (window.NSTracking && NSTracking.hydrateHiddenFields) {
+  NSTracking.hydrateHiddenFields();
 }
 
 /* GHL partial lead: GHL_WEBHOOK_URL + scheduleModalGHLPartialLead (Step 1). */
