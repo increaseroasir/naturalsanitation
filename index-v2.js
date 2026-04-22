@@ -334,11 +334,6 @@
         return;
       }
 
-      if (!ZIP_MAP[zip]) {
-        msg.innerHTML = renderZipWaitlist();
-        return;
-      }
-
       var county = countyFromZip(zip);
       var countyLabel = countyLabels[county];
       var city = (ZIP_MAP[zip] && ZIP_MAP[zip].city) || '';
@@ -355,12 +350,20 @@
           first_name: firstToken(fullName),
           full_name: fullName,
           phone: phone,
+          phone_e164: (function () {
+            var d = phone.replace(/\D/g, '');
+            if (d.length === 10) return '+1' + d;
+            if (d.length === 11 && d.charAt(0) === '1') return '+' + d;
+            return phone;
+          })(),
           email: email || undefined,
+          service_zip: zip,
           zip: zip,
           county: county,
           county_label: countyLabel,
           plan_intent: 'annual',
           bins_count: 2,
+          tags: ['partial_lead', 'lead_detail'],
           hyros_id: hyrosIdFromCookie(),
           event_id: SESSION_EVENT_ID,
           jobber_event_id: SESSION_EVENT_ID,

@@ -11,6 +11,7 @@
  *   META_CAPI_ACCESS_TOKEN      — required for /meta-capi (never in the browser)
  *   GHL_API_TOKEN               — required for /ghl-lead (private integration / sub-account token)
  *   GHL_LOCATION_ID             — required for /ghl-lead (sub-account location id)
+ *   GHL_FUNNEL_EVENT_FIELD_ID   — optional custom field id (Contacts) to store raw funnel event_id / jobber id
  *   META_TEST_EVENT_CODE        — optional, e.g. TEST28089 → Meta Graph `test_event_code` (Test Events only)
  *
  * Optional: browser may send `test_event_code` in the JSON body; the Worker forwards it only if it
@@ -92,21 +93,157 @@ function ghlBuildNameParts(body) {
   return { firstName: 'Customer', lastName: '', name: 'Customer' };
 }
 
-function ghlMergeTags(body) {
-  const seen = new Set();
+/** First non-empty funnel id from payload (browser + server). */
+function ghlPrimaryEventId(body) {
+  const a = String(body.event_id || '').trim();
+  const b = String(body.jobber_event_id || '').trim();
+  const raw = (a || b).replace(/\s+/g, ' ').slice(0, 200);
+  return raw;
+}
+
+function ghlEventIdTag(raw) {
+  if (!raw) return '';
+  return 'event_id:' + raw;
+}
+
+/** Union-merge tags: preserve order (existing first), trim, dedupe case-insensitively (first spelling wins). */
+function ghlUnionTags(existingList, incomingList) {
+  const merged = [];
+  const seenLower = new Set();
+  function pushTag(raw) {
+    const t = typeof raw === 'string' ? raw.trim() : '';
+    if (!t) return;
+    const k = t.toLowerCase();
+    if (seenLower.has(k)) return;
+    seenLower.add(k);
+    merged.push(t);
+  }
+  if (Array.isArray(existingList)) {
+    for (const t of existingList) {
+      const s = typeof t === 'string' ? t.trim() : typeof t === 'object' && t && typeof t.name === 'string' ? t.name.trim() : '';
+      if (s) pushTag(s);
+    }
+  }
+  if (Array.isArray(incomingList)) {
+    for (const t of incomingList) pushTag(t);
+  }
+  return merged;
+}
+
+function ghlNormalizeCustomFieldRow(f) {
+  if (!f || typeof f !== 'object') return null;
+  const id = typeof f.id === 'string' ? f.id : typeof f.field_id === 'string' ? f.field_id : '';
+  if (!id) return null;
+  const v =
+    f.field_value != null
+      ? String(f.field_value)
+      : f.value != null
+        ? String(f.value)
+        : f.fieldValue != null
+          ? String(f.fieldValue)
+          : '';
+  return { id, field_value: v.slice(0, 2000) };
+}
+
+function ghlCustomFieldsFromContact(contact) {
+  const raw = contact && (contact.customFields || contact.customField);
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const f of raw) {
+    const row = ghlNormalizeCustomFieldRow(f);
+    if (row) out.push(row);
+  }
+  return out;
+}
+
+function ghlMergeCustomFieldArrays(existingRows, incomingRows, funnelFieldId, funnelRawEventId) {
+  const byId = new Map();
+  for (const row of existingRows || []) {
+    if (row && row.id) byId.set(row.id, { id: row.id, field_value: row.field_value });
+  }
+  for (const row of incomingRows || []) {
+    if (row && row.id) byId.set(row.id, { id: row.id, field_value: row.field_value });
+  }
+  const fid = funnelFieldId && String(funnelFieldId).trim();
+  if (fid && funnelRawEventId) {
+    byId.set(fid, { id: fid, field_value: String(funnelRawEventId).slice(0, 2000) });
+  }
+  return [...byId.values()].slice(0, 50);
+}
+
+function ghlExtractContactFromDuplicateJson(j) {
+  if (!j || typeof j !== 'object') return null;
+  if (j.contact && typeof j.contact === 'object') return j.contact;
+  if (j.data && typeof j.data === 'object' && j.data.contact && typeof j.data.contact === 'object') {
+    return j.data.contact;
+  }
+  if (Array.isArray(j.contacts) && j.contacts.length && typeof j.contacts[0] === 'object') return j.contacts[0];
+  if (typeof j.id === 'string' && (Array.isArray(j.tags) || j.phone)) return j;
+  return null;
+}
+
+/**
+ * Load existing contact (same upsert key: phone/email) so we can union tags + custom fields before upsert.
+ * Tries GET ?locationId&phone then POST JSON (API variants differ by account).
+ */
+async function ghlFetchDuplicateContact(token, locId, phone, email) {
+  const loc = String(locId).trim();
+  const em = email && typeof email === 'string' && email.includes('@') ? email.trim() : '';
+  const tryGetUrl = new URL(GHL_API_BASE + '/contacts/search/duplicate');
+  tryGetUrl.searchParams.set('locationId', loc);
+  tryGetUrl.searchParams.set('phone', phone);
+  if (em) tryGetUrl.searchParams.set('email', em);
+
+  let res = await fetch(tryGetUrl.toString(), {
+    method: 'GET',
+    headers: { ...ghlAuthHeaders(token), Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    const postBody = { locationId: loc, phone };
+    if (em) postBody.email = em;
+    res = await fetch(GHL_API_BASE + '/contacts/search/duplicate', {
+      method: 'POST',
+      headers: ghlAuthHeaders(token),
+      body: JSON.stringify(postBody),
+    });
+  }
+  const text = await res.text();
+  let j = {};
+  try {
+    j = text ? JSON.parse(text) : {};
+  } catch {
+    j = {};
+  }
+  if (!res.ok) {
+    console.log('[ghl-lead] duplicate lookup not ok', res.status, (text || '').slice(0, 500));
+    return null;
+  }
+  const c = ghlExtractContactFromDuplicateJson(j);
+  if (!c) {
+    console.log('[ghl-lead] duplicate lookup empty shape', JSON.stringify(Object.keys(j || {})).slice(0, 200));
+  }
+  return c;
+}
+
+/** Tags requested by this request (before union with CRM). */
+function ghlBuildIncomingTagList(body) {
   const out = [];
   if (Array.isArray(body.tags)) {
     for (const t of body.tags) {
       const s = typeof t === 'string' ? t.trim() : '';
-      if (s && !seen.has(s)) {
-        seen.add(s);
-        out.push(s);
-      }
+      if (s) out.push(s);
     }
   }
-  if (!seen.has('partial_lead')) {
-    out.push('partial_lead');
+  const st = String(body.status || '').toLowerCase();
+  if (st === 'paid' || body.paid === true) {
+    out.push('purchased');
   }
+  if (body.mark_initiate_checkout === true) {
+    out.push('initiate_checkout');
+  }
+  const ev = ghlPrimaryEventId(body);
+  const evTag = ghlEventIdTag(ev);
+  if (evTag) out.push(evTag);
   return out;
 }
 
@@ -163,39 +300,67 @@ async function handleGhlLead(request, env) {
     }
     console.log('[ghl-lead] phone ok');
     const { firstName, lastName, name } = ghlBuildNameParts(parsed);
-    const tags = ghlMergeTags(parsed);
     const source = ghlBuildSource(parsed);
+    const em = parsed.email;
+    const emailTrim = em && typeof em === 'string' && em.includes('@') ? em.trim().slice(0, 250) : '';
+
+    let existingContact = null;
+    try {
+      existingContact = await ghlFetchDuplicateContact(token, locId, phone, emailTrim);
+    } catch (eDup) {
+      console.warn('[ghl-lead] duplicate fetch error', eDup && eDup.message ? String(eDup.message) : eDup);
+    }
+
+    const existingTags =
+      existingContact && Array.isArray(existingContact.tags) ? existingContact.tags : [];
+    const existingCustom = existingContact ? ghlCustomFieldsFromContact(existingContact) : [];
+
+    const incomingEventRaw = ghlPrimaryEventId(parsed);
+    const eventTagStr = ghlEventIdTag(incomingEventRaw);
+    const incomingTagList = ghlBuildIncomingTagList(parsed);
+
+    const mergedTags = ghlUnionTags(existingTags, incomingTagList);
+
+    console.log(
+      '[ghl-lead] tag merge',
+      JSON.stringify({
+        existingTagsFound: existingTags,
+        incomingTags: incomingTagList,
+        incomingEventId: incomingEventRaw || null,
+        eventTagGenerated: eventTagStr || null,
+        mergedTagsSent: mergedTags,
+      })
+    );
+
     const upsertBody = {
       locationId: String(locId).trim(),
       phone,
       name: name.slice(0, 500),
       firstName: firstName.slice(0, 100),
       lastName: (lastName || '').slice(0, 100),
-      tags,
+      tags: mergedTags,
       source,
       country: 'US',
     };
-    const em = parsed.email;
-    if (em && typeof em === 'string' && em.includes('@')) {
-      upsertBody.email = em.trim().slice(0, 250);
+    if (emailTrim) {
+      upsertBody.email = emailTrim;
     }
     const zip = parsed.service_zip || parsed.zip;
     if (zip != null && String(zip).trim()) {
       upsertBody.postalCode = String(zip).trim().slice(0, 20);
     }
-    if (Array.isArray(parsed.ghl_custom_fields) && parsed.ghl_custom_fields.length) {
-      upsertBody.customFields = parsed.ghl_custom_fields
-        .filter((f) => f && typeof f === 'object' && typeof f.id === 'string')
-        .map((f) => {
-          const v =
-            f.field_value != null
-              ? String(f.field_value)
-              : f.value != null
-                ? String(f.value)
-                : '';
-          return { id: f.id, field_value: v.slice(0, 2000) };
-        })
-        .slice(0, 50);
+    const incomingCfRows = Array.isArray(parsed.ghl_custom_fields)
+      ? parsed.ghl_custom_fields.map(ghlNormalizeCustomFieldRow).filter(Boolean)
+      : [];
+    const funnelFieldId = env.GHL_FUNNEL_EVENT_FIELD_ID;
+    const cfMerged = ghlMergeCustomFieldArrays(
+      existingCustom,
+      incomingCfRows,
+      typeof funnelFieldId === 'string' ? funnelFieldId.trim() : '',
+      incomingEventRaw
+    );
+    if (cfMerged.length) {
+      upsertBody.customFields = cfMerged;
     }
     const upsertUrl = GHL_API_BASE + '/contacts/upsert';
     console.log('[ghl-lead] sending upsert', upsertUrl);

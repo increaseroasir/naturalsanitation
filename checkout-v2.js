@@ -315,6 +315,46 @@
     postV2CheckoutGhlPartial(body);
   }
 
+  function fireV2GhlInitiateCheckoutOnce() {
+    try {
+      if (sessionStorage.getItem('ns_ghl_ic_v2') === '1') {
+        return;
+      }
+    } catch (eSs) {}
+    if (!GHL_LEAD_PROXY_URL || !/^https:\/\//.test(GHL_LEAD_PROXY_URL)) {
+      return;
+    }
+    var fullName = String(draft.fullName || '').trim();
+    var phone = String(draft.phone || '').trim();
+    if (!fullName || v2DigitsOnly(phone).length < 10) {
+      return;
+    }
+    try {
+      sessionStorage.setItem('ns_ghl_ic_v2', '1');
+    } catch (eSet) {}
+    var zipDigits = String(draft.zip || '').replace(/\D/g, '').slice(0, 5);
+    var body = {
+      type: 'lead_checkout_v2_initiate',
+      name: fullName,
+      first_name: firstNameFromFull(fullName),
+      full_name: fullName,
+      phone: phone,
+      phone_e164: v2PhoneToE164US(phone) || phone,
+      service_zip: zipDigits,
+      plan: draft.plan,
+      bins: draft.bins,
+      price: getChargeDollars(),
+      source: 'checkout-v2',
+      mark_initiate_checkout: true,
+      event_id: SESSION_EVENT_ID,
+      jobber_event_id: SESSION_EVENT_ID,
+      hyros_id: v2HyrosIdFromCookie(),
+    };
+    fetch(GHL_LEAD_PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(
+      function () {}
+    );
+  }
+
   function fireV2GhlPartialFromWallet(payerName, payerPhone) {
     var fullName = String(payerName || '').trim();
     var phone = String(payerPhone || '').trim();
@@ -390,20 +430,24 @@
     var amt = getChargeDollars();
     firePurchasePixel(amt, paymentIntentId);
     if (GHL_LEAD_PROXY_URL && /^https:\/\//.test(GHL_LEAD_PROXY_URL)) {
+      var paidPhone = phone || draft.phone;
       fetch(GHL_LEAD_PROXY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name || draft.fullName,
           email: email || draft.email,
-          phone: phone || draft.phone,
+          phone: paidPhone,
+          phone_e164: v2PhoneToE164US(paidPhone) || paidPhone,
           plan: draft.plan,
           bins: draft.bins,
           price: amt,
           service_zip: draft.zip,
           source: 'checkout-v2-paid',
           status: 'paid',
+          tags: ['purchased'],
           event_id: SESSION_EVENT_ID,
+          jobber_event_id: SESSION_EVENT_ID,
           stripe_transaction_id: paymentIntentId,
         }),
       }).catch(function () {});
@@ -574,7 +618,7 @@
   }
 
   function gateMissingLead() {
-    if (!draft.zip || draft.zip.length !== 5 || !ZIP_MAP[draft.zip]) {
+    if (!draft.zip || draft.zip.length !== 5 || !/^\d{5}$/.test(draft.zip)) {
       document.getElementById('gate-msg').textContent =
         'Missing or invalid service ZIP. Go back to the landing page and verify your ZIP.';
       document.getElementById('pay-wrap').style.display = 'none';
@@ -603,6 +647,7 @@
   }
 
   if (gateMissingLead()) {
+    fireV2GhlInitiateCheckoutOnce();
     updateSummaryUi();
     wirePlanBins();
     mountStripe();
