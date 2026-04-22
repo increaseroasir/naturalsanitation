@@ -15,6 +15,7 @@
  *   GHL_LOCATION_ID             — required for /ghl-lead (sub-account location id)
  *   GHL_FUNNEL_EVENT_FIELD_ID   — optional custom field id (Contacts) to store raw funnel event_id / jobber id
  *   META_TEST_EVENT_CODE        — optional, e.g. TEST28089 → Meta Graph `test_event_code` (Test Events only)
+ *   GOOGLE_SHEET_WEBHOOK_URL    — optional Apps Script web app URL used by /lead-receipt for durable Google Sheets backup
  *
  * Optional: browser may send `test_event_code` in the JSON body; the Worker forwards it only if it
  * matches /^TEST[A-Z0-9]+$/i (same format as Events Manager test codes).
@@ -350,7 +351,33 @@ async function handleClientObserve(request) {
   }
 }
 
-async function handleLeadReceipt(request) {
+async function forwardLeadReceiptToGoogleSheet(env, payload) {
+  const url = env && typeof env.GOOGLE_SHEET_WEBHOOK_URL === 'string'
+    ? String(env.GOOGLE_SHEET_WEBHOOK_URL || '').trim()
+    : '';
+  if (!url || !/^https:\/\//.test(url)) {
+    return { forwarded: false, reason: 'GOOGLE_SHEET_WEBHOOK_URL not configured' };
+  }
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error('Google Sheet webhook HTTP ' + res.status + ' ' + (text || '').slice(0, 300));
+  }
+  return {
+    forwarded: true,
+    status: res.status,
+    body: (text || '').slice(0, 300)
+  };
+}
+
+async function handleLeadReceipt(request, env) {
   try {
     const raw = await request.text();
     if (raw.length > 32768) {
@@ -379,7 +406,23 @@ async function handleLeadReceipt(request) {
       ts: parsed.ts || Date.now()
     };
     console.warn('[lead-receipt]', JSON.stringify(payload));
-    return json({ ok: true, receiptId }, 200, corsHeaders());
+
+    let sheetForward = { forwarded: false, reason: 'not_attempted' };
+    try {
+      sheetForward = await forwardLeadReceiptToGoogleSheet(env, payload);
+      console.log('[lead-receipt] google-sheet forward', JSON.stringify(sheetForward));
+    } catch (sheetErr) {
+      console.warn(
+        '[lead-receipt] google-sheet forward failed',
+        sheetErr && sheetErr.message ? String(sheetErr.message) : sheetErr
+      );
+      sheetForward = {
+        forwarded: false,
+        reason: sheetErr && sheetErr.message ? String(sheetErr.message) : 'forward_failed'
+      };
+    }
+
+    return json({ ok: true, receiptId, sheetForward }, 200, corsHeaders());
   } catch (err) {
     console.warn('[lead-receipt] handler error', err && err.message ? String(err.message) : err);
     return json({ ok: false, error: 'Lead receipt handler failed' }, 500, corsHeaders());
@@ -763,7 +806,7 @@ export default {
     }
 
     if (isLeadReceiptPath(url.pathname)) {
-      return handleLeadReceipt(request);
+      return handleLeadReceipt(request, env);
     }
 
     if (!isCreatePaymentIntentPath(url.pathname)) {
