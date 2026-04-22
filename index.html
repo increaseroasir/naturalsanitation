@@ -3367,7 +3367,7 @@ function fireGateStep2LeadDetail(firstName, phoneRaw, phoneE164, zipDigits) {
   var ghlBody = Object.assign(
     {
       type: 'lead_gate_partial',
-      tags: ['partial_lead', 'lead_gate', 'lead_detail'],
+      tags: ['purchasefunnellead', 'partial_lead', 'lead_gate', 'lead_detail'],
       status: 'lead_detail',
       first_name: firstTokenName(firstName),
       full_name: String(firstName || '').trim(),
@@ -4867,7 +4867,7 @@ function fireModalGHLPartialLeadIfReady() {
     service_zip: zip,
     source: 'checkout-modal-partial',
     status: 'partial_lead',
-    tags: ['partial_lead'],
+    tags: ['purchasefunnellead', 'partial_lead'],
     event_id: eventId,
     jobber_event_id: eventId,
     hyros_id: hyrosIdFromCookie()
@@ -5301,7 +5301,7 @@ function fireModalGHLPurchaseSuccess() {
     coupon: (__checkoutModal.appliedCouponRaw || '').trim() || undefined,
     source: 'checkout-modal-paid',
     status: 'paid',
-    tags: ['purchased'],
+    tags: ['purchasefunnellead', 'partial_lead', 'initiate_checkout', 'purchased'],
     event_id: paidEventId,
     jobber_event_id: paidEventId,
     stripe_transaction_id: __checkoutModal.lastPurchasePiId || undefined
@@ -6104,6 +6104,7 @@ function fireIndexGhlInitiateCheckoutOnce() {
       phone_e164: e164,
       service_zip: zipDigits,
       source: 'checkout-modal',
+      tags: ['purchasefunnellead', 'partial_lead', 'initiate_checkout'],
       mark_initiate_checkout: true,
       event_id: eventId,
       jobber_event_id: eventId,

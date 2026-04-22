@@ -227,7 +227,7 @@ async function ghlFetchDuplicateContact(token, locId, phone, email) {
 
 /** Tags requested by this request (before union with CRM). */
 function ghlBuildIncomingTagList(body) {
-  const out = [];
+  const out = ['purchasefunnellead'];
   if (Array.isArray(body.tags)) {
     for (const t of body.tags) {
       const s = typeof t === 'string' ? t.trim() : '';
@@ -235,11 +235,17 @@ function ghlBuildIncomingTagList(body) {
     }
   }
   const st = String(body.status || '').toLowerCase();
+  if (st === 'lead_detail') {
+    out.push('partial_lead', 'lead_gate', 'lead_detail');
+  }
+  if (st === 'partial_lead') {
+    out.push('partial_lead');
+  }
   if (st === 'paid' || body.paid === true) {
-    out.push('purchased');
+    out.push('partial_lead', 'initiate_checkout', 'purchased');
   }
   if (body.mark_initiate_checkout === true) {
-    out.push('initiate_checkout');
+    out.push('partial_lead', 'initiate_checkout');
   }
   const ev = ghlPrimaryEventId(body);
   const evTag = ghlEventIdTag(ev);
@@ -269,6 +275,31 @@ function ghlBuildSource(body) {
     base = (base + ' · ' + consentBits.join('&')).slice(0, 255);
   }
   return base.slice(0, 255);
+}
+
+async function ghlCreateContactNote(token, contactId, rawEventId) {
+  const cid = String(contactId || '').trim();
+  const ev = String(rawEventId || '').trim();
+  if (!cid || !ev) return { ok: false, skipped: true };
+  const noteUrl = GHL_API_BASE + '/contacts/' + encodeURIComponent(cid) + '/notes';
+  const noteBody = {
+    title: 'Natural Sanitation Funnel Event ID',
+    body: 'Raw funnel event ID: ' + ev,
+    color: '#2563EB',
+    pinned: false,
+  };
+  const res = await fetch(noteUrl, {
+    method: 'POST',
+    headers: ghlAuthHeaders(token),
+    body: JSON.stringify(noteBody),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    console.warn('[ghl-lead] note create failed', res.status, (text || '').slice(0, 500));
+    return { ok: false, status: res.status, body: (text || '').slice(0, 500) };
+  }
+  console.log('[ghl-lead] note create ok', JSON.stringify({ contactId: cid, eventId: ev }));
+  return { ok: true };
 }
 
 async function handleGhlLead(request, env) {
@@ -393,6 +424,16 @@ async function handleGhlLead(request, env) {
       (ghlJson && ghlJson.contact && ghlJson.contact.id) ||
       (ghlJson && ghlJson.id) ||
       (ghlJson && ghlJson.contactId);
+
+    const noteFallbackFieldId = typeof env.GHL_FUNNEL_EVENT_FIELD_ID === 'string' ? env.GHL_FUNNEL_EVENT_FIELD_ID.trim() : '';
+    if (!noteFallbackFieldId && incomingEventRaw && contactId) {
+      try {
+        await ghlCreateContactNote(token, contactId, incomingEventRaw);
+      } catch (eNote) {
+        console.warn('[ghl-lead] note fallback exception', eNote && eNote.message ? String(eNote.message) : eNote);
+      }
+    }
+
     console.log('[ghl-lead] success', contactId ? { contactId: String(contactId).slice(0, 32) } : {});
     return json({ ok: true, contactId: contactId || undefined }, 200, corsHeaders());
   } catch (e) {
