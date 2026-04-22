@@ -235,7 +235,6 @@
       if (hashes[1]) match.ph = hashes[1];
       if (hashes[2]) match.fn = hashes[2];
       if (Object.keys(match).length) fbq('init', META_PIXEL_ID, match);
-      var opts = pixelOpts();
       fbq(
         'track',
         'Purchase',
@@ -246,7 +245,7 @@
           num_items: draft.bins,
           transaction_id: paymentIntentId,
         },
-        opts
+        { eventID: paymentIntentId }
       );
     });
     if (typeof gtag !== 'undefined') {

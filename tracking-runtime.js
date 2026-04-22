@@ -1,7 +1,8 @@
 /**
  * Natural Sanitation — shared browser attribution + Meta Pixel/CAPI bridge.
  * - One persistent journey id (localStorage ns_funnel_event_id) for CRM / Hyros stitching.
- * - Meta browser + server dedupe: each firing uses eventID = journeyId + ':' + slug (slug unique per event type).
+ * - Meta browser + server dedupe: standard events use eventID = journeyId + ':' + slug. Purchase uses the Stripe
+ *   PaymentIntent id (pi_*) as both Pixel eventID and CAPI event_id so Test Events dedupes browser + server.
  * - CAPI is sent only to your Worker (META_CAPI_ACCESS_TOKEN stays on the server).
  *
  * Config (optional on window before this script):
@@ -184,11 +185,12 @@
     persistBundle();
   }
 
-  function sendCapi(eventName, slug, customData, userPlain) {
+  /** metaEventId is the exact string sent as Meta event_id (CAPI) and Pixel eventID (browser). */
+  function sendCapi(eventName, metaEventId, customData, userPlain) {
     var payload = {
       pixel_id: META_PIXEL_ID,
       event_name: eventName,
-      event_id: dedupeId(slug),
+      event_id: metaEventId,
       event_source_url: String(location.href),
       custom_data: Object.assign(
         {
@@ -213,20 +215,29 @@
     }).catch(function () {});
   }
 
-  function trackStandard(eventName, slug, customData, userPlain) {
-    var opts = { eventID: dedupeId(slug) };
+  /** Optional 5th arg overrideMetaEventId: when set, used as Pixel eventID and CAPI event_id (Purchase = Stripe pi_*). */
+  function trackStandard(eventName, slug, customData, userPlain, overrideMetaEventId) {
+    var eventId =
+      overrideMetaEventId != null && String(overrideMetaEventId).trim()
+        ? String(overrideMetaEventId).trim()
+        : dedupeId(slug);
+    var opts = { eventID: eventId };
     if (typeof fbq !== 'undefined') {
       fbq('track', eventName, customData || {}, opts);
     }
-    sendCapi(eventName, slug, customData, userPlain);
+    sendCapi(eventName, eventId, customData, userPlain);
   }
 
-  function trackCustom(name, slug, customData, userPlain) {
-    var opts = { eventID: dedupeId(slug) };
+  function trackCustom(name, slug, customData, userPlain, overrideMetaEventId) {
+    var eventId =
+      overrideMetaEventId != null && String(overrideMetaEventId).trim()
+        ? String(overrideMetaEventId).trim()
+        : dedupeId(slug);
+    var opts = { eventID: eventId };
     if (typeof fbq !== 'undefined') {
       fbq('trackCustom', name, customData || {}, opts);
     }
-    sendCapi(name, slug, customData, userPlain);
+    sendCapi(name, eventId, customData, userPlain);
   }
 
   function standardLeadAlreadyFired() {
@@ -390,7 +401,7 @@
       return;
     }
     var slug = 'Purchase_' + piId;
-    trackStandard('Purchase', slug, customData || {}, userPlain || {});
+    trackStandard('Purchase', slug, customData || {}, userPlain || {}, piId);
   }
 
   function fireLeadStandard(customData, userPlain) {

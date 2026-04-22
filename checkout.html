@@ -958,10 +958,6 @@ function onSuccess({ name, email, phone, address, paymentIntentId }) {
       {}
     );
   } else if (typeof fbq !== 'undefined') {
-    var pixOpts = {};
-    if (window.NSTracking && NSTracking.dedupeId) {
-      pixOpts = { eventID: NSTracking.dedupeId('Purchase_' + piId) };
-    }
     fbq(
       'track',
       'Purchase',
@@ -972,7 +968,7 @@ function onSuccess({ name, email, phone, address, paymentIntentId }) {
         num_items: selectedBins,
         transaction_id: piId
       },
-      pixOpts
+      { eventID: piId }
     );
   }
 

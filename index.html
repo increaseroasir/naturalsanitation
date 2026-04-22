@@ -5155,7 +5155,7 @@ function firePurchaseDeduped(pi) {
       {}
     );
   } else if (typeof fbq !== 'undefined') {
-    fbq('track', 'Purchase', purchaseCustom, funnelPixelOpts('Purchase_' + pi.id));
+    fbq('track', 'Purchase', purchaseCustom, { eventID: pi.id });
     fbq(
       'trackCustom',
       'HyrosPurchase',

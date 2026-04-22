@@ -198,7 +198,24 @@ async function handleMetaCapi(request, env) {
   }
 
   if (!res.ok) {
+    if (eventName === 'Purchase') {
+      console.warn(
+        '[meta-capi] Purchase Meta error',
+        JSON.stringify({ event_id: eventId || null, status: res.status, meta: parsed })
+      );
+    }
     return json({ error: 'Meta CAPI error', meta: parsed }, res.status >= 400 && res.status < 600 ? res.status : 502, corsHeaders());
+  }
+
+  if (eventName === 'Purchase') {
+    console.log(
+      '[meta-capi] Purchase ok',
+      JSON.stringify({
+        event_id: eventId || null,
+        events_received: parsed.events_received,
+        fbtrace_id: parsed.fbtrace_id,
+      })
+    );
   }
 
   return json({ ok: true, events_received: parsed.events_received, fbtrace_id: parsed.fbtrace_id }, 200, corsHeaders());
