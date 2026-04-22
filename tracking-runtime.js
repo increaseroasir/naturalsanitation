@@ -18,6 +18,9 @@
   var CAPI_URL =
     global.__NS_CAPI_URL ||
     'https://ns-payment.increase-roas.workers.dev/meta-capi';
+  var OBSERVE_URL =
+    global.__NS_OBSERVE_URL ||
+    'https://ns-payment.increase-roas.workers.dev/client-observe';
 
   var LS_ATTR = 'ns_attribution_bundle';
   var LS_JOURNEY = 'ns_funnel_event_id';
@@ -186,6 +189,87 @@
     persistBundle();
   }
 
+  function shortText(v, maxLen) {
+    var s = String(v == null ? '' : v);
+    var m = typeof maxLen === 'number' && maxLen > 0 ? maxLen : 400;
+    return s.length > m ? s.slice(0, m) : s;
+  }
+
+  function postObserve(kind, payload) {
+    if (!OBSERVE_URL || !/^https:\/\//.test(OBSERVE_URL)) {
+      return;
+    }
+    var body = Object.assign(
+      {
+        kind: String(kind || 'client_event'),
+        journey_event_id: journeyId() || '',
+        page_url: String(location.href || ''),
+        referrer: String(document.referrer || ''),
+        user_agent: typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '',
+        ts: Date.now()
+      },
+      payload || {}
+    );
+    fetch(OBSERVE_URL, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      keepalive: true
+    }).catch(function () {});
+  }
+
+  function observeLeadRequest(kind, leadBody, extra) {
+    var b = leadBody && typeof leadBody === 'object' ? leadBody : {};
+    postObserve(
+      kind || 'ghl_request',
+      Object.assign(
+        {
+          source: shortText(b.source || '', 120),
+          status: shortText(b.status || '', 80),
+          type: shortText(b.type || '', 80),
+          event_id: shortText(b.event_id || b.jobber_event_id || '', 160),
+          phone_last4: String(b.phone_e164 || b.phone || '').replace(/\D/g, '').slice(-4),
+          service_zip: shortText(b.service_zip || '', 20)
+        },
+        extra || {}
+      )
+    );
+  }
+
+  function observeException(kind, err, extra) {
+    var e = err || {};
+    postObserve(
+      kind || 'client_exception',
+      Object.assign(
+        {
+          error_name: shortText(e.name || '', 120),
+          error_message: shortText(e.message || e.reason || e, 500),
+          stack: shortText(e.stack || '', 1500)
+        },
+        extra || {}
+      )
+    );
+  }
+
+  function installGlobalObserveHandlers() {
+    if (global.__NS_OBSERVE_INSTALLED) {
+      return;
+    }
+    global.__NS_OBSERVE_INSTALLED = true;
+    global.addEventListener('error', function (evt) {
+      observeException('window_error', evt && evt.error ? evt.error : evt, {
+        filename: shortText(evt && evt.filename ? evt.filename : '', 300),
+        lineno: evt && evt.lineno ? evt.lineno : 0,
+        colno: evt && evt.colno ? evt.colno : 0
+      });
+    });
+    global.addEventListener('unhandledrejection', function (evt) {
+      var reason = evt && evt.reason ? evt.reason : evt;
+      observeException('unhandled_rejection', reason, {});
+    });
+  }
+
   /** metaEventId is the exact string sent as Meta event_id (CAPI) and Pixel eventID (browser). */
   function sendCapi(eventName, metaEventId, customData, userPlain) {
     var payload = {
@@ -321,6 +405,7 @@
     if (state.bootstrapped) {
       return state.bundle;
     }
+    installGlobalObserveHandlers();
     var fromUrl = captureFromUrl();
     var prev = readJsonLS(LS_ATTR) || {};
     state.bundle = mergeBundles(prev, fromUrl);
@@ -452,8 +537,12 @@
     fireLeadStandard: fireLeadStandard,
     standardLeadAlreadyFired: standardLeadAlreadyFired,
     markStandardLeadFired: markStandardLeadFired,
+    postObserve: postObserve,
+    observeLeadRequest: observeLeadRequest,
+    observeException: observeException,
     META_PIXEL_ID: META_PIXEL_ID,
-    CAPI_URL: CAPI_URL
+    CAPI_URL: CAPI_URL,
+    OBSERVE_URL: OBSERVE_URL
   };
 
   if (document.readyState === 'loading') {

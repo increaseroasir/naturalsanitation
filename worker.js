@@ -5,6 +5,7 @@
  *   POST /create-payment-intent — Stripe PaymentIntent (env STRIPE_SECRET_KEY)
  *   POST /meta-capi — Meta Conversions API (env META_CAPI_ACCESS_TOKEN, never expose to browser)
  *   POST /ghl-lead — GoHighLevel Contacts API upsert (env GHL_API_TOKEN, GHL_LOCATION_ID; never in browser)
+ *   POST /client-observe — lightweight browser/lead observability sink for debugging failed lead delivery
  *
  * Secrets / vars (Cloudflare dashboard → Worker → Settings → Variables):
  *   STRIPE_SECRET_KEY           — required for PaymentIntents
@@ -44,6 +45,10 @@ function isMetaCapiPath(pathname) {
 
 function isGhlLeadPath(pathname) {
   return pathname === '/ghl-lead' || pathname.endsWith('/ghl-lead');
+}
+
+function isClientObservePath(pathname) {
+  return pathname === '/client-observe' || pathname.endsWith('/client-observe');
 }
 
 const GHL_FORWARD_MAX_BYTES = 131072;
@@ -302,32 +307,82 @@ async function ghlCreateContactNote(token, contactId, rawEventId) {
   return { ok: true };
 }
 
-async function handleGhlLead(request, env) {
+async function handleClientObserve(request) {
   try {
-    console.log('[ghl-lead] start');
-    const token = env.GHL_API_TOKEN;
-    const locId = env.GHL_LOCATION_ID;
-    if (!token || typeof token !== 'string' || !locId || typeof locId !== 'string') {
-      return json({ ok: false, error: 'GHL_API_TOKEN or GHL_LOCATION_ID not configured' }, 503, corsHeaders());
-    }
-    console.log('[ghl-lead] env ok');
     const raw = await request.text();
-    if (raw.length > GHL_FORWARD_MAX_BYTES) {
+    if (raw.length > 32768) {
       return json({ ok: false, error: 'Payload too large' }, 413, corsHeaders());
     }
     let parsed;
     try {
-      parsed = JSON.parse(raw);
+      parsed = raw ? JSON.parse(raw) : {};
     } catch {
       return json({ ok: false, error: 'Invalid JSON' }, 400, corsHeaders());
     }
     if (!parsed || typeof parsed !== 'object') {
       return json({ ok: false, error: 'Invalid body' }, 400, corsHeaders());
     }
+    const payload = {
+      kind: String(parsed.kind || '').slice(0, 80),
+      stage: String(parsed.stage || '').slice(0, 120),
+      source: String(parsed.source || '').slice(0, 120),
+      status: String(parsed.status || '').slice(0, 80),
+      type: String(parsed.type || '').slice(0, 80),
+      event_id: String(parsed.event_id || '').slice(0, 160),
+      phone_last4: String(parsed.phone_last4 || '').slice(-4),
+      service_zip: String(parsed.service_zip || '').slice(0, 20),
+      http_status: parsed.http_status || null,
+      error_message: String(parsed.error_message || '').slice(0, 500),
+      response_body: String(parsed.response_body || '').slice(0, 500),
+      page_url: String(parsed.page_url || '').slice(0, 500),
+      ts: parsed.ts || Date.now()
+    };
+    console.warn('[client-observe]', JSON.stringify(payload));
+    return json({ ok: true }, 200, corsHeaders());
+  } catch (err) {
+    console.warn('[client-observe] handler error', err && err.message ? String(err.message) : err);
+    return json({ ok: false, error: 'Observability handler failed' }, 500, corsHeaders());
+  }
+}
+
+async function handleGhlLead(request, env) {
+  try {
+    const leadReceiptId = crypto.randomUUID();
+    console.log('[ghl-lead] start', JSON.stringify({ leadReceiptId }));
+    const token = env.GHL_API_TOKEN;
+    const locId = env.GHL_LOCATION_ID;
+    if (!token || typeof token !== 'string' || !locId || typeof locId !== 'string') {
+      return json({ ok: false, error: 'GHL_API_TOKEN or GHL_LOCATION_ID not configured', leadReceiptId }, 503, corsHeaders());
+    }
+    console.log('[ghl-lead] env ok');
+    const raw = await request.text();
+    if (raw.length > GHL_FORWARD_MAX_BYTES) {
+      return json({ ok: false, error: 'Payload too large', leadReceiptId }, 413, corsHeaders());
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return json({ ok: false, error: 'Invalid JSON', leadReceiptId }, 400, corsHeaders());
+    }
+    if (!parsed || typeof parsed !== 'object') {
+      return json({ ok: false, error: 'Invalid body', leadReceiptId }, 400, corsHeaders());
+    }
     console.log('[ghl-lead] parsed ok');
     const phone = ghlNormalizedPhone(parsed);
     if (!phone) {
-      return json({ ok: false, error: 'Missing or invalid phone' }, 400, corsHeaders());
+      console.warn(
+        '[ghl-lead] reject missing phone',
+        JSON.stringify({
+          leadReceiptId,
+          source: String(parsed.source || '').slice(0, 120),
+          status: String(parsed.status || '').slice(0, 80),
+          type: String(parsed.type || '').slice(0, 80),
+          eventId: String(ghlPrimaryEventId(parsed) || '').slice(0, 160),
+          serviceZip: String(parsed.service_zip || parsed.zip || '').slice(0, 20)
+        })
+      );
+      return json({ ok: false, error: 'Missing or invalid phone', leadReceiptId }, 400, corsHeaders());
     }
     console.log('[ghl-lead] phone ok');
     const { firstName, lastName, name } = ghlBuildNameParts(parsed);
@@ -413,6 +468,7 @@ async function handleGhlLead(request, env) {
         {
           ok: false,
           error: 'GHL contact upsert failed',
+          leadReceiptId,
           status: ghlRes.status,
           details: typeof ghlJson === 'object' ? ghlJson : {},
         },
@@ -434,8 +490,11 @@ async function handleGhlLead(request, env) {
       }
     }
 
-    console.log('[ghl-lead] success', contactId ? { contactId: String(contactId).slice(0, 32) } : {});
-    return json({ ok: true, contactId: contactId || undefined }, 200, corsHeaders());
+    console.log(
+      '[ghl-lead] success',
+      contactId ? { leadReceiptId, contactId: String(contactId).slice(0, 32) } : { leadReceiptId }
+    );
+    return json({ ok: true, leadReceiptId, contactId: contactId || undefined }, 200, corsHeaders());
   } catch (e) {
     const msg = e && e.message ? String(e.message) : String(e);
     const stack = e && e.stack ? String(e.stack) : '';
@@ -656,6 +715,10 @@ export default {
 
     if (isGhlLeadPath(url.pathname)) {
       return handleGhlLead(request, env);
+    }
+
+    if (isClientObservePath(url.pathname)) {
+      return handleClientObserve(request);
     }
 
     if (!isCreatePaymentIntentPath(url.pathname)) {

@@ -579,13 +579,25 @@ function postCheckoutGhlPartialToWorker(body) {
   fetch(GHL_LEAD_PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: h })
     .then(function (res) {
       console.log('[checkout GHL partial] response status', res.status);
-      return res.text();
-    })
-    .then(function (txt) {
-      console.log('[checkout GHL partial] response body', (txt || '').slice(0, 500));
+      return res.text().then(function (txt) {
+        console.log('[checkout GHL partial] response body', (txt || '').slice(0, 500));
+        if (!res.ok && window.NSTracking && NSTracking.observeLeadRequest) {
+          NSTracking.observeLeadRequest('ghl_non_ok', body, {
+            stage: body.type || body.status || body.source || 'checkout',
+            http_status: res.status,
+            response_body: (txt || '').slice(0, 500)
+          });
+        }
+      });
     })
     .catch(function (err) {
       console.warn('[checkout GHL partial] fetch error', err && err.message ? err.message : err);
+      if (window.NSTracking && NSTracking.observeLeadRequest) {
+        NSTracking.observeLeadRequest('ghl_fetch_error', body, {
+          stage: body.type || body.status || body.source || 'checkout',
+          error_message: err && err.message ? err.message : String(err)
+        });
+      }
       __checkoutGhlPartialLastHash = '';
     });
 }
@@ -683,9 +695,7 @@ function fireCheckoutGhlInitiateCheckoutOnce() {
     jobber_event_id: eventId,
     hyros_id: checkoutHyrosIdFromCookie()
   };
-  fetch(GHL_LEAD_PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(
-    function () {}
-  );
+  postCheckoutGhlPartialToWorker(body);
 }
 
 function fireCheckoutGhlPartialFromWallet(payerName, payerPhone) {
@@ -1158,23 +1168,19 @@ function onSuccess({ name, email, phone, address, paymentIntentId }) {
   if (GHL_LEAD_PROXY_URL && /^https:\/\//.test(GHL_LEAD_PROXY_URL)) {
     var paidEidGhl = checkoutGetFunnelEventId();
     var phoneE164Ghl = checkoutPhoneToE164US(phone) || phone;
-    fetch(GHL_LEAD_PROXY_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        name, email, phone, phone_e164: phoneE164Ghl, address,
-        plan: selectedPlan,
-        bins: selectedBins,
-        price: getCheckoutChargeDollars(),
-        service_zip: getCheckoutServiceZipDigits(),
-        stripe_transaction_id: piId,
-        source: 'checkout-page',
-        status: 'paid',
-        tags: ['purchasefunnellead', 'partial_lead', 'initiate_checkout', 'purchased'],
-        event_id: paidEidGhl,
-        jobber_event_id: paidEidGhl
-      })
-    }).catch(()=>{});
+    postCheckoutGhlPartialToWorker({
+      name, email, phone, phone_e164: phoneE164Ghl, address,
+      plan: selectedPlan,
+      bins: selectedBins,
+      price: getCheckoutChargeDollars(),
+      service_zip: getCheckoutServiceZipDigits(),
+      stripe_transaction_id: piId,
+      source: 'checkout-page',
+      status: 'paid',
+      tags: ['purchasefunnellead', 'partial_lead', 'initiate_checkout', 'purchased'],
+      event_id: paidEidGhl,
+      jobber_event_id: paidEidGhl
+    });
   }
 
   showCheckoutSuccessUi();

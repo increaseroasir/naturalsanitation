@@ -3114,6 +3114,54 @@ function writeLeadGateDone(payload) {
   } catch (e) {}
 }
 
+function postObservedGhlLead(body, stage) {
+  if (!GHL_LEAD_PROXY_URL || !/^https:\/\//.test(GHL_LEAD_PROXY_URL)) {
+    return Promise.resolve({ ok: false, skipped: true });
+  }
+  var raw = JSON.stringify(body);
+  var meta = {
+    stage: stage || body.type || body.status || body.source || 'unknown',
+    source: body.source || '',
+    status: body.status || '',
+    type: body.type || '',
+    event_id: body.event_id || body.jobber_event_id || '',
+    phone_last4: String(body.phone_e164 || body.phone || '').replace(/\D/g, '').slice(-4)
+  };
+  return fetch(GHL_LEAD_PROXY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: raw
+  })
+    .then(function (res) {
+      return res.text().then(function (txt) {
+        console.log('[index GHL observed]', meta.stage, res.status, (txt || '').slice(0, 300));
+        if (!res.ok && window.NSTracking && NSTracking.observeLeadRequest) {
+          NSTracking.observeLeadRequest(
+            'ghl_non_ok',
+            body,
+            Object.assign({}, meta, {
+              http_status: res.status,
+              response_body: (txt || '').slice(0, 500)
+            })
+          );
+        }
+        return { ok: res.ok, status: res.status, body: txt };
+      });
+    })
+    .catch(function (err) {
+      if (window.NSTracking && NSTracking.observeLeadRequest) {
+        NSTracking.observeLeadRequest(
+          'ghl_fetch_error',
+          body,
+          Object.assign({}, meta, {
+            error_message: err && err.message ? err.message : String(err)
+          })
+        );
+      }
+      throw err;
+    });
+}
+
 function setPageBehindGateLocked(locked) {
   var shell = document.getElementById('page-behind-gate');
   if (!shell) {
@@ -3241,28 +3289,7 @@ function fireGateStep1ZipEligible(zipDigits) {
     consent,
     utms
   );
-  if (GHL_LEAD_PROXY_URL && /^https:\/\//.test(GHL_LEAD_PROXY_URL)) {
-    fetch(GHL_LEAD_PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(ghlBody)
-    }).catch(function () {});
-  }
-  if (window.NSTracking && !NSTracking.standardLeadAlreadyFired()) {
-    NSTracking.fireLeadStandard(
-      {
-        content_name: 'ZIP verified — in area (gate step 1)',
-        value: PRICING[2].annual,
-        currency: 'USD',
-        consent_tcpa: consent.consent_tcpa,
-        consent_timestamp: consent.consent_timestamp,
-        consent_method: consent.consent_method,
-        content_category: z
-      },
-      { zp: z }
-    );
-    NSTracking.markStandardLeadFired();
-  }
+  postObservedGhlLead(ghlBody, 'landing_zip_eligible').catch(function () {});
   if (typeof fbq !== 'undefined') {
     fbq(
       'trackCustom',
@@ -3385,14 +3412,23 @@ function fireGateStep2LeadDetail(firstName, phoneRaw, phoneE164, zipDigits) {
     consent,
     utms
   );
-  if (GHL_LEAD_PROXY_URL && /^https:\/\//.test(GHL_LEAD_PROXY_URL)) {
-    fetch(GHL_LEAD_PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(ghlBody)
-    }).catch(function () {});
-  }
+  postObservedGhlLead(ghlBody, 'landing_lead_detail').catch(function () {});
   if (window.NSTracking) {
+    if (!NSTracking.standardLeadAlreadyFired()) {
+      NSTracking.fireLeadStandard(
+        {
+          content_name: 'Lead gate — name + phone',
+          value: PRICING[2].annual,
+          currency: 'USD',
+          consent_tcpa: consent.consent_tcpa,
+          consent_timestamp: consent.consent_timestamp,
+          consent_method: consent.consent_method,
+          content_category: z
+        },
+        { fn: firstTokenName(firstName), phone: phoneE164, zp: z }
+      );
+      NSTracking.markStandardLeadFired();
+    }
     NSTracking.updateContext({
       service_zip: z,
       plan_intent: selectedPlan,
@@ -3973,67 +4009,11 @@ function fireFunnelStep1Lead(zip, phoneOpt, emailOpt) {
     },
     consent
   );
-  if (GHL_LEAD_PROXY_URL && /^https:\/\//.test(GHL_LEAD_PROXY_URL)) {
-    fetch(GHL_LEAD_PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    }).catch(function () {});
-  }
+  postObservedGhlLead(body, 'modal_zip_eligible').catch(function () {});
   if (window.NSTracking && NSTracking.standardLeadAlreadyFired()) {
     return Promise.resolve();
   }
-  var em = (emailOpt || '').toLowerCase().trim();
-  var ph = normalizePhoneForMetaHash(phoneOpt || '');
-  var zp = zipDigits;
-  return Promise.all([sha256Hex(em), sha256Hex(ph), sha256Hex(zp)]).then(function (hashes) {
-    if (typeof fbq !== 'undefined') {
-      var match = {};
-      if (hashes[0]) {
-        match.em = hashes[0];
-      }
-      if (hashes[1]) {
-        match.ph = hashes[1];
-      }
-      if (hashes[2]) {
-        match.zp = hashes[2];
-      }
-      if (Object.keys(match).length) {
-        fbq('init', META_PIXEL_ID_FUNNEL, match);
-      }
-    }
-    if (window.NSTracking && !NSTracking.standardLeadAlreadyFired()) {
-      NSTracking.fireLeadStandard(
-        {
-          content_name: 'Verify ZIP — modal step 1',
-          value: PRICING[2].annual,
-          currency: 'USD',
-          consent_tcpa: consent.consent_tcpa,
-          consent_timestamp: consent.consent_timestamp,
-          consent_method: consent.consent_method,
-          content_category: zipDigits || undefined
-        },
-        { zp: zp, email: em || undefined, phone: phoneOpt || undefined }
-      );
-      NSTracking.markStandardLeadFired();
-    } else if (typeof fbq !== 'undefined') {
-      fbq(
-        'track',
-        'Lead',
-        Object.assign(
-          {
-            content_name: 'Verify ZIP — modal step 1',
-            value: PRICING[2].annual,
-            currency: 'USD',
-            consent_tcpa: consent.consent_tcpa,
-            consent_timestamp: consent.consent_timestamp,
-            consent_method: consent.consent_method
-          },
-          zipDigits ? { content_category: zipDigits } : {}
-        ),
-        funnelPixelOpts('Lead_modal_zip')
-      );
-    }
+  return Promise.resolve().then(function () {
     if (typeof fbq !== 'undefined') {
       fbq(
         'trackCustom',
@@ -4055,27 +4035,22 @@ function fireOutAreaWaitlistLead(zipDigits, phoneE164) {
     consent_method: 'modal_out_waitlist'
   };
   var z = String(zipDigits || '').replace(/\D/g, '').slice(0, 5);
-  if (GHL_LEAD_PROXY_URL && /^https:\/\//.test(GHL_LEAD_PROXY_URL)) {
-    fetch(GHL_LEAD_PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(
-        Object.assign(
-          {
-            type: 'lead_modal_out_waitlist',
-            service_zip: z,
-            phone_e164: phoneE164,
-            hyros_id: hyrosIdFromCookie(),
-            event_id: eventId,
-            jobber_event_id: eventId,
-            source: 'checkout-modal-out',
-            status: 'waitlist_routes'
-          },
-          consent
-        )
-      )
-    }).catch(function () {});
-  }
+  postObservedGhlLead(
+    Object.assign(
+      {
+        type: 'lead_modal_out_waitlist',
+        service_zip: z,
+        phone_e164: phoneE164,
+        hyros_id: hyrosIdFromCookie(),
+        event_id: eventId,
+        jobber_event_id: eventId,
+        source: 'checkout-modal-out',
+        status: 'waitlist_routes'
+      },
+      consent
+    ),
+    'modal_waitlist'
+  ).catch(function () {});
   var ph = normalizePhoneForMetaHash(phoneE164);
   return Promise.all([sha256Hex(ph), sha256Hex(z)]).then(function (hashes) {
     if (typeof fbq !== 'undefined') {
@@ -4329,21 +4304,18 @@ function fireFunnelStep2Update(fullName, phoneE164, emailOpt) {
     email: emailOpt || undefined,
     service_zip: zip
   };
-  if (GHL_LEAD_PROXY_URL && /^https:\/\//.test(GHL_LEAD_PROXY_URL)) {
-    fetch(GHL_LEAD_PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'lead_modal_detail',
-        customer_data: cust,
-        event_id: eventId,
-        jobber_event_id: eventId,
-        hyros_id: hyrosIdFromCookie(),
-        source: 'checkout-modal-details',
-        status: 'lead_detail'
-      })
-    }).catch(function () {});
-  }
+  postObservedGhlLead(
+    {
+      type: 'lead_modal_detail',
+      customer_data: cust,
+      event_id: eventId,
+      jobber_event_id: eventId,
+      hyros_id: hyrosIdFromCookie(),
+      source: 'checkout-modal-details',
+      status: 'lead_detail'
+    },
+    'modal_lead_detail'
+  ).catch(function () {});
   if (__checkoutModal.funnelStep2Sent) {
     return Promise.resolve();
   }
@@ -4368,6 +4340,23 @@ function fireFunnelStep2Update(fullName, phoneE164, emailOpt) {
       }
     }
     if (window.NSTracking) {
+      if (!NSTracking.standardLeadAlreadyFired()) {
+        NSTracking.fireLeadStandard(
+          {
+            content_name: 'Checkout modal — contact detail',
+            value: PRICING[2].annual,
+            currency: 'USD',
+            step: 2
+          },
+          {
+            fn: firstTokenName(fullName),
+            phone: phoneE164,
+            zp: String(zip || '').replace(/\D/g, '').slice(0, 5),
+            email: em || undefined
+          }
+        );
+        NSTracking.markStandardLeadFired();
+      }
       NSTracking.fireLeadDetail(
         {
           content_name: 'Checkout modal — contact detail',
@@ -4877,11 +4866,7 @@ function fireModalGHLPartialLeadIfReady() {
     return;
   }
   __ghlModalLeadLastHash = h;
-  fetch(GHL_LEAD_PROXY_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: h
-  }).catch(function() {});
+  postObservedGhlLead(JSON.parse(h), 'modal_partial').catch(function() {});
 }
 
 function syncNameOnCardFromStep1() {
@@ -5306,11 +5291,7 @@ function fireModalGHLPurchaseSuccess() {
     jobber_event_id: paidEventId,
     stripe_transaction_id: __checkoutModal.lastPurchasePiId || undefined
   };
-  fetch(GHL_LEAD_PROXY_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  }).catch(function() {});
+  postObservedGhlLead(body, 'modal_paid').catch(function() {});
 }
 
 function onCheckoutSuccess(pi) {
@@ -6092,10 +6073,8 @@ function fireIndexGhlInitiateCheckoutOnce() {
     ? String(document.getElementById('zip-input').value || '').replace(/\D/g, '').slice(0, 5)
     : '';
   var eventId = getOrCreateFunnelEventId();
-  fetch(GHL_LEAD_PROXY_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  postObservedGhlLead(
+    {
       type: 'lead_modal_initiate_checkout',
       name: name,
       first_name: firstTokenName(name),
@@ -6109,8 +6088,9 @@ function fireIndexGhlInitiateCheckoutOnce() {
       event_id: eventId,
       jobber_event_id: eventId,
       hyros_id: hyrosIdFromCookie()
-    })
-  }).catch(function () {});
+    },
+    'modal_initiate_checkout'
+  ).catch(function () {});
 }
 
 function enterModalPaymentStepFromDetails() {
