@@ -147,43 +147,23 @@ head.appendChild(script);
     }
     @media(max-width:880px){.hero-columns{grid-template-columns:1fr}}
 
-    /* ── VSL ── */
+    /* ── VSL (hero video) ── */
     .vsl-wrapper{
       position:relative;
       width:100%;
-      padding-top:56.25%;
+      aspect-ratio:16/9;
       background:#0a0a0a;
       border-radius:var(--r);
       overflow:hidden;
       box-shadow:0 6px 28px rgba(0,0,0,.22);
       border:1px solid rgba(255,255,255,.08);
     }
-    .vsl-play-overlay{
-      position:absolute;
-      inset:0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      pointer-events:none;
-      background:linear-gradient(180deg,rgba(0,0,0,.12) 0%,rgba(0,0,0,.35) 100%);
-    }
-    .vsl-play-btn{
-      width:64px;height:64px;border-radius:50%;
-      background:rgba(255,255,255,.92);
-      color:var(--navy);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:22px;
-      padding-left:4px;
-      box-shadow:0 4px 20px rgba(0,0,0,.35);
-    }
-    .vsl-wrapper #vidalytics_embed_jkpHkAqaro1HFGTh{
-      position:absolute!important;
-      top:0;left:0;
-      width:100%!important;
-      height:100%!important;
-      padding-top:0!important;
+    .vsl-wrapper video.vsl-video{
+      display:block;
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      vertical-align:top;
     }
 
     /* ── PLAN COLUMN ── */
@@ -709,6 +689,18 @@ head.appendChild(script);
       text-align:center;
       padding:10px;
       line-height:1.35;
+    }
+    .gbp-photo-thumb{
+      padding:0;
+      background:#0f1115;
+      overflow:hidden;
+    }
+    .gbp-photo-thumb img{
+      width:200px;
+      height:150px;
+      object-fit:cover;
+      display:block;
+      border-radius:8px;
     }
     .gbp-reviews-grid{
       display:grid;
@@ -1659,8 +1651,16 @@ head.appendChild(script);
           <h2 class="vsl-pre-headline">See why your bins still stink after hosing them out — and how we fully sanitize them after pickup.</h2>
         </div>
         <div class="vsl-wrapper">
-          <img src="./hero-steam-proof.jpg" alt="Before and after trash bin steam cleaning proof" fetchpriority="high" loading="eager" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
-          <div class="vsl-play-overlay" aria-hidden="true"><span class="vsl-play-btn">▶</span></div>
+          <video
+            class="vsl-video"
+            controls
+            playsinline
+            preload="metadata"
+            poster="./hero-steam-proof.jpg"
+            aria-label="Video: why bins still smell after hosing and how we steam-sanitize after pickup"
+          >
+            <source src="./media/vsl-hero.mp4" type="video/mp4" />
+          </video>
         </div>
         <button type="button" class="cta-btn cta-qualify" id="vsl-cta" onclick="handleVslCta()" style="margin-top:12px;width:100%;max-width:340px">
           Verify your ZIP
@@ -1835,11 +1835,19 @@ head.appendChild(script);
         </div>
       </div>
 
-      <div class="gbp-photo-strip" aria-label="Photo gallery placeholders">
-        <div class="gbp-photo-slot" role="img" aria-label="Before clean">Before clean</div>
-        <div class="gbp-photo-slot" role="img" aria-label="After clean">After clean</div>
-        <div class="gbp-photo-slot" role="img" aria-label="Dirty bin interior">Dirty bin interior</div>
-        <div class="gbp-photo-slot" role="img" aria-label="Clean bin after steam">Clean bin after steam</div>
+      <div class="gbp-photo-strip" aria-label="Before and after job photos">
+        <div class="gbp-photo-slot gbp-photo-thumb" role="img" aria-label="Before steam clean">
+          <img src="./before-bin-1.png" alt="Dirty trash bin before steam cleaning" width="200" height="150" loading="lazy" decoding="async" />
+        </div>
+        <div class="gbp-photo-slot gbp-photo-thumb" role="img" aria-label="After steam clean">
+          <img src="./after-bin-1.png" alt="Clean trash bin after steam treatment" width="200" height="150" loading="lazy" decoding="async" />
+        </div>
+        <div class="gbp-photo-slot gbp-photo-thumb" role="img" aria-label="Another before photo">
+          <img src="./before-bin-2.png" alt="Dirty green bin before cleaning" width="200" height="150" loading="lazy" decoding="async" />
+        </div>
+        <div class="gbp-photo-slot gbp-photo-thumb" role="img" aria-label="Another after photo">
+          <img src="./after-bin-2.png" alt="Clean green bin after steam treatment" width="200" height="150" loading="lazy" decoding="async" />
+        </div>
       </div>
 
       <div class="gbp-reviews-grid" id="gbp-reviews-grid">
