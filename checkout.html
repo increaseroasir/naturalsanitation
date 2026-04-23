@@ -510,14 +510,15 @@ var __checkoutGhlPartialTimer = null;
 var __checkoutGhlPartialLastHash = '';
 
 function checkoutDigitsOnly(s) {
-  return String(s || '').replace(/\D/g, '');
+  var d = String(s || '').replace(/\D/g, '');
+  if (d.length === 11 && d.charAt(0) === '1') d = d.slice(1);
+  return d.slice(0, 10);
 }
 
 function checkoutPhoneToE164US(raw) {
   var d = checkoutDigitsOnly(raw);
   if (d.length === 10) return '+1' + d;
-  if (d.length === 11 && d.charAt(0) === '1') return '+' + d;
-  return d.length >= 10 ? '+' + d : '';
+  return '';
 }
 
 function checkoutFirstTokenName(s) {

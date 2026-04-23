@@ -69,8 +69,9 @@
 
   function normalizePhoneForMetaHash(phone) {
     var d = String(phone || '').replace(/\D/g, '');
+    if (d.length === 11 && d.charAt(0) === '1') d = d.slice(1);
+    if (d.length > 10) d = d.slice(0, 10);
     if (d.length === 10) return '1' + d;
-    if (d.length === 11 && d.charAt(0) === '1') return d;
     return d;
   }
 
@@ -352,8 +353,9 @@
           phone: phone,
           phone_e164: (function () {
             var d = phone.replace(/\D/g, '');
+            if (d.length === 11 && d.charAt(0) === '1') d = d.slice(1);
+            if (d.length > 10) d = d.slice(0, 10);
             if (d.length === 10) return '+1' + d;
-            if (d.length === 11 && d.charAt(0) === '1') return '+' + d;
             return phone;
           })(),
           email: email || undefined,

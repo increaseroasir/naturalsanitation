@@ -3821,24 +3821,26 @@ function sha256Hex(plain) {
   });
 }
 
+function usPhoneDigits(raw) {
+  var d = String(raw || '').replace(/\D/g, '');
+  if (d.length === 11 && d.charAt(0) === '1') {
+    d = d.slice(1);
+  }
+  return d.slice(0, 10);
+}
+
 function normalizePhoneForMetaHash(phone) {
-  var d = String(phone || '').replace(/\D/g, '');
+  var d = usPhoneDigits(phone);
   if (d.length === 10) {
     return '1' + d;
-  }
-  if (d.length === 11 && d.charAt(0) === '1') {
-    return d;
   }
   return d;
 }
 
 function phoneToE164US(raw) {
-  var d = String(raw || '').replace(/\D/g, '');
+  var d = usPhoneDigits(raw);
   if (d.length === 10) {
     return '+1' + d;
-  }
-  if (d.length === 11 && d.charAt(0) === '1') {
-    return '+' + d;
   }
   return null;
 }
@@ -3852,7 +3854,7 @@ function applyPhoneMaskInput(el) {
   if (!el) {
     return;
   }
-  var d = el.value.replace(/\D/g, '').slice(0, 10);
+  var d = usPhoneDigits(el.value);
   var out = '';
   if (d.length > 0) {
     out = '(' + d.slice(0, 3);

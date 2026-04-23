@@ -87,9 +87,8 @@
   }
 
   function normalizePhoneForMetaHash(phone) {
-    var d = String(phone || '').replace(/\D/g, '');
+    var d = v2DigitsOnly(phone);
     if (d.length === 10) return '1' + d;
-    if (d.length === 11 && d.charAt(0) === '1') return d;
     return d;
   }
 
@@ -222,14 +221,15 @@
   var __v2GhlPartialLastHash = '';
 
   function v2DigitsOnly(s) {
-    return String(s || '').replace(/\D/g, '');
+    var d = String(s || '').replace(/\D/g, '');
+    if (d.length === 11 && d.charAt(0) === '1') d = d.slice(1);
+    return d.slice(0, 10);
   }
 
   function v2PhoneToE164US(raw) {
     var d = v2DigitsOnly(raw);
     if (d.length === 10) return '+1' + d;
-    if (d.length === 11 && d.charAt(0) === '1') return '+' + d;
-    return d.length >= 10 ? '+' + d : '';
+    return '';
   }
 
   function v2HyrosIdFromCookie() {
