@@ -189,7 +189,7 @@
     var fn = normalizeNameToken(merged.fn || merged.first_name || merged.full_name || '');
     var ln = normalizeNameToken(merged.ln || merged.last_name || normalizeLastNameToken(merged.full_name || ''));
     var zp = normalizeZipDigits(merged.zp || merged.zip || merged.postal_code || state.bundle.service_zip || '');
-    var externalId = String(merged.external_id || journeyId() || '').trim();
+    var externalId = String(journeyId() || merged.external_id || '').trim();
 
     if (email) {
       merged.email = email;
@@ -241,15 +241,48 @@
     return 'fb.1.' + ts + '.' + String(b.fbclid);
   }
 
+  function buildFbpFallback() {
+    var b = state.bundle || {};
+    var seed = b.journey_event_id || b.session_id || genId();
+    var cleanSeed = String(seed).replace(/[^A-Za-z0-9]/g, '').slice(0, 24) || String(Date.now());
+    return 'fb.1.' + Date.now() + '.' + cleanSeed;
+  }
+
+  function ensureCookie(name, value, maxAgeSeconds) {
+    if (!name || !value) {
+      return '';
+    }
+    try {
+      var cookie =
+        name +
+        '=' +
+        encodeURIComponent(value) +
+        '; path=/; max-age=' +
+        String(maxAgeSeconds || 7776000) +
+        '; SameSite=Lax';
+      if (location && location.protocol === 'https:') {
+        cookie += '; Secure';
+      }
+      document.cookie = cookie;
+      return getCookie(name) || value;
+    } catch (e) {
+      return value;
+    }
+  }
+
   function getMetaBrowserIds() {
     var fbp = getCookie('_fbp');
     var fbc = getCookie('_fbc');
     if (!fbc) {
       fbc = buildFbcFromFbclid();
       if (fbc) {
-        try {
-          document.cookie = '_fbc=' + encodeURIComponent(fbc) + '; path=/; max-age=7776000; SameSite=Lax';
-        } catch (e) {}
+        fbc = ensureCookie('_fbc', fbc, 7776000);
+      }
+    }
+    if (!fbp) {
+      fbp = buildFbpFallback();
+      if (fbp) {
+        fbp = ensureCookie('_fbp', fbp, 7776000);
       }
     }
     var patch = {};
