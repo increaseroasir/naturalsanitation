@@ -328,8 +328,19 @@ async function handleClientObserve(request) {
     if (!parsed || typeof parsed !== 'object') {
       return json({ ok: false, error: 'Invalid body' }, 400, corsHeaders());
     }
+    const observedIp =
+      request.headers.get('CF-Connecting-IP') ||
+      request.headers.get('True-Client-IP') ||
+      (request.headers.get('X-Forwarded-For') || '').split(',')[0].trim() ||
+      '';
+    const requestUserAgent = request.headers.get('User-Agent') || '';
     const payload = {
       kind: String(parsed.kind || '').slice(0, 80),
+      channel: String(parsed.channel || '').slice(0, 40),
+      event_name: String(parsed.event_name || '').slice(0, 80),
+      pixel_id: String(parsed.pixel_id || '').slice(0, 40),
+      journey_event_id: String(parsed.journey_event_id || '').slice(0, 160),
+      session_id: String(parsed.session_id || '').slice(0, 160),
       stage: String(parsed.stage || '').slice(0, 120),
       source: String(parsed.source || '').slice(0, 120),
       status: String(parsed.status || '').slice(0, 80),
@@ -337,13 +348,33 @@ async function handleClientObserve(request) {
       event_id: String(parsed.event_id || '').slice(0, 160),
       phone_last4: String(parsed.phone_last4 || '').slice(-4),
       service_zip: String(parsed.service_zip || '').slice(0, 20),
+      currency: String(parsed.currency || '').slice(0, 16),
+      custom_data_keys: String(parsed.custom_data_keys || '').slice(0, 500),
+      pixel_track_type: String(parsed.pixel_track_type || '').slice(0, 40),
+      capi_url: String(parsed.capi_url || '').slice(0, 200),
+      page_url: String(parsed.page_url || '').slice(0, 500),
+      referrer: String(parsed.referrer || '').slice(0, 500),
+      browser_user_agent: String(parsed.user_agent || '').slice(0, 500),
+      request_user_agent: String(requestUserAgent || '').slice(0, 500),
+      observed_client_ip: String(observedIp || '').slice(0, 80),
+      fbp_present: !!parsed.fbp_present,
+      fbc_present: !!parsed.fbc_present,
+      fbclid_present: !!parsed.fbclid_present,
+      email_present: !!parsed.email_present,
+      phone_present: !!parsed.phone_present,
+      first_name_present: !!parsed.first_name_present,
+      last_name_present: !!parsed.last_name_present,
+      zip_present: !!parsed.zip_present,
+      external_id_present: !!parsed.external_id_present,
+      value_present: !!parsed.value_present,
+      test_event_code_present: !!parsed.test_event_code_present,
+      ok: typeof parsed.ok === 'boolean' ? parsed.ok : null,
       http_status: parsed.http_status || null,
       error_message: String(parsed.error_message || '').slice(0, 500),
       response_body: String(parsed.response_body || '').slice(0, 500),
-      page_url: String(parsed.page_url || '').slice(0, 500),
       ts: parsed.ts || Date.now()
     };
-    console.warn('[client-observe]', JSON.stringify(payload));
+    console.log('[client-observe]', JSON.stringify(payload));
     return json({ ok: true }, 200, corsHeaders());
   } catch (err) {
     console.warn('[client-observe] handler error', err && err.message ? String(err.message) : err);
@@ -741,6 +772,25 @@ async function handleMetaCapi(request, env) {
     '/events?access_token=' +
     encodeURIComponent(token);
 
+  console.log(
+    '[meta-capi] dispatch',
+    JSON.stringify({
+      event_name: eventName,
+      event_id: eventId || null,
+      pixel_id: pixelId,
+      journey_event_id: customData && customData.journey_event_id ? customData.journey_event_id : null,
+      session_id: customData && customData.session_id ? customData.session_id : null,
+      client_ip_address: ip || null,
+      client_user_agent: ua ? String(ua).slice(0, 240) : null,
+      fbp_present: !!body.fbp,
+      fbc_present: !!body.fbc,
+      user_data_keys: Object.keys(userData || {}).sort(),
+      custom_data_keys: Object.keys(customData || {}).sort(),
+      event_source_url: eventSourceUrl || null,
+      test_event_code: testEventCode || null,
+    })
+  );
+
   const res = await fetch(graphUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -756,25 +806,29 @@ async function handleMetaCapi(request, env) {
   }
 
   if (!res.ok) {
-    if (eventName === 'Purchase') {
-      console.warn(
-        '[meta-capi] Purchase Meta error',
-        JSON.stringify({ event_id: eventId || null, status: res.status, meta: parsed })
-      );
-    }
+    console.warn(
+      '[meta-capi] error',
+      JSON.stringify({
+        event_name: eventName,
+        event_id: eventId || null,
+        status: res.status,
+        fbtrace_id: parsed && parsed.fbtrace_id ? parsed.fbtrace_id : null,
+        meta: parsed,
+      })
+    );
     return json({ error: 'Meta CAPI error', meta: parsed }, res.status >= 400 && res.status < 600 ? res.status : 502, corsHeaders());
   }
 
-  if (eventName === 'Purchase') {
-    console.log(
-      '[meta-capi] Purchase ok',
-      JSON.stringify({
-        event_id: eventId || null,
-        events_received: parsed.events_received,
-        fbtrace_id: parsed.fbtrace_id,
-      })
-    );
-  }
+  console.log(
+    '[meta-capi] ok',
+    JSON.stringify({
+      event_name: eventName,
+      event_id: eventId || null,
+      status: res.status,
+      events_received: parsed.events_received,
+      fbtrace_id: parsed.fbtrace_id,
+    })
+  );
 
   return json({ ok: true, events_received: parsed.events_received, fbtrace_id: parsed.fbtrace_id }, 200, corsHeaders());
 }

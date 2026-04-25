@@ -255,6 +255,48 @@
     );
   }
 
+  function buildMetaObservePayload(channel, eventName, metaEventId, customData, userPlain, extra) {
+    var plain = userPlain && typeof userPlain === 'object' ? userPlain : {};
+    var custom = customData && typeof customData === 'object' ? customData : {};
+    var b = state.bundle || {};
+    var fbp = getCookie('_fbp');
+    var fbc = getCookie('_fbc');
+    return Object.assign(
+      {
+        channel: shortText(channel || '', 40),
+        event_name: shortText(eventName || '', 80),
+        event_id: shortText(metaEventId || '', 160),
+        pixel_id: shortText(META_PIXEL_ID || '', 40),
+        journey_event_id: shortText(journeyId() || '', 160),
+        session_id: shortText(b.session_id || '', 160),
+        service_zip: shortText(custom.service_zip || b.service_zip || '', 20),
+        fbp_present: !!fbp,
+        fbc_present: !!fbc,
+        fbclid_present: !!b.fbclid,
+        email_present: !!plain.email,
+        phone_present: !!(plain.phone || plain.ph),
+        first_name_present: !!(plain.fn || plain.first_name),
+        last_name_present: !!(plain.ln || plain.last_name),
+        zip_present: !!(plain.zp || custom.service_zip || b.service_zip),
+        external_id_present: !!plain.external_id,
+        value_present: custom.value != null,
+        currency: shortText(custom.currency || '', 16),
+        custom_data_keys: Object.keys(custom).slice(0, 20).join(','),
+        test_event_code_present: !!(
+          global.__NS_META_TEST_EVENT_CODE && String(global.__NS_META_TEST_EVENT_CODE).trim()
+        )
+      },
+      extra || {}
+    );
+  }
+
+  function observeMetaEvent(channel, eventName, metaEventId, customData, userPlain, extra) {
+    postObserve(
+      'meta_event',
+      buildMetaObservePayload(channel, eventName, metaEventId, customData, userPlain, extra)
+    );
+  }
+
   function postLeadReceipt(payload) {
     if (!LEAD_RECEIPT_URL || !/^https:\/\//.test(LEAD_RECEIPT_URL)) {
       return;
@@ -279,6 +321,7 @@
   }
 
   function installGlobalObserveHandlers() {
+
     if (global.__NS_OBSERVE_INSTALLED) {
       return;
     }
@@ -318,6 +361,9 @@
     if (capiTest != null && String(capiTest).trim()) {
       payload.test_event_code = String(capiTest).trim();
     }
+    observeMetaEvent('capi_dispatch', eventName, metaEventId, payload.custom_data, userPlain, {
+      capi_url: shortText(CAPI_URL || '', 200)
+    });
     fetch(CAPI_URL, {
       method: 'POST',
       mode: 'cors',
@@ -334,8 +380,20 @@
               res.status,
               (txt || '').slice(0, 800)
             );
-          } else if (global.__NS_DEBUG_CAPI) {
-            console.log('[NSTracking] CAPI ok', eventName, (txt || '').slice(0, 400));
+            observeMetaEvent('capi_result', eventName, metaEventId, payload.custom_data, userPlain, {
+              http_status: res.status,
+              response_body: shortText(txt || '', 500),
+              ok: false
+            });
+          } else {
+            observeMetaEvent('capi_result', eventName, metaEventId, payload.custom_data, userPlain, {
+              http_status: res.status,
+              response_body: shortText(txt || '', 500),
+              ok: true
+            });
+            if (global.__NS_DEBUG_CAPI) {
+              console.log('[NSTracking] CAPI ok', eventName, (txt || '').slice(0, 400));
+            }
           }
         });
       })
@@ -345,6 +403,10 @@
           eventName,
           err && err.message ? err.message : String(err)
         );
+        observeMetaEvent('capi_network_error', eventName, metaEventId, payload.custom_data, userPlain, {
+          error_message: shortText(err && err.message ? err.message : String(err), 500),
+          ok: false
+        });
       });
   }
 
@@ -355,6 +417,9 @@
         ? String(overrideMetaEventId).trim()
         : dedupeId(slug);
     var opts = { eventID: eventId };
+    observeMetaEvent('pixel', eventName, eventId, customData, userPlain, {
+      pixel_track_type: 'standard'
+    });
     if (typeof fbq !== 'undefined') {
       fbq('track', eventName, customData || {}, opts);
     }
@@ -367,6 +432,9 @@
         ? String(overrideMetaEventId).trim()
         : dedupeId(slug);
     var opts = { eventID: eventId };
+    observeMetaEvent('pixel', name, eventId, customData, userPlain, {
+      pixel_track_type: 'custom'
+    });
     if (typeof fbq !== 'undefined') {
       fbq('trackCustom', name, customData || {}, opts);
     }
