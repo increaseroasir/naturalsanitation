@@ -167,6 +167,13 @@
   Promise.all([sha256Hex(emNorm), sha256Hex(normalizePhoneForMetaHash(phone))]).then(function (hashes) {
     if (typeof fbq === 'undefined') return;
     var match = {};
+    var externalId = eventId || '';
+    try {
+      if (!externalId) {
+        externalId = localStorage.getItem('ns_funnel_event_id') || '';
+      }
+    } catch (e) {}
+    if (externalId) match.external_id = externalId;
     if (hashes[0]) match.em = hashes[0];
     if (hashes[1]) match.ph = hashes[1];
     if (Object.keys(match).length) fbq('init', META_PIXEL_ID, match);

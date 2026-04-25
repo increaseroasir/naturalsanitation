@@ -27,6 +27,7 @@
 
   var LS_ATTR = 'ns_attribution_bundle';
   var LS_JOURNEY = 'ns_funnel_event_id';
+  var LS_PROFILE = 'ns_meta_user_profile';
   var SS_SESSION = 'ns_session_id';
   var SS_LEAD_FIRED = 'ns_meta_standard_lead_fired';
 
@@ -86,6 +87,9 @@
         var v = q.get(k);
         if (v) {
           out[k] = v;
+          if (k === 'fbclid' && !out.fbclid_first_seen_ms) {
+            out.fbclid_first_seen_ms = Date.now();
+          }
         }
       });
       var eid = q.get('event_id') || q.get('fb_event_id');
@@ -139,6 +143,149 @@
 
   function persistBundle() {
     writeJsonLS(LS_ATTR, state.bundle);
+  }
+
+  function normalizePhoneDigits(phone) {
+    var d = String(phone || '').replace(/\D/g, '');
+    if (d.length === 10) return '1' + d;
+    if (d.length === 11 && d.charAt(0) === '1') return d;
+    return d;
+  }
+
+  function normalizeZipDigits(zip) {
+    return String(zip || '').replace(/\D/g, '').slice(0, 5);
+  }
+
+  function normalizeNameToken(v) {
+    return String(v || '')
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)[0] || '';
+  }
+
+  function normalizeLastNameToken(v) {
+    var parts = String(v || '')
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+    return parts.length > 1 ? parts[parts.length - 1] : '';
+  }
+
+  function readProfile() {
+    return readJsonLS(LS_PROFILE) || {};
+  }
+
+  function writeProfile(profile) {
+    writeJsonLS(LS_PROFILE, profile || {});
+  }
+
+  function mergeKnownUserPlain(userPlain) {
+    var stored = readProfile();
+    var incoming = userPlain && typeof userPlain === 'object' ? userPlain : {};
+    var merged = Object.assign({}, stored || {}, incoming || {});
+    var email = String(merged.email || merged.em || '').trim().toLowerCase();
+    var phone = normalizePhoneDigits(merged.phone || merged.phone_e164 || merged.ph || '');
+    var fn = normalizeNameToken(merged.fn || merged.first_name || merged.full_name || '');
+    var ln = normalizeNameToken(merged.ln || merged.last_name || normalizeLastNameToken(merged.full_name || ''));
+    var zp = normalizeZipDigits(merged.zp || merged.zip || merged.postal_code || state.bundle.service_zip || '');
+    var externalId = String(merged.external_id || journeyId() || '').trim();
+
+    if (email) {
+      merged.email = email;
+    }
+    if (phone) {
+      merged.phone = phone;
+      merged.ph = phone;
+      merged.phone_e164 = phone;
+    }
+    if (fn) {
+      merged.fn = fn;
+      merged.first_name = fn;
+    }
+    if (ln) {
+      merged.ln = ln;
+      merged.last_name = ln;
+    }
+    if (zp) {
+      merged.zp = zp;
+      merged.zip = zp;
+      merged.postal_code = zp;
+    }
+    if (externalId) {
+      merged.external_id = externalId;
+    }
+    return merged;
+  }
+
+  function persistKnownUserPlain(userPlain) {
+    var merged = mergeKnownUserPlain(userPlain || {});
+    var prev = readProfile();
+    var next = Object.assign({}, prev || {});
+    ['email', 'phone', 'phone_e164', 'ph', 'fn', 'first_name', 'ln', 'last_name', 'zp', 'zip', 'postal_code', 'external_id'].forEach(function (k) {
+      if (merged[k]) {
+        next[k] = merged[k];
+      }
+    });
+    next.t = Date.now();
+    writeProfile(next);
+    return merged;
+  }
+
+  function buildFbcFromFbclid() {
+    var b = state.bundle || {};
+    if (!b.fbclid) {
+      return '';
+    }
+    var ts = b.fbclid_first_seen_ms || Date.now();
+    return 'fb.1.' + ts + '.' + String(b.fbclid);
+  }
+
+  function getMetaBrowserIds() {
+    var fbp = getCookie('_fbp');
+    var fbc = getCookie('_fbc');
+    if (!fbc) {
+      fbc = buildFbcFromFbclid();
+      if (fbc) {
+        try {
+          document.cookie = '_fbc=' + encodeURIComponent(fbc) + '; path=/; max-age=7776000; SameSite=Lax';
+        } catch (e) {}
+      }
+    }
+    var patch = {};
+    if (fbp && state.bundle.fbp !== fbp) {
+      patch.fbp = fbp;
+    }
+    if (fbc && state.bundle.fbc !== fbc) {
+      patch.fbc = fbc;
+    }
+    if (Object.keys(patch).length) {
+      updateContext(patch);
+    }
+    return { fbp: fbp || '', fbc: fbc || '' };
+  }
+
+  function withMetaBrowserIds(callback) {
+    var started = Date.now();
+    function tick() {
+      var ids = getMetaBrowserIds();
+      if (ids.fbp || ids.fbc || Date.now() - started >= 1200) {
+        callback(ids);
+        return;
+      }
+      setTimeout(tick, 100);
+    }
+    tick();
+  }
+
+  function initPixelExternalId() {
+    var externalId = journeyId();
+    if (!externalId || typeof fbq === 'undefined') {
+      return;
+    }
+    try {
+      fbq('init', META_PIXEL_ID, { external_id: externalId });
+    } catch (e) {}
   }
 
   function syncUrlParams() {
@@ -341,73 +488,78 @@
 
   /** metaEventId is the exact string sent as Meta event_id (CAPI) and Pixel eventID (browser). */
   function sendCapi(eventName, metaEventId, customData, userPlain) {
-    var payload = {
-      pixel_id: META_PIXEL_ID,
-      event_name: eventName,
-      event_id: metaEventId,
-      event_source_url: String(location.href),
-      custom_data: Object.assign(
-        {
-          journey_event_id: state.bundle.journey_event_id,
-          session_id: state.bundle.session_id
-        },
-        customData || {}
-      ),
-      user_data_plain: userPlain || {},
-      fbp: getCookie('_fbp'),
-      fbc: getCookie('_fbc')
-    };
+    var mergedUserPlain = persistKnownUserPlain(userPlain || {});
     var capiTest = global.__NS_META_TEST_EVENT_CODE;
-    if (capiTest != null && String(capiTest).trim()) {
-      payload.test_event_code = String(capiTest).trim();
-    }
-    observeMetaEvent('capi_dispatch', eventName, metaEventId, payload.custom_data, userPlain, {
-      capi_url: shortText(CAPI_URL || '', 200)
-    });
-    fetch(CAPI_URL, {
-      method: 'POST',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      keepalive: true
-    })
-      .then(function (res) {
-        return res.text().then(function (txt) {
-          if (!res.ok) {
-            console.warn(
-              '[NSTracking] CAPI failed',
-              eventName,
-              res.status,
-              (txt || '').slice(0, 800)
-            );
-            observeMetaEvent('capi_result', eventName, metaEventId, payload.custom_data, userPlain, {
-              http_status: res.status,
-              response_body: shortText(txt || '', 500),
-              ok: false
-            });
-          } else {
-            observeMetaEvent('capi_result', eventName, metaEventId, payload.custom_data, userPlain, {
-              http_status: res.status,
-              response_body: shortText(txt || '', 500),
-              ok: true
-            });
-            if (global.__NS_DEBUG_CAPI) {
-              console.log('[NSTracking] CAPI ok', eventName, (txt || '').slice(0, 400));
-            }
-          }
-        });
-      })
-      .catch(function (err) {
-        console.warn(
-          '[NSTracking] CAPI network error',
-          eventName,
-          err && err.message ? err.message : String(err)
-        );
-        observeMetaEvent('capi_network_error', eventName, metaEventId, payload.custom_data, userPlain, {
-          error_message: shortText(err && err.message ? err.message : String(err), 500),
-          ok: false
-        });
+    withMetaBrowserIds(function (ids) {
+      var payload = {
+        pixel_id: META_PIXEL_ID,
+        event_name: eventName,
+        event_id: metaEventId,
+        event_source_url: String(location.href),
+        custom_data: Object.assign(
+          {
+            journey_event_id: state.bundle.journey_event_id,
+            session_id: state.bundle.session_id
+          },
+          customData || {}
+        ),
+        user_data_plain: mergedUserPlain,
+        fbp: ids.fbp || '',
+        fbc: ids.fbc || ''
+      };
+      if (capiTest != null && String(capiTest).trim()) {
+        payload.test_event_code = String(capiTest).trim();
+      }
+      observeMetaEvent('capi_dispatch', eventName, metaEventId, payload.custom_data, mergedUserPlain, {
+        capi_url: shortText(CAPI_URL || '', 200),
+        fbp_present: !!payload.fbp,
+        fbc_present: !!payload.fbc
       });
+      fetch(CAPI_URL, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true
+      })
+        .then(function (res) {
+          return res.text().then(function (txt) {
+            if (!res.ok) {
+              console.warn(
+                '[NSTracking] CAPI failed',
+                eventName,
+                res.status,
+                (txt || '').slice(0, 800)
+              );
+              observeMetaEvent('capi_result', eventName, metaEventId, payload.custom_data, mergedUserPlain, {
+                http_status: res.status,
+                response_body: shortText(txt || '', 500),
+                ok: false
+              });
+            } else {
+              observeMetaEvent('capi_result', eventName, metaEventId, payload.custom_data, mergedUserPlain, {
+                http_status: res.status,
+                response_body: shortText(txt || '', 500),
+                ok: true
+              });
+              if (global.__NS_DEBUG_CAPI) {
+                console.log('[NSTracking] CAPI ok', eventName, (txt || '').slice(0, 400));
+              }
+            }
+          });
+        })
+        .catch(function (err) {
+          console.warn(
+            '[NSTracking] CAPI network error',
+            eventName,
+            err && err.message ? err.message : String(err)
+          );
+          observeMetaEvent('capi_network_error', eventName, metaEventId, payload.custom_data, mergedUserPlain, {
+            error_message: shortText(err && err.message ? err.message : String(err), 500),
+            ok: false
+          });
+        });
+    });
   }
 
   /** Optional 5th arg overrideMetaEventId: when set, used as Pixel eventID and CAPI event_id (Purchase = Stripe pi_*). */
@@ -417,13 +569,14 @@
         ? String(overrideMetaEventId).trim()
         : dedupeId(slug);
     var opts = { eventID: eventId };
-    observeMetaEvent('pixel', eventName, eventId, customData, userPlain, {
+    var mergedUserPlain = persistKnownUserPlain(userPlain || {});
+    observeMetaEvent('pixel', eventName, eventId, customData, mergedUserPlain, {
       pixel_track_type: 'standard'
     });
     if (typeof fbq !== 'undefined') {
       fbq('track', eventName, customData || {}, opts);
     }
-    sendCapi(eventName, eventId, customData, userPlain);
+    sendCapi(eventName, eventId, customData, mergedUserPlain);
   }
 
   function trackCustom(name, slug, customData, userPlain, overrideMetaEventId) {
@@ -432,13 +585,14 @@
         ? String(overrideMetaEventId).trim()
         : dedupeId(slug);
     var opts = { eventID: eventId };
-    observeMetaEvent('pixel', name, eventId, customData, userPlain, {
+    var mergedUserPlain = persistKnownUserPlain(userPlain || {});
+    observeMetaEvent('pixel', name, eventId, customData, mergedUserPlain, {
       pixel_track_type: 'custom'
     });
     if (typeof fbq !== 'undefined') {
       fbq('trackCustom', name, customData || {}, opts);
     }
-    sendCapi(name, eventId, customData, userPlain);
+    sendCapi(name, eventId, customData, mergedUserPlain);
   }
 
   function standardLeadAlreadyFired() {
@@ -507,6 +661,8 @@
     ensureSessionId(state.bundle);
     persistBundle();
     syncUrlParams();
+    initPixelExternalId();
+    getMetaBrowserIds();
     state.bootstrapped = true;
 
     if (BOOT === 'confirmation') {
@@ -518,7 +674,7 @@
           journey_event_id: state.bundle.journey_event_id,
           session_id: state.bundle.session_id
         },
-        {}
+        mergeKnownUserPlain({})
       );
       hydrateHiddenFields();
       return state.bundle;
@@ -535,12 +691,12 @@
       }
     });
 
-    trackStandard('PageView', 'PageView', common, {});
+    trackStandard('PageView', 'PageView', common, mergeKnownUserPlain({}));
     trackStandard(
       'ViewContent',
       'ViewContent',
       Object.assign({ content_type: 'product_group' }, common),
-      {}
+      mergeKnownUserPlain({})
     );
 
     hydrateHiddenFields();

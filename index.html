@@ -4342,9 +4342,10 @@ function fireFunnelStep2Update(fullName, phoneE164, emailOpt) {
   var em = (emailOpt || '').toLowerCase().trim();
   var ph = normalizePhoneForMetaHash(phoneE164);
   var fn = firstTokenName(fullName).toLowerCase();
-  return Promise.all([sha256Hex(em), sha256Hex(ph), sha256Hex(fn)]).then(function (hashes) {
+  var ln = lastTokenName(fullName).toLowerCase();
+  return Promise.all([sha256Hex(em), sha256Hex(ph), sha256Hex(fn), sha256Hex(ln)]).then(function (hashes) {
     if (typeof fbq !== 'undefined') {
-      var match = {};
+      var match = { external_id: eventId };
       if (hashes[0]) {
         match.em = hashes[0];
       }
@@ -4353,6 +4354,9 @@ function fireFunnelStep2Update(fullName, phoneE164, emailOpt) {
       }
       if (hashes[2]) {
         match.fn = hashes[2];
+      }
+      if (hashes[3]) {
+        match.ln = hashes[3];
       }
       if (Object.keys(match).length) {
         fbq('init', META_PIXEL_ID_FUNNEL, match);
@@ -4369,9 +4373,11 @@ function fireFunnelStep2Update(fullName, phoneE164, emailOpt) {
           },
           {
             fn: firstTokenName(fullName),
+            ln: lastTokenName(fullName),
             phone: phoneE164,
             zp: String(zip || '').replace(/\D/g, '').slice(0, 5),
-            email: em || undefined
+            email: em || undefined,
+            external_id: eventId
           }
         );
         NSTracking.markStandardLeadFired();
@@ -4387,9 +4393,11 @@ function fireFunnelStep2Update(fullName, phoneE164, emailOpt) {
         },
         {
           fn: firstTokenName(fullName),
+          ln: lastTokenName(fullName),
           phone: phoneE164,
           zp: String(zip || '').replace(/\D/g, '').slice(0, 5),
-          email: em || undefined
+          email: em || undefined,
+          external_id: eventId
         },
         'modal_step2_contact'
       );
@@ -4397,7 +4405,14 @@ function fireFunnelStep2Update(fullName, phoneE164, emailOpt) {
         'HyrosLeadDetail',
         'HyrosLeadDetail_modal',
         { event_id: eventId, hyros_id: hyrosIdFromCookie(), step: 2 },
-        {}
+        {
+          fn: firstTokenName(fullName),
+          ln: lastTokenName(fullName),
+          phone: phoneE164,
+          zp: String(zip || '').replace(/\D/g, '').slice(0, 5),
+          email: em || undefined,
+          external_id: eventId
+        }
       );
     }
   });
@@ -5120,10 +5135,13 @@ function firePurchaseDeduped(pi) {
   var emailEl = document.getElementById('modal-email');
   var phoneEl = document.getElementById('modal-phone');
   var nameEl = document.getElementById('modal-full-name');
+  var fullName = nameEl ? (nameEl.value || '').trim() : '';
   var userPlain = {
     email: emailEl ? (emailEl.value || '').trim().toLowerCase() : '',
     phone: phoneEl ? phoneToE164US((phoneEl.value || '').trim()) || '' : '',
-    fn: nameEl ? firstTokenName((nameEl.value || '').trim()) : ''
+    fn: firstTokenName(fullName),
+    ln: lastTokenName(fullName),
+    external_id: getOrCreateFunnelEventId()
   };
   if (window.NSTracking) {
     NSTracking.firePurchaseStandard(purchaseCustom, userPlain, pi.id);

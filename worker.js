@@ -313,7 +313,56 @@ async function ghlCreateContactNote(token, contactId, rawEventId) {
   return { ok: true };
 }
 
-async function handleClientObserve(request) {
+function googleSheetWebhookUrl(env) {
+  const auditUrl = env && typeof env.GOOGLE_SHEET_AUDIT_URL === 'string'
+    ? String(env.GOOGLE_SHEET_AUDIT_URL || '').trim()
+    : '';
+  if (auditUrl && /^https:\/\//.test(auditUrl)) {
+    return auditUrl;
+  }
+  const leadUrl = env && typeof env.GOOGLE_SHEET_WEBHOOK_URL === 'string'
+    ? String(env.GOOGLE_SHEET_WEBHOOK_URL || '').trim()
+    : '';
+  if (leadUrl && /^https:\/\//.test(leadUrl)) {
+    return leadUrl;
+  }
+  return '';
+}
+
+function parseObserveResponseJson(text) {
+  if (!text || typeof text !== 'string') return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+async function forwardMetaAuditToGoogleSheet(env, payload) {
+  const url = googleSheetWebhookUrl(env);
+  if (!url) {
+    return { forwarded: false, reason: 'GOOGLE_SHEET_WEBHOOK_URL or GOOGLE_SHEET_AUDIT_URL not configured' };
+  }
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error('Google Sheet webhook HTTP ' + res.status + ' ' + (text || '').slice(0, 300));
+  }
+  return {
+    forwarded: true,
+    status: res.status,
+    body: (text || '').slice(0, 300)
+  };
+}
+
+async function handleClientObserve(request, env) {
   try {
     const raw = await request.text();
     if (raw.length > 32768) {
@@ -374,8 +423,70 @@ async function handleClientObserve(request) {
       response_body: String(parsed.response_body || '').slice(0, 500),
       ts: parsed.ts || Date.now()
     };
+    const responseJson = parseObserveResponseJson(payload.response_body);
+    const auditPayload = {
+      type: 'meta_event',
+      timestamp: new Date(payload.ts || Date.now()).toISOString(),
+      kind: payload.kind,
+      channel: payload.channel,
+      event_name: payload.event_name,
+      event_id: payload.event_id,
+      pixel_id: payload.pixel_id,
+      journey_event_id: payload.journey_event_id,
+      session_id: payload.session_id,
+      page_url: payload.page_url,
+      referrer: payload.referrer,
+      client_ip: payload.observed_client_ip,
+      user_agent: payload.browser_user_agent || payload.request_user_agent,
+      browser_user_agent: payload.browser_user_agent,
+      request_user_agent: payload.request_user_agent,
+      stage: payload.stage,
+      source: payload.source,
+      status: payload.status,
+      phone_last4: payload.phone_last4,
+      service_zip: payload.service_zip,
+      currency: payload.currency,
+      custom_data_keys: payload.custom_data_keys,
+      pixel_track_type: payload.pixel_track_type,
+      capi_url: payload.capi_url,
+      fbp_present: payload.fbp_present,
+      fbc_present: payload.fbc_present,
+      fbclid_present: payload.fbclid_present,
+      email_present: payload.email_present,
+      phone_present: payload.phone_present,
+      first_name_present: payload.first_name_present,
+      last_name_present: payload.last_name_present,
+      zip_present: payload.zip_present,
+      external_id_present: payload.external_id_present,
+      value_present: payload.value_present,
+      test_event_code_present: payload.test_event_code_present,
+      ok: payload.ok,
+      meta_response_status: payload.http_status,
+      http_status: payload.http_status,
+      fbtrace_id: responseJson && responseJson.fbtrace_id ? String(responseJson.fbtrace_id).slice(0, 120) : '',
+      error_message: payload.error_message,
+      response_body: payload.response_body
+    };
     console.log('[client-observe]', JSON.stringify(payload));
-    return json({ ok: true }, 200, corsHeaders());
+
+    let sheetForward = { forwarded: false, reason: 'not_meta_event' };
+    if (payload.kind === 'meta_event') {
+      try {
+        sheetForward = await forwardMetaAuditToGoogleSheet(env, auditPayload);
+        console.log('[client-observe] google-sheet forward', JSON.stringify(sheetForward));
+      } catch (sheetErr) {
+        console.warn(
+          '[client-observe] google-sheet forward failed',
+          sheetErr && sheetErr.message ? String(sheetErr.message) : sheetErr
+        );
+        sheetForward = {
+          forwarded: false,
+          reason: sheetErr && sheetErr.message ? String(sheetErr.message) : 'forward_failed'
+        };
+      }
+    }
+
+    return json({ ok: true, sheetForward }, 200, corsHeaders());
   } catch (err) {
     console.warn('[client-observe] handler error', err && err.message ? String(err.message) : err);
     return json({ ok: false, error: 'Observability handler failed' }, 500, corsHeaders());
@@ -697,8 +808,21 @@ async function hashUserDataPlain(plain) {
       .split(/\s+/)[0];
     if (fn) out.fn = [await sha256HexLower(fn)];
   }
+  if (plain.ln || plain.last_name) {
+    const ln = String(plain.ln || plain.last_name || '')
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean)
+      .join(' ');
+    if (ln) out.ln = [await sha256HexLower(ln)];
+  }
   const zp = normalizeZipDigits(plain.zp || plain.zip || plain.postal_code);
   if (zp.length === 5) out.zp = [await sha256HexLower(zp)];
+  if (plain.external_id) {
+    const externalId = String(plain.external_id).trim().toLowerCase();
+    if (externalId) out.external_id = [await sha256HexLower(externalId)];
+  }
   return out;
 }
 
@@ -856,7 +980,7 @@ export default {
     }
 
     if (isClientObservePath(url.pathname)) {
-      return handleClientObserve(request);
+      return handleClientObserve(request, env);
     }
 
     if (isLeadReceiptPath(url.pathname)) {
