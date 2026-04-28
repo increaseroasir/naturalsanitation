@@ -834,11 +834,11 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 
 /* ── POPULATE ORDER SUMMARY ── */
-const planNames = { annual:'Annual Plan', quarterly:'Quarterly Plan', monthly:'Monthly Plan', onetime:'One-Time Clean' };
-const periods   = { annual:'per year', quarterly:'per quarter', monthly:'per month', onetime:'one-time payment' };
+const planNames = { annual:'Annual Plan', quarterly:'Quarterly Package', monthly:'Monthly Plan', onetime:'One-Time Clean' };
+const periods   = { annual:'per year', quarterly:'one-time payment', monthly:'per month', onetime:'one-time payment' };
 const splits    = {
   annual:    '<strong>$'+selectedPrice+' today</strong><br>Annual $'+selectedPrice+'/yr billed today.<br>No contract · Cancel any time',
-  quarterly: 'Billed every 3 months<br>No contract · Cancel any time',
+  quarterly: '<strong>$'+selectedPrice+' today</strong><br>One-time payment · 3 washes spaced every 3 months.<br>Renews annually.',
   monthly:   'Billed monthly<br>No contract · Cancel any time',
   onetime:   '<strong>$'+selectedPrice+' today</strong><br>One-time payment · No subscription · No commitment'
 };
@@ -846,9 +846,13 @@ const splits    = {
 document.getElementById('s-plan-name').textContent = planNames[selectedPlan] || 'Annual Plan';
 document.getElementById('s-period').textContent = periods[selectedPlan] || 'per year';
 document.getElementById('s-bins').textContent = selectedBins+' bin'+(selectedBins>1?'s':'')+' · Oakland & Macomb County';
-if (selectedPlan === 'onetime') {
-  document.getElementById('s-features').innerHTML = '<li>1 professional cleaning</li><li>400° pressurized steam</li><li>Eco-friendly rodent repellent</li><li>Before &amp; after photos texted</li><li>All dirty water removed on-site</li><li>Curbside — no need to be home</li>';
-}
+const planFeatures = {
+  annual:    '<li>9 cleanings March – November</li><li>400° pressurized steam</li><li>Eco-friendly rodent repellent</li><li>Before &amp; after photos texted</li><li>All dirty water removed on-site</li><li>Curbside — no need to be home</li>',
+  quarterly: '<li>3 professional washes included</li><li>Cleanings spaced every 3 months</li><li>400° pressurized steam</li><li>Eco-friendly rodent repellent</li><li>Before &amp; after photos texted</li><li>All dirty water removed on-site</li><li>Curbside — no need to be home</li>',
+  monthly:   '<li>1 cleaning per month</li><li>400° pressurized steam</li><li>Eco-friendly rodent repellent</li><li>Before &amp; after photos texted</li><li>All dirty water removed on-site</li><li>Curbside — no need to be home</li>',
+  onetime:   '<li>1 professional cleaning</li><li>400° pressurized steam</li><li>Eco-friendly rodent repellent</li><li>Before &amp; after photos texted</li><li>All dirty water removed on-site</li><li>Curbside — no need to be home</li>'
+};
+document.getElementById('s-features').innerHTML = planFeatures[selectedPlan] || planFeatures.annual;
 function getCheckoutChargeDollars() {
   return Math.round(currentChargeCents) / 100;
 }
