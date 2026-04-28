@@ -384,6 +384,20 @@ head.appendChild(script);
         </div>
 
 
+        <!-- Trash Pickup Day -->
+        <div class="field-group">
+          <label for="trash-day">Trash Pickup Day</label>
+          <select id="trash-day" required style="width:100%;padding:12px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:15px;color:#0F2044;background:#fff;appearance:auto;">
+            <option value="" disabled selected>Select your trash day</option>
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+          </select>
+          <div class="field-error" id="err-trash-day"></div>
+        </div>
         <!-- Card -->
         <div class="field-group">
           <label>Card Number</label>
@@ -1013,6 +1027,7 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
   const email     = document.getElementById('email').value.trim();
   const phone     = document.getElementById('phone').value.trim();
   const address   = document.getElementById('address').value.trim();
+  const trashDay  = document.getElementById('trash-day').value.trim();
   const zip       = document.getElementById('billing-zip').value.trim();
 
   let valid = true;
@@ -1021,6 +1036,7 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
   if (!email || !/\S+@\S+\.\S+/.test(email)) { showError('email','Enter a valid email'); valid=false; }
   if (!phone)     { showError('phone','Required'); valid=false; }
   if (!address)   { showError('address','Required'); valid=false; }
+  if (!trashDay)  { showError('trash-day','Please select your trash pickup day'); valid=false; }
   if (!valid) return;
 
   fireCheckoutGhlPartialLeadIfReady();
@@ -1086,6 +1102,7 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
       email,
       phone,
       address,
+      trashDay,
       paymentIntentId: piOk.id
     });
 
@@ -1117,7 +1134,7 @@ function showCheckoutSuccessUi() {
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
-function onSuccess({ name, email, phone, address, paymentIntentId }) {
+function onSuccess({ name, email, phone, address, trashDay, paymentIntentId }) {
   showProcessing(false);
 
   var piId = isStripePaymentIntentId(paymentIntentId) ? paymentIntentId : '';
@@ -1183,9 +1200,10 @@ function onSuccess({ name, email, phone, address, paymentIntentId }) {
     var paidEidGhl = checkoutGetFunnelEventId();
     var phoneE164Ghl = checkoutPhoneToE164US(phone) || phone;
     postCheckoutGhlPartialToWorker({
-      name, email, phone, phone_e164: phoneE164Ghl, address,
+      name, email, phone, phone_e164: phoneE164Ghl, address, trashDay,
       plan: selectedPlan,
       bins: selectedBins,
+      trash_day: trashDay,
       price: getCheckoutChargeDollars(),
       service_zip: getCheckoutServiceZipDigits(),
       stripe_transaction_id: piId,
