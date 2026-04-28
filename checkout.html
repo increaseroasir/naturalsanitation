@@ -467,7 +467,7 @@ head.appendChild(script);
       No contract · Cancel any time
     </div>
     <hr class="summary-divider" />
-    <ul class="summary-includes">
+    <ul class="summary-includes" id="s-features">
       <li>9 cleanings March – November</li>
       <li>400° pressurized steam</li>
       <li>Eco-friendly rodent repellent</li>
@@ -514,6 +514,10 @@ const PRICE_IDS = {
   monthly_2bin:   'price_1TM87WHhyjMV1WTX2ekQbLPa',
   monthly_3bin:   'price_1TM87mHhyjMV1WTXgDHqi4BE',
   monthly_4bin:   'price_1TM889HhyjMV1WTXdGMfaOib',
+  onetime_1bin:   'price_1TRKnRHhyjMV1WTXuIlpItIl',
+  onetime_2bin:   'price_1TRKnRHhyjMV1WTXuIlpItIl',
+  onetime_3bin:   'price_1TRKnfHhyjMV1WTXAtXZ3Zny',
+  onetime_4bin:   'price_1TRKoUHhyjMV1WTXA5WEe9Li',
 };
 
 /* GHL — POST JSON to Worker /ghl-lead; Worker upserts contact via private Contacts API (GHL_* secrets). */
@@ -760,12 +764,14 @@ function fireCheckoutGhlPartialFromWallet(payerName, payerPhone) {
 const TIER = {
   annual: { 1: 199, 2: 250, 3: 299, 4: 349 },
   monthly: { 1: 33, 2: 39, 3: 45, 4: 50 },
-  quarterly: { 1: 94, 2: 124, 3: 149, 4: 164 }
+  quarterly: { 1: 94, 2: 124, 3: 149, 4: 164 },
+  onetime:   { 1: 54.99, 2: 54.99, 3: 65, 4: 75 }
 };
 function tierPrice(plan, bins) {
   const b = Math.min(4, Math.max(1, bins));
   if (plan === 'monthly') return TIER.monthly[b];
   if (plan === 'quarterly') return TIER.quarterly[b];
+  if (plan === 'onetime') return TIER.onetime[b];
   return TIER.annual[b];
 }
 const params = new URLSearchParams(window.location.search);
@@ -828,17 +834,21 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 
 /* ── POPULATE ORDER SUMMARY ── */
-const planNames = { annual:'Annual Plan', quarterly:'Quarterly Plan', monthly:'Monthly Plan' };
-const periods   = { annual:'per year', quarterly:'per quarter', monthly:'per month' };
+const planNames = { annual:'Annual Plan', quarterly:'Quarterly Plan', monthly:'Monthly Plan', onetime:'One-Time Clean' };
+const periods   = { annual:'per year', quarterly:'per quarter', monthly:'per month', onetime:'one-time payment' };
 const splits    = {
   annual:    '<strong>$'+selectedPrice+' today</strong><br>Annual $'+selectedPrice+'/yr billed today.<br>No contract · Cancel any time',
   quarterly: 'Billed every 3 months<br>No contract · Cancel any time',
-  monthly:   'Billed monthly<br>No contract · Cancel any time'
+  monthly:   'Billed monthly<br>No contract · Cancel any time',
+  onetime:   '<strong>$'+selectedPrice+' today</strong><br>One-time payment · No subscription · No commitment'
 };
 
 document.getElementById('s-plan-name').textContent = planNames[selectedPlan] || 'Annual Plan';
 document.getElementById('s-period').textContent = periods[selectedPlan] || 'per year';
 document.getElementById('s-bins').textContent = selectedBins+' bin'+(selectedBins>1?'s':'')+' · Oakland & Macomb County';
+if (selectedPlan === 'onetime') {
+  document.getElementById('s-features').innerHTML = '<li>1 professional cleaning</li><li>400° pressurized steam</li><li>Eco-friendly rodent repellent</li><li>Before &amp; after photos texted</li><li>All dirty water removed on-site</li><li>Curbside — no need to be home</li>';
+}
 function getCheckoutChargeDollars() {
   return Math.round(currentChargeCents) / 100;
 }
@@ -850,7 +860,10 @@ function updateCheckoutSummaryDom() {
   const dStr = formatCheckoutMoney(d);
   document.getElementById('s-price').textContent = '$' + dStr;
   document.getElementById('submit-btn').textContent = 'Pay $' + dStr + ' — Lock In My Spot →';
-  if (selectedPlan === 'annual') {
+  if (selectedPlan === 'onetime') {
+    document.getElementById('s-split').innerHTML =
+      '<strong>$' + dStr + ' today</strong><br>One-time payment · No subscription · No commitment';
+  } else if (selectedPlan === 'annual') {
     document.getElementById('s-split').innerHTML =
       '<strong>$' + dStr + ' today</strong><br>Annual $' + dStr + '/yr billed today.<br>No contract · Cancel any time';
   } else {
