@@ -656,7 +656,7 @@ function fireCheckoutGhlPartialLeadIfReady() {
     price: getCheckoutChargeDollars(),
     source: 'checkout-direct-partial',
     status: 'partial_lead',
-    tags: ['purchasefunnellead', 'partial_lead'],
+    tags: ['partial_lead'],
     event_id: eventId,
     jobber_event_id: eventId,
     hyros_id: checkoutHyrosIdFromCookie()
@@ -703,7 +703,7 @@ function fireCheckoutGhlInitiateCheckoutOnce() {
     bins: selectedBins,
     price: getCheckoutChargeDollars(),
     source: 'checkout-direct',
-    tags: ['purchasefunnellead', 'partial_lead', 'initiate_checkout'],
+    tags: ['partial_lead', 'initiate_checkout'],
     mark_initiate_checkout: true,
     event_id: eventId,
     jobber_event_id: eventId,
@@ -734,7 +734,7 @@ function fireCheckoutGhlPartialFromWallet(payerName, payerPhone) {
     price: getCheckoutChargeDollars(),
     source: 'checkout-direct-partial',
     status: 'partial_lead',
-    tags: ['purchasefunnellead', 'partial_lead'],
+    tags: ['partial_lead'],
     event_id: eventId,
     jobber_event_id: eventId,
     hyros_id: checkoutHyrosIdFromCookie()
