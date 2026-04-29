@@ -1232,6 +1232,17 @@ function onSuccess({ name, email, phone, address, trashDay, paymentIntentId }) {
     });
   }
 
+  // Hyros purchase conversion
+  try {
+    if (window.hy) {
+      window.hy('event', 'purchase', {
+        revenue: paidDollars,
+        email: email || '',
+        transaction_id: piId
+      });
+    }
+  } catch(eHy) {}
+
   showCheckoutSuccessUi();
 }
 
