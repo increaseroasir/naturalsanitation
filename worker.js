@@ -238,21 +238,26 @@ async function ghlFetchDuplicateContact(token, locId, phone, email) {
 
 /** Tags requested by this request (before union with CRM). */
 function ghlBuildIncomingTagList(body) {
-  const out = ['purchasefunnellead'];
+  const out = [];
+  const st = String(body.status || '').toLowerCase();
+  const isPaid = st === 'paid' || body.paid === true;
+  // purchasefunnellead is ONLY added when Stripe checkout is completed (paid)
+  if (isPaid) {
+    out.push('purchasefunnellead');
+  }
   if (Array.isArray(body.tags)) {
     for (const t of body.tags) {
       const s = typeof t === 'string' ? t.trim() : '';
       if (s) out.push(s);
     }
   }
-  const st = String(body.status || '').toLowerCase();
   if (st === 'lead_detail') {
     out.push('partial_lead', 'lead_gate', 'lead_detail');
   }
   if (st === 'partial_lead') {
     out.push('partial_lead');
   }
-  if (st === 'paid' || body.paid === true) {
+  if (isPaid) {
     out.push('partial_lead', 'initiate_checkout', 'purchased');
   }
   if (body.mark_initiate_checkout === true) {
