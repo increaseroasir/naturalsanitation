@@ -316,7 +316,7 @@
               <span class="plan-price" id="annual-price-display">$250</span>
               <span class="plan-price-period">/year</span>
             </div>
-            <div class="plan-note" id="annual-note">1–2 bins · one payment</div>
+            <div class="plan-note" id="annual-note">1–2 bins · renews annually</div>
           </div>
           <!-- MONTHLY -->
           <div class="plan-tile" id="tile-monthly" onclick="selectPlan('monthly')">
@@ -589,7 +589,7 @@
     var p = PRICING[selectedBins];
     var binLabel = p.label;
     document.getElementById('annual-price-display').textContent = '$' + p.annual;
-    document.getElementById('annual-note').textContent = binLabel + ' · one payment';
+    document.getElementById('annual-note').textContent = binLabel + ' · renews annually';
     document.getElementById('monthly-price-display').textContent = '$' + p.monthly;
     document.getElementById('monthly-note').textContent = binLabel + ' · cancel anytime';
     if (selectedPlan === 'annual') {
