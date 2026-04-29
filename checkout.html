@@ -398,29 +398,11 @@ head.appendChild(script);
           </select>
           <div class="field-error" id="err-trash-day"></div>
         </div>
-        <!-- Card -->
+        <!-- Payment Element (Link, Apple Pay, Google Pay, Card) -->
         <div class="field-group">
-          <label>Card Number</label>
-          <div class="stripe-field" id="card-number-element"></div>
-          <div class="field-error" id="err-card-number"></div>
+          <div id="payment-element" style="min-height:44px"></div>
+          <div class="field-error" id="err-card-general"></div>
         </div>
-        <div class="card-row field-group">
-          <div>
-            <label>Expiry</label>
-            <div class="stripe-field" id="card-expiry-element"></div>
-            <div class="field-error" id="err-card-expiry"></div>
-          </div>
-          <div>
-            <label>CVC</label>
-            <div class="stripe-field" id="card-cvc-element"></div>
-            <div class="field-error" id="err-card-cvc"></div>
-          </div>
-          <div>
-            <label>ZIP</label>
-            <input type="text" id="billing-zip" placeholder="48084" maxlength="5" inputmode="numeric" autocomplete="postal-code" />
-          </div>
-        </div>
-        <div class="field-error" id="err-card-general"></div>
 
         <!-- Coupon Code -->
         <div class="field-group" id="coupon-section">
@@ -1008,116 +990,66 @@ function buildCheckoutPaymentIntentPayload(emailOpt) {
 
 /* ── STRIPE INIT ── */
 const stripe = Stripe(STRIPE_KEY);
-const elements = stripe.elements({
-  fonts:[{ cssSrc:'https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap' }]
-});
 
-const style = {
-  base:{
-    fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
-    fontSize:'15px',
-    color:'#1c1c2e',
-    '::placeholder':{ color:'#9ca3af' }
-  },
-  invalid:{ color:'#dc2626' }
-};
+// Payment Element instance — created lazily after PaymentIntent client secret is known
+let stripeElements = null;
+let paymentElement = null;
+let currentClientSecret = null;
 
-const cardNumber  = elements.create('cardNumber',  { style, showIcon:true });
-const cardExpiry  = elements.create('cardExpiry',  { style });
-const cardCvc     = elements.create('cardCvc',     { style });
-
-cardNumber.mount('#card-number-element');
-cardExpiry.mount('#card-expiry-element');
-cardCvc.mount('#card-cvc-element');
-
-/* AddPaymentInfo on card focus */
-cardNumber.on('focus', function() {
-  if (typeof fbq !== 'undefined') fbq('track','AddPaymentInfo');
-});
-
-/* Card errors */
-cardNumber.on('change', e => showCardError('card-number', e.error));
-cardExpiry.on('change', e => showCardError('card-expiry', e.error));
-cardCvc.on('change',    e => showCardError('card-cvc',    e.error));
-
-function showCardError(field, error) {
-  document.getElementById('err-'+field).textContent = error ? error.message : '';
+function mountPaymentElement(clientSecret) {
+  if (currentClientSecret === clientSecret && paymentElement) return; // already mounted
+  currentClientSecret = clientSecret;
+  stripeElements = stripe.elements({
+    clientSecret,
+    appearance: {
+      theme: 'stripe',
+      variables: {
+        fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+        fontSizeBase: '15px',
+        colorText: '#1c1c2e',
+        colorPrimary: '#1a56db',
+        borderRadius: '8px'
+      }
+    }
+  });
+  paymentElement = stripeElements.create('payment', {
+    layout: { type: 'tabs', defaultCollapsed: false }
+  });
+  paymentElement.on('focus', function() {
+    if (typeof fbq !== 'undefined') fbq('track','AddPaymentInfo');
+  });
+  paymentElement.on('change', function(e) {
+    if (e.complete) document.getElementById('err-card-general').textContent = '';
+  });
+  paymentElement.mount('#payment-element');
 }
 
-/* ── APPLE PAY / GOOGLE PAY ── */
-const paymentRequest = stripe.paymentRequest({
-  country: 'US',
-  currency: 'usd',
-  total: {
-    label: planNames[selectedPlan]+' — Natural Sanitation',
-    amount: currentChargeCents
-  },
-  requestPayerName: true,
-  requestPayerEmail: true,
-  requestPayerPhone: true
-});
-
-const prButton = elements.create('paymentRequestButton', {
-  paymentRequest,
-  style:{ paymentRequestButton:{ type:'default', theme:'dark', height:'48px' } }
-});
-
-paymentRequest.canMakePayment().then(result => {
-  if (result) {
-    prButton.mount('#payment-request-button');
-    refreshCheckoutPricing();
-  } else {
-    document.getElementById('express-pay-section').classList.add('hidden');
-  }
-});
-
-paymentRequest.on('paymentmethod', async (ev) => {
-  showProcessing(true);
+// Pre-fetch a PaymentIntent on page load so Link/Apple Pay load instantly
+(async function prefetchPaymentIntent() {
   try {
-    fireCheckoutGhlPartialFromWallet(ev.payerName, ev.payerPhone);
-    fireCheckoutGhlInitiateCheckoutOnce();
     const res = await fetch('https://ns-payment.increase-roas.workers.dev/create-payment-intent', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(buildCheckoutPaymentIntentPayload(ev.payerEmail))
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildCheckoutPaymentIntentPayload(''))
     });
-    const piJson = await res.json().catch(function () { return {}; });
-    if (!res.ok) throw new Error(piJson.error || 'Server error');
-    const clientSecret = piJson.clientSecret;
-    if (!clientSecret) throw new Error(piJson.error || 'Missing payment session');
-    let { error, paymentIntent } = await stripe.confirmCardPayment(
-      clientSecret, { payment_method: ev.paymentMethod.id }, { handleActions:false }
-    );
-    if (error) {
-      ev.complete('fail');
-      showProcessing(false);
-      return;
-    }
-    if (paymentIntent && paymentIntent.status === 'requires_action') {
-      const r2 = await stripe.confirmCardPayment(clientSecret);
-      error = r2.error;
-      paymentIntent = r2.paymentIntent;
-    }
-    if (error) {
-      ev.complete('fail');
-      showProcessing(false);
-      return;
-    }
-    const piFinal = assertSucceededCheckoutPaymentIntent(paymentIntent);
-    ev.complete('success');
-    onSuccess({
-      name: ev.payerName,
-      email: ev.payerEmail,
-      phone: ev.payerPhone,
-      paymentIntentId: piFinal.id
-    });
-  } catch (e) {
-    try {
-      ev.complete('fail');
-    } catch (e2) {}
-    showProcessing(false);
-  }
+    const data = await res.json().catch(function(){ return {}; });
+    if (data.clientSecret) mountPaymentElement(data.clientSecret);
+  } catch(e) { /* silent — will re-create on submit */ }
+})();
+
+/* ── APPLE PAY / GOOGLE PAY handled by Payment Element above ── */
+// Hide legacy express pay section — Payment Element shows wallet buttons natively
+document.addEventListener('DOMContentLoaded', function() {
+  var epSection = document.getElementById('express-pay-section');
+  if (epSection) epSection.style.display = 'none';
 });
+
+/* Legacy wallet handler stub — kept for safety, not triggered */
+const _walletStub = (function() {
+  const ev = null; // not used
+  if (false) { // dead code — Payment Element handles wallets
+  } // end dead-code block
+})(); // end _walletStub IIFE
 
 /* ── FORM SUBMIT ── */
 document.getElementById('checkout-form').addEventListener('submit', async function(e) {
@@ -1130,7 +1062,6 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
   const phone     = document.getElementById('phone').value.trim();
   const address   = document.getElementById('address').value.trim();
   const trashDay  = document.getElementById('trash-day').value.trim();
-  const zip       = document.getElementById('billing-zip').value.trim();
 
   let valid = true;
   if (!firstName) { showError('first-name','Required'); valid=false; }
@@ -1148,64 +1079,63 @@ document.getElementById('checkout-form').addEventListener('submit', async functi
   document.getElementById('submit-btn').disabled = true;
 
   try {
-    /*
-      BACKEND REQUIRED:
-      You need a server endpoint at /create-payment-intent that:
-      1. Creates a Stripe PaymentIntent for the correct amount
-      2. Returns { clientSecret }
-      See: https://stripe.com/docs/payments/accept-a-payment
+    // Create or reuse PaymentIntent
+    let clientSecret = currentClientSecret;
+    if (!clientSecret) {
+      const res = await fetch('https://ns-payment.increase-roas.workers.dev/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildCheckoutPaymentIntentPayload(email))
+      });
+      const data = await res.json().catch(function() { return {}; });
+      if (!res.ok) throw new Error(data.error || 'Server error');
+      clientSecret = data.clientSecret;
+      if (!clientSecret) throw new Error(data.error || 'Missing payment session');
+      mountPaymentElement(clientSecret);
+    }
 
-      Until your backend is live, Cursor can scaffold this as a
-      Cloudflare Worker or a simple Node/Express endpoint.
-    */
-    const res = await fetch('https://ns-payment.increase-roas.workers.dev/create-payment-intent', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(buildCheckoutPaymentIntentPayload(email))
+    // Update billing details on the elements instance
+    if (stripeElements) {
+      stripeElements.update({});
+    }
+
+    // Confirm payment via Payment Element (handles Link, Apple Pay, Google Pay, card)
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements: stripeElements,
+      confirmParams: {
+        return_url: window.location.href, // fallback for redirect-based methods
+        payment_method_data: {
+          billing_details: {
+            name: firstName + ' ' + lastName,
+            email: email,
+            phone: phone
+          }
+        }
+      },
+      redirect: 'if_required' // stay on page for card/Link
     });
 
-    const data = await res.json().catch(function () { return {}; });
-    if (!res.ok) throw new Error(data.error || 'Server error');
-    const clientSecret = data.clientSecret;
-    if (!clientSecret) throw new Error(data.error || 'Missing payment session');
-
-    let { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method:{
-        card: cardNumber,
-        billing_details:{
-          name: firstName+' '+lastName,
-          email,
-          phone,
-          address:{ postal_code: zip }
-        }
-      }
-    }, { handleActions: false });
-
     if (error) {
       document.getElementById('err-card-general').textContent = error.message;
       showProcessing(false);
       document.getElementById('submit-btn').disabled = false;
       return;
     }
-    if (paymentIntent && paymentIntent.status === 'requires_action') {
-      const r2 = await stripe.confirmCardPayment(clientSecret);
-      error = r2.error;
-      paymentIntent = r2.paymentIntent;
-    }
-    if (error) {
-      document.getElementById('err-card-general').textContent = error.message;
+
+    if (!paymentIntent || paymentIntent.status !== 'succeeded') {
+      document.getElementById('err-card-general').textContent = 'Payment could not be confirmed. Please try again.';
       showProcessing(false);
       document.getElementById('submit-btn').disabled = false;
       return;
     }
-    const piOk = assertSucceededCheckoutPaymentIntent(paymentIntent);
+
     onSuccess({
       name: firstName + ' ' + lastName,
       email,
       phone,
       address,
       trashDay,
-      paymentIntentId: piOk.id
+      paymentIntentId: paymentIntent.id
     });
 
   } catch(e) {
