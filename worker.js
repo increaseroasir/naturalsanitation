@@ -248,7 +248,8 @@ function ghlBuildIncomingTagList(body) {
   if (Array.isArray(body.tags)) {
     for (const t of body.tags) {
       const s = typeof t === 'string' ? t.trim() : '';
-      if (s) out.push(s);
+      // Never allow purchasefunnellead from frontend tags unless actually paid
+      if (s && !(s === 'purchasefunnellead' && !isPaid)) out.push(s);
     }
   }
   if (st === 'lead_detail') {
