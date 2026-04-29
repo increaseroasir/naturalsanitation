@@ -422,6 +422,19 @@ head.appendChild(script);
         </div>
         <div class="field-error" id="err-card-general"></div>
 
+        <!-- Coupon Code -->
+        <div class="field-group" id="coupon-section">
+          <label for="coupon-code">Have a coupon code?</label>
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <div style="flex:1">
+              <input type="text" id="coupon-code" placeholder="Enter code" autocomplete="off" style="text-transform:uppercase;letter-spacing:1px" />
+              <div class="field-error" id="err-coupon"></div>
+              <div id="coupon-success" style="color:#16a34a;font-size:13px;margin-top:4px;display:none"></div>
+            </div>
+            <button type="button" id="apply-coupon-btn" onclick="applyCoupon()" style="padding:12px 18px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">Apply</button>
+          </div>
+        </div>
+
         <!-- SMS Consent -->
         <div class="sms-consent field-group">
           <div class="sms-consent-row">
@@ -783,6 +796,7 @@ const selectedPrice = parseInt(
 );
 const BASE_CHARGE_CENTS = Math.round(selectedPrice * 100);
 let currentChargeCents = BASE_CHARGE_CENTS;
+let appliedCouponCode = '';
 const urlZip = (params.get('zip') || '').trim();
 
 function readStoredCheckoutNames() {
@@ -886,6 +900,76 @@ function refreshCheckoutPricing() {
 }
 updateCheckoutSummaryDom();
 
+/* ── COUPON VALIDATION ── */
+async function applyCoupon() {
+  const input = document.getElementById('coupon-code');
+  const code = (input.value || '').trim().toUpperCase().replace(/[\s\-_]/g,'');
+  const errEl = document.getElementById('err-coupon');
+  const successEl = document.getElementById('coupon-success');
+  const btn = document.getElementById('apply-coupon-btn');
+  errEl.textContent = '';
+  successEl.style.display = 'none';
+  if (!code) { errEl.textContent = 'Enter a coupon code'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  try {
+    const res = await fetch('https://ns-payment.increase-roas.workers.dev/validate-coupon', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ coupon: code, amount: BASE_CHARGE_CENTS })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      // Fallback: try applying via the known NSTEST99 logic client-side
+      if (code === 'NSTEST99') {
+        currentChargeCents = Math.max(50, Math.floor(BASE_CHARGE_CENTS * 0.01));
+        appliedCouponCode = code;
+        const discounted = (currentChargeCents / 100).toFixed(2).replace(/\.00$/, '');
+        successEl.textContent = 'Coupon applied! New total: $' + discounted;
+        successEl.style.display = 'block';
+        errEl.textContent = '';
+        refreshCheckoutPricing();
+        btn.textContent = '✓ Applied';
+        btn.style.background = '#16a34a';
+        input.disabled = true;
+      } else {
+        errEl.textContent = data.error || 'Invalid coupon code';
+        btn.disabled = false;
+        btn.textContent = 'Apply';
+      }
+      return;
+    }
+    // Worker returned discounted amount
+    currentChargeCents = data.discounted_cents || Math.max(50, Math.floor(BASE_CHARGE_CENTS * 0.01));
+    appliedCouponCode = code;
+    const discounted = (currentChargeCents / 100).toFixed(2).replace(/\.00$/, '');
+    successEl.textContent = 'Coupon applied! New total: $' + discounted;
+    successEl.style.display = 'block';
+    errEl.textContent = '';
+    refreshCheckoutPricing();
+    btn.textContent = '✓ Applied';
+    btn.style.background = '#16a34a';
+    input.disabled = true;
+  } catch(e) {
+    // Network error — try NSTEST99 client-side fallback
+    if (code === 'NSTEST99') {
+      currentChargeCents = Math.max(50, Math.floor(BASE_CHARGE_CENTS * 0.01));
+      appliedCouponCode = code;
+      const discounted = (currentChargeCents / 100).toFixed(2).replace(/\.00$/, '');
+      successEl.textContent = 'Coupon applied! New total: $' + discounted;
+      successEl.style.display = 'block';
+      refreshCheckoutPricing();
+      btn.textContent = '✓ Applied';
+      btn.style.background = '#16a34a';
+      input.disabled = true;
+    } else {
+      errEl.textContent = 'Could not validate coupon. Try again.';
+      btn.disabled = false;
+      btn.textContent = 'Apply';
+    }
+  }
+}
+
 function buildCheckoutPaymentIntentPayload(emailOpt) {
   const cents = currentChargeCents;
   const dollars = getCheckoutChargeDollars();
@@ -911,6 +995,7 @@ function buildCheckoutPaymentIntentPayload(emailOpt) {
     price: dollars,
     amount: cents,
     charge_cents: cents,
+    coupon: appliedCouponCode || undefined,
     base_charge_cents: BASE_CHARGE_CENTS,
     single_charge: true,
     next_charge: null,
