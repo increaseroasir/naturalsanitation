@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Monthly Bin Cleaning – Natural Sanitation | Metro Detroit</title>
-  <meta name="description" content="400-degree pressurized steam cleaning for garbage and recycling bins. Monthly plan — no contract, cancel any time. Serving Oakland and Macomb County." />
+  <title>Bin Cleaning Plans – Natural Sanitation | Metro Detroit</title>
+  <meta name="description" content="400-degree pressurized steam cleaning for garbage and recycling bins. Monthly or Annual plan — no contract, cancel any time. Serving Oakland and Macomb County." />
 
   <!-- META PIXEL -->
   <script>
@@ -14,13 +14,22 @@
     n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
     t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
     document,'script','https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', window.__NS_META_PIXEL_ID);
-    fbq('track', 'PageView');
-    fbq('track', 'ViewContent', {
-      content_name: 'Limited Time Offer - Monthly',
-      content_category: 'monthly',
-      currency: 'USD'
-    });
+    // Capture event_id from URL for deduplication
+    (function(){
+      try {
+        var p = new URLSearchParams(window.location.search);
+        var eid = p.get('event_id') || p.get('fb_event_id');
+        if (eid) { try { sessionStorage.setItem('ns_funnel_event_id', eid); } catch(e){} }
+        var opts = eid ? { eventID: eid } : {};
+        fbq('init', window.__NS_META_PIXEL_ID);
+        fbq('track', 'PageView', {}, opts);
+        fbq('track', 'ViewContent', { content_name: 'Limited Time Offer', content_category: 'monthly_annual', currency: 'USD' }, opts);
+      } catch(e) {
+        fbq('init', window.__NS_META_PIXEL_ID);
+        fbq('track', 'PageView');
+        fbq('track', 'ViewContent', { content_name: 'Limited Time Offer', content_category: 'monthly_annual', currency: 'USD' });
+      }
+    })();
   </script>
   <noscript><img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=499919262310418&ev=PageView&noscript=1"/></noscript>
@@ -110,12 +119,21 @@
     .bin-btn:hover{border-color:var(--blue);color:var(--blue)}
     .bin-btn.active{border-color:var(--blue);background:var(--blue-light);color:var(--blue)}
 
-    /* Pricing card */
-    .pricing-card{background:var(--card);border:2px solid var(--blue);border-radius:var(--r);padding:22px;box-shadow:0 4px 16px rgba(36,87,214,.14);margin-top:4px}
-    .pricing-card-label{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--navy);margin-bottom:8px}
-    .pricing-card-price{font-size:36px;font-weight:900;color:var(--charcoal);line-height:1.1;margin-bottom:4px}
-    .pricing-card-per{font-size:13px;font-weight:600;color:var(--muted);margin-bottom:12px}
-    .pricing-card-note{font-size:13px;color:var(--muted);margin-bottom:0}
+    /* Plan tiles */
+    .plan-tiles-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .plan-tile{border:2px solid var(--border);border-radius:var(--r);padding:16px;background:var(--card);cursor:pointer;transition:border-color .15s,box-shadow .15s;position:relative}
+    .plan-tile:hover{border-color:var(--blue);box-shadow:0 4px 16px rgba(36,87,214,.1)}
+    .plan-tile.selected{border-color:var(--blue);background:var(--blue-light);box-shadow:0 4px 16px rgba(36,87,214,.14)}
+    .plan-tile-name{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+    .best-value-badge{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:#f0f3f8;color:var(--navy);border:1px solid var(--border);padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:6px}
+    .savings-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--green);background:var(--green-light);border:1px solid var(--green-border);padding:2px 8px;border-radius:20px;margin-bottom:6px}
+    .plan-price-row{display:flex;align-items:baseline;gap:4px}
+    .plan-price{font-size:28px;font-weight:900;color:var(--navy);line-height:1}
+    .plan-price-period{font-size:13px;color:var(--muted)}
+    .plan-note{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}
+    .plan-radio{position:absolute;top:14px;right:14px;width:18px;height:18px;border-radius:50%;border:2px solid var(--border);background:var(--surface);transition:border-color .15s,background .15s;flex-shrink:0}
+    .plan-tile.selected .plan-radio{border-color:var(--blue);background:var(--blue)}
+    .plan-tile.selected .plan-radio::after{content:'';display:block;width:6px;height:6px;border-radius:50%;background:#fff;margin:4px auto 0}
 
     /* CTA */
     .cta-btn{display:block;width:100%;padding:15px;background:var(--blue);color:#fff;font-size:16px;font-weight:800;border:none;border-radius:var(--r);text-align:center;transition:background .15s,box-shadow .15s;line-height:1.3;cursor:pointer}
@@ -275,30 +293,51 @@
 
       <!-- PLAN SELECTOR -->
       <div class="plan-col">
+
+        <!-- BIN COUNT -->
         <div>
           <div class="field-label">How many bins need cleaning?</div>
           <div class="bin-row">
-            <button type="button" class="bin-btn active" data-bins="1" onclick="selectBins(1)">1 Bin</button>
-            <button type="button" class="bin-btn" data-bins="2" onclick="selectBins(2)">2 Bins</button>
+            <button type="button" class="bin-btn active" data-bins="2" onclick="selectBins(2)">1–2 Bins</button>
             <button type="button" class="bin-btn" data-bins="3" onclick="selectBins(3)">3 Bins</button>
             <button type="button" class="bin-btn" data-bins="4" onclick="selectBins(4)">4 Bins</button>
           </div>
         </div>
 
-        <div class="pricing-card">
-          <div class="pricing-card-label">Monthly Plan</div>
-          <div class="pricing-card-price" id="monthly-price-display">$33/month</div>
-          <div class="pricing-card-per" id="monthly-per-display">Plan total for 1 bin · billed monthly</div>
-          <div class="pricing-card-note">No contract. Cancel any time.</div>
+        <!-- PLAN TILES -->
+        <div class="plan-tiles-row">
+          <!-- ANNUAL -->
+          <div class="plan-tile selected" id="tile-annual" onclick="selectPlan('annual')">
+            <div class="plan-radio"></div>
+            <div class="plan-tile-name">Annual</div>
+            <div class="best-value-badge">Best Value</div>
+            <div class="savings-pill">✓ Save vs monthly</div>
+            <div class="plan-price-row">
+              <span class="plan-price" id="annual-price-display">$250</span>
+              <span class="plan-price-period">/year</span>
+            </div>
+            <div class="plan-note" id="annual-note">1–2 bins · one payment</div>
+          </div>
+          <!-- MONTHLY -->
+          <div class="plan-tile" id="tile-monthly" onclick="selectPlan('monthly')">
+            <div class="plan-radio"></div>
+            <div class="plan-tile-name">Monthly</div>
+            <div style="height:20px"></div><!-- spacer to align price -->
+            <div class="plan-price-row">
+              <span class="plan-price" id="monthly-price-display">$39</span>
+              <span class="plan-price-period">/month</span>
+            </div>
+            <div class="plan-note" id="monthly-note">1–2 bins · cancel anytime</div>
+          </div>
         </div>
 
-        <p class="pricing-cta-trust">Secure checkout · Billed through Jobber · Cancel anytime</p>
+        <p class="pricing-cta-trust">Secure checkout · Billed through Jobber · No contract</p>
         <button type="button" class="cta-btn" id="main-cta" onclick="goToCheckout()">
-          Get My Bins Cleaned Monthly
+          Get My Bins Cleaned — <span id="cta-price-label">$250/year</span>
         </button>
-        <p class="hero-cta-note">From $33/mo (1 bin) · 2 bins $39/mo · No contract · Before-and-after photos after every clean.</p>
-      </div>
+        <p class="hero-cta-note">Annual: 1/2 bins $250 · 3 bins $299 · 4 bins $349 &nbsp;|&nbsp; Monthly: 1/2 bins $39 · 3 bins $45 · 4 bins $45</p>
 
+      </div>
     </div>
   </div>
 </section>
@@ -478,7 +517,7 @@
       </div>
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">How does pricing work for multiple bins?<span class="faq-icon">▾</span></button>
-        <div class="faq-a">Monthly: $33/mo (1 bin) · $39/mo (2 bins) · $45/mo (3 bins) · $50/mo (4 bins). No contract. Cancel any time.</div>
+        <div class="faq-a">Annual: 1/2 bins $250/yr · 3 bins $299/yr · 4 bins $349/yr. Monthly: 1/2 bins $39/mo · 3 bins $45/mo · 4 bins $45/mo. No contract. Cancel any time.</div>
       </div>
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">What if I sign up mid-season?<span class="faq-icon">▾</span></button>
@@ -501,17 +540,17 @@
 
   <!-- BOTTOM CTA -->
   <div class="bottom-cta">
-    <h2>Routes are filling by ZIP code. Lock in your monthly spot today.</h2>
+    <h2>Routes are filling by ZIP code. Lock in your spot today.</h2>
     <p>127,000+ bins cleaned · 250+ five-star reviews · 6+ years in Metro Detroit</p>
-    <button type="button" class="bottom-cta-btn" onclick="goToCheckout()">Get My Bins Cleaned Monthly</button>
-    <div class="bottom-trust">Secure checkout · Billed through Jobber · Cancel anytime</div>
+    <button type="button" class="bottom-cta-btn" onclick="goToCheckout()">Get My Bins Cleaned</button>
+    <div class="bottom-trust">Secure checkout · Billed through Jobber · No contract · Cancel anytime</div>
   </div>
 
 </div><!-- /below-fold -->
 
 <!-- STICKY MOBILE BAR -->
 <div class="sticky-mobile-bar" id="sticky-mobile-bar">
-  <button type="button" class="sticky-mobile-btn" onclick="goToCheckout()">Get My Bins Cleaned Monthly</button>
+  <button type="button" class="sticky-mobile-btn" onclick="goToCheckout()">Get My Bins Cleaned</button>
 </div>
 
 <!-- FOOTER -->
@@ -523,37 +562,57 @@
 <script>
   /* ── PRICING ── */
   var PRICING = {
-    1: { monthly: 33 },
-    2: { monthly: 39 },
-    3: { monthly: 45 },
-    4: { monthly: 50 }
+    2: { annual: 250, monthly: 39, label: '1–2 bins' },
+    3: { annual: 299, monthly: 45, label: '3 bins' },
+    4: { annual: 349, monthly: 45, label: '4 bins' }
   };
-  var selectedBins = 1;
+  var selectedBins = 2;
+  var selectedPlan = 'annual';
 
   function selectBins(n) {
     selectedBins = n;
     document.querySelectorAll('.bin-btn').forEach(function(b) { b.classList.remove('active'); });
     document.querySelector('[data-bins="' + n + '"]').classList.add('active');
-    var p = PRICING[n];
-    var binWord = n === 1 ? 'bin' : 'bins';
-    document.getElementById('monthly-price-display').textContent = '$' + p.monthly + '/month';
-    document.getElementById('monthly-per-display').textContent = 'Plan total for ' + n + ' ' + binWord + ' · billed monthly';
+    updatePriceDisplay();
+  }
+
+  function selectPlan(plan) {
+    selectedPlan = plan;
+    ['annual','monthly'].forEach(function(p) {
+      var t = document.getElementById('tile-' + p);
+      if (t) t.classList.toggle('selected', p === plan);
+    });
+    updatePriceDisplay();
+  }
+
+  function updatePriceDisplay() {
+    var p = PRICING[selectedBins];
+    var binLabel = p.label;
+    document.getElementById('annual-price-display').textContent = '$' + p.annual;
+    document.getElementById('annual-note').textContent = binLabel + ' · one payment';
+    document.getElementById('monthly-price-display').textContent = '$' + p.monthly;
+    document.getElementById('monthly-note').textContent = binLabel + ' · cancel anytime';
+    if (selectedPlan === 'annual') {
+      document.getElementById('cta-price-label').textContent = '$' + p.annual + '/year';
+    } else {
+      document.getElementById('cta-price-label').textContent = '$' + p.monthly + '/month';
+    }
   }
 
   /* ── CHECKOUT ── */
   function buildCheckoutUrl() {
     var p = PRICING[selectedBins];
+    var price = selectedPlan === 'annual' ? p.annual : p.monthly;
     var params = new URLSearchParams({
-      plan: 'monthly',
+      plan: selectedPlan,
       bins: String(selectedBins),
-      price: String(p.monthly)
+      price: String(price)
     });
-    /* Pass through event_id and UTMs from current URL */
+    /* Pass through event_id and UTMs */
     var src = new URLSearchParams(window.location.search);
     ['event_id','fb_event_id','utm_source','utm_medium','utm_campaign','utm_content','utm_term','fbclid','gclid'].forEach(function(k) {
       if (src.has(k)) params.set(k, src.get(k));
     });
-    /* Pass through stored event_id from sessionStorage */
     try {
       var storedId = sessionStorage.getItem('ns_funnel_event_id');
       if (storedId && !params.has('event_id')) params.set('event_id', storedId);
@@ -562,12 +621,13 @@
   }
 
   function goToCheckout() {
-    /* Fire InitiateCheckout pixel event */
+    var p = PRICING[selectedBins];
+    var price = selectedPlan === 'annual' ? p.annual : p.monthly;
     if (typeof fbq === 'function') {
       fbq('track', 'InitiateCheckout', {
-        content_name: 'Monthly Plan',
-        content_category: 'monthly',
-        value: PRICING[selectedBins].monthly,
+        content_name: (selectedPlan === 'annual' ? 'Annual' : 'Monthly') + ' Plan',
+        content_category: selectedPlan,
+        value: price,
         currency: 'USD',
         num_items: selectedBins
       });
@@ -579,7 +639,6 @@
   function toggleFaq(btn) {
     var a = btn.nextElementSibling;
     var isOpen = btn.classList.contains('open');
-    /* Close all */
     document.querySelectorAll('.faq-q.open').forEach(function(b) {
       b.classList.remove('open');
       b.nextElementSibling.classList.remove('open');
