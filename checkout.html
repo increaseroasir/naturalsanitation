@@ -1079,7 +1079,32 @@ function assertSucceededCheckoutPaymentIntent(paymentIntent) {
   return paymentIntent;
 }
 
-function showCheckoutSuccessUi() {
+function showCheckoutSuccessUi(opts) {
+  // Build thank-you redirect URL with all tracking params
+  opts = opts || {};
+  try {
+    var tyParams = new URLSearchParams();
+    if (opts.name) tyParams.set('name', opts.name);
+    if (opts.email) tyParams.set('email', opts.email);
+    if (opts.phone) tyParams.set('phone', opts.phone);
+    if (opts.city) tyParams.set('city', opts.city);
+    if (opts.plan) tyParams.set('plan', opts.plan);
+    if (opts.bins) tyParams.set('bins', String(opts.bins));
+    if (opts.amount) tyParams.set('amount', String(opts.amount));
+    if (opts.txn) tyParams.set('txn', opts.txn);
+    // Pass through UTMs and event_id
+    var src = new URLSearchParams(window.location.search);
+    ['event_id','fb_event_id','utm_source','utm_medium','utm_campaign','utm_content','utm_term','fbclid','gclid'].forEach(function(k) {
+      if (src.has(k)) tyParams.set(k, src.get(k));
+    });
+    try {
+      var storedId = sessionStorage.getItem('ns_funnel_event_id');
+      if (storedId && !tyParams.has('event_id')) tyParams.set('event_id', storedId);
+    } catch(e) {}
+    window.location.href = '/thank-you.html?' + tyParams.toString();
+    return;
+  } catch(eRedir) {}
+  // Fallback: show inline success if redirect fails
   document.getElementById('checkout-form').style.display = 'none';
   document.getElementById('success-screen').classList.add('show');
   window.scrollTo({ top:0, behavior:'smooth' });
@@ -1177,7 +1202,16 @@ function onSuccess({ name, email, phone, address, trashDay, paymentIntentId }) {
     }
   } catch(eHy) {}
 
-  showCheckoutSuccessUi();
+  showCheckoutSuccessUi({
+    name: name || '',
+    email: email || '',
+    phone: phone || '',
+    city: getCheckoutServiceZipDigits() || '',
+    plan: selectedPlan || 'annual',
+    bins: selectedBins || 1,
+    amount: paidDollars,
+    txn: piId
+  });
 }
 
 /* ── HELPERS ── */
