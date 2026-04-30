@@ -1160,7 +1160,7 @@ function onSuccess({ name, email, phone, address, trashDay, paymentIntentId }) {
       stripe_transaction_id: piId,
       source: 'checkout-page',
       status: 'paid',
-      tags: ['purchasefunnellead', 'partial_lead', 'initiate_checkout', 'purchased'],
+      tags: ['purchasefunnellead', 'paid', 'partial_lead', 'initiate_checkout', 'purchased'],
       event_id: paidEidGhl,
       jobber_event_id: paidEidGhl
     });

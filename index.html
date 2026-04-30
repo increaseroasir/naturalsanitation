@@ -5323,7 +5323,7 @@ function fireModalGHLPurchaseSuccess() {
     coupon: (__checkoutModal.appliedCouponRaw || '').trim() || undefined,
     source: 'checkout-modal-paid',
     status: 'paid',
-    tags: ['purchasefunnellead', 'partial_lead', 'initiate_checkout', 'purchased'],
+    tags: ['purchasefunnellead', 'paid', 'partial_lead', 'initiate_checkout', 'purchased'],
     event_id: paidEventId,
     jobber_event_id: paidEventId,
     stripe_transaction_id: __checkoutModal.lastPurchasePiId || undefined
