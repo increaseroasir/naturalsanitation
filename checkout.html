@@ -1026,18 +1026,7 @@ function mountPaymentElement(clientSecret) {
   paymentElement.mount('#payment-element');
 }
 
-// Pre-fetch a PaymentIntent on page load so Link/Apple Pay load instantly
-(async function prefetchPaymentIntent() {
-  try {
-    const res = await fetch('https://ns-payment.increase-roas.workers.dev/create-payment-intent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildCheckoutPaymentIntentPayload(''))
-    });
-    const data = await res.json().catch(function(){ return {}; });
-    if (data.clientSecret) mountPaymentElement(data.clientSecret);
-  } catch(e) { /* silent — will re-create on submit */ }
-})();
+// PaymentIntent is created on form submit only (no prefetch — avoids phantom incomplete intents in Stripe)
 
 /* ── APPLE PAY / GOOGLE PAY handled by Payment Element above ── */
 // Hide legacy express pay section — Payment Element shows wallet buttons natively
