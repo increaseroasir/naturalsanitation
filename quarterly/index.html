@@ -773,6 +773,17 @@
     document.getElementById('upsell-modal').classList.remove('open');
     document.body.style.overflow = '';
     pendingPlan = 'quarterly';
+    // Re-enable all price card buttons so they can be clicked again
+    document.querySelectorAll('.price-card-btn').forEach(function(btn) {
+      btn.disabled = false;
+      btn.style.pointerEvents = 'auto';
+      btn.style.opacity = '1';
+    });
+    var priceReveal = document.querySelector('.price-reveal');
+    if (priceReveal) {
+      priceReveal.style.pointerEvents = 'auto';
+      priceReveal.style.opacity = '1';
+    }
   }
   document.getElementById('upsell-modal').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
