@@ -680,21 +680,19 @@
 
   function updatePriceCards() {
     var p = PRICING[selectedBins];
-    var seasonalEquiv = p.quarterly * 3;
-    var savings = seasonalEquiv - p.annual;
     var diff = p.annual - p.quarterly;
 
     document.getElementById('pc-q-price').textContent = '$' + p.quarterly;
     document.getElementById('pc-q-note').textContent = '3 washes · spring, summer, fall';
     document.getElementById('pc-a-price').textContent = '$' + p.annual;
     document.getElementById('pc-a-note').textContent = p.label + ' · all 9 washes/year';
-    document.getElementById('pc-a-savings').textContent = 'Save $' + savings + '/yr vs quarterly';
+    document.getElementById('pc-a-savings').textContent = 'Save $' + diff + ' vs quarterly';
 
     // Update modal
     document.getElementById('modal-q-price').textContent = '$' + p.quarterly;
     document.getElementById('modal-a-price').textContent = '$' + p.annual;
     document.getElementById('modal-a-note').textContent = p.label + ' · all 9 washes/year';
-    document.getElementById('modal-savings-tag').textContent = 'Save $' + savings + '/yr';
+    document.getElementById('modal-savings-tag').textContent = 'Save $' + diff;
     document.getElementById('modal-upgrade-diff').textContent = diff;
     document.getElementById('modal-upgrade-diff-2').textContent = diff;
     document.getElementById('modal-q-price-inline').textContent = p.quarterly;
@@ -774,6 +772,7 @@
   function closeModal() {
     document.getElementById('upsell-modal').classList.remove('open');
     document.body.style.overflow = '';
+    pendingPlan = 'quarterly';
   }
   document.getElementById('upsell-modal').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
