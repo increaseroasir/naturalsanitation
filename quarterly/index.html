@@ -77,20 +77,21 @@
     .stars{color:#f59e0b;letter-spacing:1px}
 
     /* HERO */
-    .hero{background:var(--surface);border-bottom:1px solid var(--border);padding:28px 24px 32px}
+    .hero{background:var(--surface);border-bottom:1px solid var(--border);padding:20px 16px 24px}
     .hero-inner{max-width:1100px;margin:0 auto}
-    .hero-headline{font-size:clamp(22px,3.8vw,34px);font-weight:900;color:var(--navy);line-height:1.15;margin-bottom:8px;max-width:820px}
-    .hero-sub{font-size:clamp(15px,2vw,18px);color:var(--muted);margin-bottom:16px;max-width:620px;line-height:1.5}
-    .hero-proof-bar{font-size:13px;color:var(--muted);margin-bottom:20px}
+    .hero-headline{font-size:clamp(20px,3.8vw,34px);font-weight:900;color:var(--navy);line-height:1.15;margin-bottom:6px;max-width:820px}
+    .hero-sub{font-size:clamp(14px,2vw,17px);color:var(--muted);margin-bottom:10px;max-width:620px;line-height:1.5}
+    .hero-proof-bar{font-size:12px;color:var(--muted);margin-bottom:14px}
     .hero-columns{display:grid;grid-template-columns:1fr 420px;gap:24px;align-items:start;margin-top:4px}
-    @media(max-width:880px){.hero-columns{grid-template-columns:1fr}}
+    @media(max-width:880px){.hero-columns{grid-template-columns:1fr;gap:14px}}
 
-    /* VIDEO */
-    .vsl-pre{margin-bottom:10px}
+    /* VIDEO / HERO MEDIA */
+    .vsl-pre{margin-bottom:8px}
     .vsl-eyebrow{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
-    .vsl-pre-headline{font-size:clamp(16px,2.2vw,20px);font-weight:800;color:var(--navy);line-height:1.25}
+    .vsl-pre-headline{font-size:clamp(15px,2.2vw,20px);font-weight:800;color:var(--navy);line-height:1.25}
     .vsl-wrapper{position:relative;width:100%;aspect-ratio:16/9;background:#0a0a0a;border-radius:var(--r);overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08)}
     .vsl-wrapper video{display:block;width:100%;height:100%;object-fit:cover}
+    .vsl-wrapper img{display:block;width:100%;height:100%;object-fit:cover}
     .hero-cta-note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5}
 
     /* PLAN COLUMN */
@@ -334,24 +335,18 @@
 
     <div class="hero-columns">
 
-      <!-- LEFT: VIDEO -->
+      <!-- LEFT: STEAM MACHINE PHOTO -->
       <div class="vsl-col">
         <div class="vsl-pre">
-          <div class="vsl-eyebrow">DON'T BE THIS CUSTOMER</div>
-          <h2 class="vsl-pre-headline">This is what's living in your bin right now. A hose won't fix this — 300° steam will.</h2>
+          <div class="vsl-eyebrow">300° STEAM · TRUCK-MOUNTED</div>
+          <h2 class="vsl-pre-headline">This machine destroys bacteria, maggots &amp; odor — lid to wheels, after every pickup.</h2>
         </div>
-        <div class="vsl-wrapper">
-          <video
-            autoplay
-            muted
-            loop
-            playsinline
-            preload="auto"
-            poster="./assets/hero-steam-proof.jpg"
-            aria-label="Bin washing demonstration video"
-          >
-            <source src="./assets/bin-wash.mp4" type="video/mp4" />
-          </video>
+        <div class="vsl-wrapper" style="aspect-ratio:4/3">
+          <img
+            src="./assets/steam-machine.webp"
+            alt="Natural Sanitation 300° steam cleaning machine with steam rising"
+            loading="eager"
+          />
         </div>
         <p class="hero-cta-note" style="margin-top:8px">3 cleanings per season · spring, summer, fall · no contract</p>
       </div>
