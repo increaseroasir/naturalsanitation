@@ -241,16 +241,19 @@ function ghlBuildIncomingTagList(body) {
   const out = [];
   const st = String(body.status || '').toLowerCase();
   const isPaid = st === 'paid' || body.paid === true;
-  // purchasefunnellead and paid are ONLY added when Stripe checkout is completed (paid)
+
+  // purchasefunnellead is added to ALL leads (every funnel touch)
+  out.push('purchasefunnellead');
+
+  // paid tag is ONLY added when Stripe checkout is completed
   if (isPaid) {
-    out.push('purchasefunnellead');
     out.push('paid');
   }
   if (Array.isArray(body.tags)) {
     for (const t of body.tags) {
       const s = typeof t === 'string' ? t.trim() : '';
-      // Never allow purchasefunnellead or paid from frontend tags unless actually paid
-      if (s && !(s === 'purchasefunnellead' && !isPaid) && !(s === 'paid' && !isPaid)) out.push(s);
+      // Never allow 'paid' from frontend tags unless actually paid
+      if (s && !(s === 'paid' && !isPaid)) out.push(s);
     }
   }
   if (st === 'lead_detail') {
