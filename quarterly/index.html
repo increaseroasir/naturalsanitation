@@ -145,9 +145,9 @@
 
     /* SIDE-BY-SIDE VIDEO */
     .sbs-section{background:#000;margin-top:0}
-    .sbs-label-bar{background:#1e293b;padding:10px 16px;text-align:center}
-    .sbs-label-bar span{font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8}
-    .sbs-label-bar strong{color:#f5c518}
+    .sbs-label-bar{background:#dc2626;padding:12px 16px;text-align:center}
+    .sbs-label-bar span{font-size:13px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#fff}
+    .sbs-label-bar strong{color:#fff}
     .sbs-video-wrap{width:100%;background:#000;overflow:hidden;border-radius:0}
     .sbs-video-wrap video{width:100%;display:block;height:auto;max-height:400px;object-fit:cover}
     .sbs-labels{display:grid;grid-template-columns:1fr 1fr;background:#111}
@@ -525,7 +525,7 @@
   <div class="guarantee-inner">
     <div class="guarantee-badge"><span>100%</span>SATISFACTION<br>GUARANTEE</div>
     <h2 class="guarantee-title">Your bins will be cleaner than the day you bought them — or we come back for free.</h2>
-    <p class="guarantee-sub">6+ years serving Metro Detroit. 127,000+ bins cleaned. 250+ five-star reviews.</p>
+    <p class="guarantee-sub">7 years serving Metro Detroit. 127,000+ bins cleaned. 250+ five-star reviews.</p>
     <ul class="guarantee-bullets">
       <li><span class="check">✓</span> Guaranteed satisfaction on every clean</li>
       <li><span class="check">✓</span> Friendly, fast support — real people</li>
@@ -591,7 +591,7 @@
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">What's the difference between Quarterly and Annual?<span class="faq-icon">▾</span></button><div class="faq-a">Quarterly = 3 washes per season (spring, summer, fall) — paid once per season. Annual = 9 washes per year (all seasons) — paid once per year at a lower total cost. Annual saves you money and locks in your route spot all year.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Is there a contract? Can I cancel?<span class="faq-icon">▾</span></button><div class="faq-a">No contract, cancel anytime. Your route spot is reserved while your plan is active.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Is my driveway safe?<span class="faq-icon">▾</span></button><div class="faq-a">Yes. Our closed system captures all dirty water inside the truck — nothing is left on your driveway.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">What if I sign up mid-season?<span class="faq-icon">▾</span></button><div class="faq-a">Missed cleanings roll into the next quarter so you receive your full count every season.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">What if I sign up mid-season?<span class="faq-icon">▾</span></button><div class="faq-a">No problem — any missed cleanings from the current season automatically roll over to your next season. You always get your full count of cleanings.</div></div>
     </div>
   </div>
 </div>
@@ -708,17 +708,15 @@
   }
 
   function revealPricing() {
-    // Hide the top CTA, show bin selector + price cards
     var reserveWrap = document.getElementById('reserve-cta-wrap');
     var binWrap = document.getElementById('bin-selector-wrap');
     var priceReveal = document.querySelector('.price-reveal');
     if (reserveWrap) reserveWrap.style.display = 'none';
-    if (binWrap) { binWrap.style.display = 'block'; }
-    if (priceReveal) { priceReveal.style.display = 'block'; }
-    // Scroll to bin selector
+    if (binWrap) { binWrap.style.display = 'block'; binWrap.style.visibility = 'visible'; }
+    if (priceReveal) { priceReveal.style.display = 'block'; priceReveal.style.visibility = 'visible'; priceReveal.style.pointerEvents = 'auto'; }
     setTimeout(function() {
       if (binWrap) binWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
+    }, 80);
   }
 
   function handleCtaClick(plan) {
@@ -752,11 +750,11 @@
     var binWrap = document.getElementById('bin-selector-wrap');
     var priceReveal = document.querySelector('.price-reveal');
     if (reserveWrap) reserveWrap.style.display = 'none';
-    if (binWrap) { binWrap.style.display = 'block'; }
-    if (priceReveal) { priceReveal.style.display = 'block'; }
+    if (binWrap) { binWrap.style.display = 'block'; binWrap.style.visibility = 'visible'; }
+    if (priceReveal) { priceReveal.style.display = 'block'; priceReveal.style.visibility = 'visible'; priceReveal.style.pointerEvents = 'auto'; }
     setTimeout(function() {
       if (binWrap) binWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
+    }, 80);
   }
 
   /* MODAL */
