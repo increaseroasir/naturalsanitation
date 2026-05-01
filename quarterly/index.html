@@ -696,7 +696,9 @@
     document.getElementById('modal-upgrade-diff').textContent = diff;
     document.getElementById('modal-upgrade-diff-2').textContent = diff;
     document.getElementById('modal-q-price-inline').textContent = p.quarterly;
-    document.getElementById('modal-title').innerHTML = 'Add 6 More Cleanings for Only $' + diff + ' More';
+    // Update just the diff span inside the modal title — don't overwrite innerHTML or it destroys the span
+    var diffSpan = document.getElementById('modal-upgrade-diff');
+    if (diffSpan) diffSpan.textContent = diff;
   }
 
   function buildCheckoutUrl(plan) {
