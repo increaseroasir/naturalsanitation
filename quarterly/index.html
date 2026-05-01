@@ -77,7 +77,6 @@
     img{display:block;max-width:100%}
     button,a{font-family:inherit;cursor:pointer;text-decoration:none;color:inherit}
 
-    /* ── TOP BAR ── */
     /* ── URGENCY BAR ── */
     .urgency-bar{background:#dc2626;color:#fff;text-align:center;padding:10px 16px;font-size:13px;font-weight:700;letter-spacing:.01em;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.3}
     .urgency-bar strong{color:#fef08a}
@@ -99,25 +98,15 @@
     /* ── HERO ── */
     .hero{background:var(--surface);padding:20px 20px 0}
     .hero-inner{max-width:520px;margin:0 auto}
-
-    /* Star row */
     .hero-stars-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
     .hero-stars{color:#f59e0b;font-size:18px;letter-spacing:2px}
     .hero-rating-text{font-size:13px;color:var(--muted);font-weight:600}
-
-    /* Headline */
     .hero-headline{font-size:clamp(26px,7vw,38px);font-weight:900;color:var(--charcoal);line-height:1.1;margin-bottom:10px}
     .hero-headline em{color:var(--navy);font-style:normal}
-
-    /* Sub */
     .hero-sub{font-size:15px;color:var(--muted);margin-bottom:16px;line-height:1.5}
-
-    /* Bullet list */
     .hero-bullets{list-style:none;margin-bottom:20px}
     .hero-bullets li{display:flex;align-items:flex-start;gap:10px;font-size:15px;font-weight:600;color:var(--charcoal);padding:5px 0}
     .hero-bullets li .check{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0;margin-top:1px}
-
-    /* Hero image */
     .hero-img-wrap{margin:0 -20px;position:relative}
     .hero-img-wrap img{width:100%;max-height:320px;object-fit:cover;display:block}
     .hero-img-badge{position:absolute;top:12px;right:12px;background:rgba(22,50,92,.92);color:#fff;border-radius:10px;padding:10px 12px;text-align:center;font-size:11px;font-weight:800;line-height:1.3;max-width:110px}
@@ -153,6 +142,25 @@
     .activity-inner{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--charcoal);font-weight:600}
     .activity-avatar{font-size:18px;flex-shrink:0}
 
+    /* ── AS SEEN ON / NEWS SECTION ── */
+    .news-section{background:#fff;padding:0;margin-top:20px}
+    .news-label{font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:center;padding:16px 20px 10px}
+    .news-photo-wrap{position:relative;margin:0;overflow:hidden;background:#000}
+    .news-photo-wrap img{width:100%;max-height:380px;object-fit:cover;display:block}
+    .news-caption{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.85));padding:20px 16px 14px;color:#fff}
+    .news-caption-title{font-size:15px;font-weight:900;line-height:1.2;margin-bottom:3px}
+    .news-caption-sub{font-size:12px;color:rgba(255,255,255,.8)}
+    .news-badges{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#f8fafc;border-bottom:1px solid var(--border);flex-wrap:wrap;justify-content:center}
+    .news-badge{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;border:1px solid var(--border);border-radius:4px;padding:4px 10px;background:#fff}
+
+    /* ── BIN WASH VIDEO ── */
+    .video-section{background:#000;padding:0;position:relative}
+    .video-label-bar{background:#1e293b;padding:10px 16px;text-align:center}
+    .video-label-bar span{font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8}
+    .video-label-bar strong{color:#f5c518}
+    .video-wrap{position:relative;width:100%;background:#000;max-height:480px;overflow:hidden}
+    .video-wrap video{width:100%;display:block;max-height:480px;object-fit:cover}
+
     /* ── FEATURED ON ── */
     .featured-bar{background:var(--bg);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:14px 20px;margin-top:20px;text-align:center}
     .featured-label{font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
@@ -164,11 +172,6 @@
     .section-label{font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;text-align:center}
     .section-title{font-size:clamp(20px,5vw,26px);font-weight:900;color:var(--charcoal);margin-bottom:8px;text-align:center;line-height:1.2}
     .section-sub{font-size:14px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.5}
-
-    /* ── CUSTOMER PHOTOS ── */
-    .customer-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
-    .customer-photo{border-radius:8px;overflow:hidden;aspect-ratio:1;background:#e2e8f0}
-    .customer-photo img{width:100%;height:100%;object-fit:cover}
 
     /* ── BEFORE/AFTER ── */
     .ba-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);margin-bottom:16px}
@@ -225,7 +228,6 @@
     .review-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--shadow)}
     .review-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
     .review-avatar{width:42px;height:42px;border-radius:50%;background:var(--navy);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .review-meta{}
     .review-name{font-size:14px;font-weight:800;color:var(--navy)}
     .review-stars{color:#f59e0b;font-size:13px;letter-spacing:1px;margin:2px 0}
     .review-date{font-size:11px;color:var(--muted)}
@@ -238,7 +240,7 @@
     .faq-list{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:#fff;box-shadow:var(--shadow)}
     .faq-item{border-bottom:1px solid var(--border)}
     .faq-item:last-child{border-bottom:none}
-    .faq-q{width:100%;text-align:left;background:none;border:none;padding:16px 18px;font-size:15px;font-weight:700;color:var(--navy);display:flex;justify-content:space-between;align-items:center;gap:12px;transition:background .12s}
+    .faq-q{width:100%;text-align:left;background:none;border:none;padding:16px 18px;font-size:15px;font-weight:700;color:var(--navy);display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer}
     .faq-q:hover{background:#f8fafc}
     .faq-icon{font-size:18px;color:var(--blue);transition:transform .2s;flex-shrink:0}
     .faq-q.open .faq-icon{transform:rotate(180deg)}
@@ -296,7 +298,11 @@
     .modal-decline-btn{display:block;width:100%;padding:12px;background:none;color:var(--muted);font-size:14px;font-weight:600;border:1px solid var(--border);border-radius:var(--r);text-align:center;cursor:pointer;transition:background .15s}
     .modal-decline-btn:hover{background:#f8fafc}
 
-    /* Pulse animation */
+    /* ── PRICE REVEAL ── */
+    .price-hidden .price-text{display:none}
+    .price-hidden .price-placeholder{display:inline}
+    .price-placeholder{display:none}
+
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
   </style>
 </head>
@@ -329,28 +335,20 @@
 <!-- HERO -->
 <section class="hero">
   <div class="hero-inner">
-    <!-- Stars -->
     <div class="hero-stars-row">
       <span class="hero-stars">★★★★★</span>
       <span class="hero-rating-text">4.9 Rating · 252 Google Reviews</span>
     </div>
-
-    <!-- Headline -->
     <h1 class="hero-headline">Stop Dreading Your <em>Garbage Bins.</em> We Clean Them After Every Pickup.</h1>
-
-    <!-- Sub -->
-    <p class="hero-sub">400° steam sanitizes lid to wheels. We text before/after photos. Same service behind 127,000+ bins cleaned in Metro Detroit.</p>
-
-    <!-- Bullets -->
+    <p class="hero-sub">300° steam sanitizes lid to wheels. We text before/after photos. Same service behind 127,000+ bins cleaned in Metro Detroit.</p>
     <ul class="hero-bullets">
       <li><span class="check">✓</span> 3 professional cleanings per season (spring, summer, fall)</li>
-      <li><span class="check">✓</span> 400° steam kills bacteria &amp; odor at the source</li>
+      <li><span class="check">✓</span> 300° steam kills bacteria &amp; odor at the source</li>
       <li><span class="check">✓</span> Before/after photo proof texted to you</li>
       <li><span class="check">✓</span> No contract — cancel any time</li>
     </ul>
   </div>
 
-  <!-- Hero image with badge -->
   <div class="hero-img-wrap">
     <img src="../hero-steam-proof.jpg" alt="Natural Sanitation steam cleaning a garbage bin" />
     <div class="hero-img-badge">
@@ -362,7 +360,6 @@
 
 <!-- MAIN CTA -->
 <div class="cta-wrap">
-  <!-- Spots bar -->
   <div class="spots-bar">
     <div class="spots-bar-top">
       <span class="spots-label">Route capacity this season</span>
@@ -372,8 +369,9 @@
     <div class="spots-bar-bottom">Once these spots are gone, we won't open the route again until next season.</div>
   </div>
   <button type="button" class="cta-btn" onclick="handleCtaClick()" id="hero-cta-btn">
-    CLAIM MY SPOT — $124 for the Season <span class="cta-arrow">→</span>
-  </button>  <div class="cta-sub">
+    RESERVE MY SPOT <span class="cta-arrow">→</span>
+  </button>
+  <div class="cta-sub">
     <span class="cta-dot"></span>
     Routes filling by ZIP code &nbsp;·&nbsp; Secure checkout
   </div>
@@ -394,7 +392,37 @@
   </div>
 </div>
 
-<!-- BIN SELECTOR (below hero) -->
+<!-- AS SEEN ON LOCAL NEWS -->
+<div class="news-section">
+  <div class="news-label">As Seen On Local News</div>
+  <div class="news-photo-wrap">
+    <img src="assets/news-local4.png" alt="Natural Sanitation featured on Local 4 News Detroit — Home and Garden Show" />
+    <div class="news-caption">
+      <div class="news-caption-title">Natural Sanitation on Local 4 News Detroit</div>
+      <div class="news-caption-sub">Home &amp; Garden Show · Novi, Oakland County</div>
+    </div>
+  </div>
+  <div class="news-badges">
+    <span class="news-badge">Local 4</span>
+    <span class="news-badge">Click On Detroit</span>
+    <span class="news-badge">Home &amp; Garden Show</span>
+    <span class="news-badge">Fox News</span>
+  </div>
+</div>
+
+<!-- BIN WASH VIDEO -->
+<div class="video-section">
+  <div class="video-label-bar">
+    <span>Watch the <strong>300° Steam Clean</strong> in Action</span>
+  </div>
+  <div class="video-wrap">
+    <video autoplay muted loop playsinline preload="metadata" poster="../hero-steam-proof.jpg">
+      <source src="assets/bin-wash.mp4" type="video/mp4" />
+    </video>
+  </div>
+</div>
+
+<!-- BIN SELECTOR -->
 <div style="padding:20px 20px 0;max-width:520px;margin:0 auto">
   <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">How many bins need cleaning?</div>
   <div style="display:flex;gap:8px">
@@ -402,18 +430,7 @@
     <button type="button" class="bin-btn" data-bins="3" onclick="selectBins(3)" style="flex:1;padding:10px 4px;border:2px solid var(--border);border-radius:8px;background:#fff;font-size:14px;font-weight:700;color:var(--charcoal)">3 Bins</button>
     <button type="button" class="bin-btn" data-bins="4" onclick="selectBins(4)" style="flex:1;padding:10px 4px;border:2px solid var(--border);border-radius:8px;background:#fff;font-size:14px;font-weight:700;color:var(--charcoal)">4 Bins</button>
   </div>
-  <div style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px">3 washes/season · 1–2 bins $124 · 3 bins $149 · 4 bins $164</div>
-</div>
-
-<!-- FEATURED ON -->
-<div class="featured-bar">
-  <div class="featured-label">As Seen On</div>
-  <div class="featured-logos">
-    <span class="featured-logo">Local 4</span>
-    <span class="featured-logo">Fox News</span>
-    <span class="featured-logo">Home &amp; Garden Show</span>
-    <span class="featured-logo">Click On Detroit</span>
-  </div>
+  <div style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px">3 washes/season · no contract · cancel any time</div>
 </div>
 
 <!-- BEFORE / AFTER -->
@@ -440,14 +457,14 @@
 <div class="section">
   <div class="section-label">Why DIY Doesn't Work</div>
   <div class="section-title">Hoses move grime. They don't kill bacteria.</div>
-  <div class="section-sub">Only 400° pressurized steam destroys the odor-causing bacteria living in your bin's plastic.</div>
+  <div class="section-sub">Only 300° pressurized steam destroys the odor-causing bacteria living in your bin's plastic.</div>
 
   <div class="avoid-grid">
     <div class="avoid-card">
       <div class="avoid-icon">🚫</div>
       <div>
         <div class="avoid-title">Avoid the Smell &amp; Maggots</div>
-        <div class="avoid-desc">Bacteria and fly eggs survive a garden hose. 400° steam kills them on contact — lid to wheels.</div>
+        <div class="avoid-desc">Bacteria and fly eggs survive a garden hose. 300° steam kills them on contact — lid to wheels.</div>
       </div>
     </div>
     <div class="avoid-card">
@@ -485,8 +502,8 @@
     <div class="step-item">
       <div class="step-num">2</div>
       <div class="step-body">
-        <h3>400° steam, lid to wheels</h3>
-        <p>Our truck-mounted system blasts 400° pressurized steam inside every bin. All dirty water is captured on the truck.</p>
+        <h3>300° steam, lid to wheels</h3>
+        <p>Our truck-mounted system blasts 300° pressurized steam inside every bin. All dirty water is captured on the truck.</p>
         <div class="step-badge">✓ Eco repellent applied after each clean</div>
       </div>
     </div>
@@ -509,7 +526,7 @@
   <div class="feature-grid">
     <div class="feature-card">
       <div class="feature-icon">🌡️</div>
-      <div class="feature-title">400° Steam</div>
+      <div class="feature-title">300° Steam</div>
       <div class="feature-desc">Kills bacteria, odor, and fly eggs at the source</div>
     </div>
     <div class="feature-card">
@@ -556,7 +573,7 @@
       <li><span class="check">✓</span> No contract — cancel any time</li>
     </ul>
     <button type="button" class="cta-btn" onclick="handleCtaClick()" style="max-width:400px;margin:0 auto" id="guarantee-cta-btn">
-      CLAIM MY SPOT — $124 for the Season <span class="cta-arrow">→</span>
+      RESERVE MY SPOT <span class="cta-arrow">→</span>
     </button>
     <div class="cta-sub" style="color:#94a3b8;margin-top:8px">
       <span class="cta-dot"></span>
@@ -691,15 +708,15 @@
     <h2 class="bottom-cta-headline">Routes Are Filling by ZIP Code. Lock In Your Spot Today.</h2>
     <ul class="bottom-cta-bullets">
       <li><span class="check">✓</span> 127,000+ bins cleaned in Metro Detroit</li>
-      <li><span class="check">✓</span> 3 cleanings per quarter — spring, summer, fall</li>
+      <li><span class="check">✓</span> 3 cleanings per season — spring, summer, fall</li>
       <li><span class="check">✓</span> No contract — cancel any time</li>
     </ul>
     <button type="button" class="cta-btn" onclick="handleCtaClick()" style="max-width:400px;margin:0 auto" id="bottom-cta-btn">
-      CLAIM MY SPOT — $124 for the Season <span class="cta-arrow">→</span>
+      RESERVE MY SPOT <span class="cta-arrow">→</span>
     </button>
     <div class="cta-sub" style="color:rgba(255,255,255,.7);margin-top:8px">
       <span class="cta-dot"></span>
-      Secure checkout · Billed through Jobber · No contract
+      Secure checkout &nbsp;·&nbsp; Billed through Jobber &nbsp;·&nbsp; No contract
     </div>
   </div>
 </div>
@@ -712,11 +729,11 @@
     <div class="faq-list">
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">What does the Quarterly plan include?<span class="faq-icon">▾</span></button>
-        <div class="faq-a">3 professional steam cleanings per season (spring, summer, fall) — that's your full year of service. Each cleaning uses 400° pressurized steam — lid to wheels — with before/after photo proof texted to you. Eco-friendly rodent repellent applied after each clean. 1–2 bins $124/season · 3 bins $149/season · 4 bins $164/season.</div>
+        <div class="faq-a">3 professional steam cleanings per season (spring, summer, fall) — that's your full year of service. Each cleaning uses 300° pressurized steam — lid to wheels — with before/after photo proof texted to you. Eco-friendly rodent repellent applied after each clean.</div>
       </div>
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">Why can't I just use a hose or pressure washer?<span class="faq-icon">▾</span></button>
-        <div class="faq-a">Hoses move debris but don't sanitize. 400° steam kills bacteria, fly eggs, and odor at the source — something cold or warm water simply can't do.</div>
+        <div class="faq-a">Hoses move debris but don't sanitize. 300° steam kills bacteria, fly eggs, and odor at the source — something cold or warm water simply can't do.</div>
       </div>
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">How does pricing work for multiple bins?<span class="faq-icon">▾</span></button>
@@ -745,7 +762,7 @@
 <!-- STICKY BOTTOM BAR -->
 <div class="sticky-bar" id="sticky-bar">
   <button type="button" class="sticky-bar-btn" onclick="handleCtaClick()" id="sticky-cta-btn">
-    CLAIM MY SPOT — $124 for the Season →
+    RESERVE MY SPOT →
   </button>
 </div>
 
@@ -762,14 +779,14 @@
     <div class="modal-header">
       <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
       <div class="modal-eyebrow">Wait — Before You Checkout</div>
-      <h2 class="modal-headline" id="modal-title">Save more with the Annual plan</h2>
+      <h2 class="modal-headline" id="modal-title">Upgrade &amp; Save — Annual Plan</h2>
     </div>
     <div class="modal-body">
       <div class="modal-compare">
         <div class="modal-plan">
           <div class="modal-plan-label">Quarterly</div>
           <div class="modal-plan-price" id="modal-q-price">$124</div>
-          <div class="modal-plan-period">/quarter</div>
+          <div class="modal-plan-period">/season</div>
           <div class="modal-plan-note" id="modal-q-note">3 washes/season</div>
         </div>
         <div class="modal-plan best">
@@ -777,20 +794,20 @@
           <div class="modal-plan-label">Annual</div>
           <div class="modal-plan-price" id="modal-a-price">$250</div>
           <div class="modal-plan-period">/year</div>
-          <div class="modal-plan-note" id="modal-a-note">All 9 cleanings · best value</div>
+          <div class="modal-plan-note" id="modal-a-note">All 9 washes · best value</div>
         </div>
       </div>
       <ul class="modal-value-list">
         <li>All 9 washes/year locked in upfront (3 per season × 3 seasons)</li>
         <li>Priority scheduling — your route spot reserved all year</li>
         <li>Pay once, forget about it — no quarterly renewals</li>
-        <li>Same 400° steam · same photo proof · no contract</li>
+        <li>Same 300° steam · same photo proof · no contract</li>
       </ul>
       <button type="button" class="modal-upgrade-btn" onclick="upgradeToAnnual()">
         Yes — Upgrade to Annual &amp; Save $<span id="modal-save-amt">246</span> →
       </button>
       <button type="button" class="modal-decline-btn" onclick="declineUpsell()">
-        No thanks, keep my Quarterly plan
+        No thanks — keep my Quarterly plan ($<span id="modal-q-price-inline">124</span>/season)
       </button>
     </div>
   </div>
@@ -805,15 +822,6 @@
   };
   var selectedBins = 2;
 
-  function updateCtaBtns() {
-    var p = PRICING[selectedBins];
-    var label = 'CLAIM MY SPOT — $' + p.quarterly + ' for the Season →';
-    ['hero-cta-btn','guarantee-cta-btn','bottom-cta-btn','sticky-cta-btn'].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) el.innerHTML = label;
-    });
-  }
-
   function selectBins(n) {
     selectedBins = n;
     document.querySelectorAll('.bin-btn').forEach(function(b) {
@@ -822,7 +830,6 @@
       b.style.background = active ? '#e9eefc' : '#fff';
       b.style.color = active ? 'var(--blue)' : 'var(--charcoal)';
     });
-    updateCtaBtns();
     updateModalPrices();
   }
 
@@ -836,6 +843,7 @@
     document.getElementById('modal-a-note').textContent = p.label + ' · all 9 washes/year';
     document.getElementById('modal-savings-tag').textContent = 'Save $' + savings + '/yr';
     document.getElementById('modal-save-amt').textContent = savings;
+    document.getElementById('modal-q-price-inline').textContent = p.quarterly;
   }
 
   /* ── CHECKOUT URL ── */
@@ -854,7 +862,7 @@
     return '../checkout.html?' + params.toString();
   }
 
-  /* ── CTA HANDLER ── */
+  /* ── CTA HANDLER — opens upsell modal (price reveal happens inside modal) ── */
   function handleCtaClick() {
     var p = PRICING[selectedBins];
     if (typeof fbq === 'function') {
@@ -869,9 +877,6 @@
     updateModalPrices();
     openModal();
   }
-
-  // Init correct label on load
-  updateCtaBtns();
 
   /* ── MODAL ── */
   function openModal() {
@@ -924,13 +929,12 @@
   (function() {
     var TOTAL = 60;
     var spots = 24;
-    // Simulate slight variation per session (22-26)
     try {
       var stored = sessionStorage.getItem('ns_spots');
       if (stored) {
         spots = parseInt(stored, 10);
       } else {
-        spots = Math.floor(Math.random() * 5) + 22; // 22-26
+        spots = Math.floor(Math.random() * 5) + 22;
         sessionStorage.setItem('ns_spots', String(spots));
       }
     } catch(e) {}
@@ -945,11 +949,9 @@
     if (spotsCount) spotsCount.textContent = spots;
     if (tickerText) tickerText.innerHTML = 'Route filling fast &mdash; <strong>' + spots + ' spots remaining</strong> in your area this season';
 
-    // Activity feed rotation
     var cities = ['Shelby Twp','Rochester Hills','Troy','Sterling Heights','Macomb Twp','Chesterfield','Washington Twp','Clinton Twp','West Bloomfield','Bloomfield Hills','Auburn Hills','Lake Orion'];
     var activityEl = document.getElementById('activity-text');
     var activityFeed = document.getElementById('activity-feed');
-    var idx = 0;
     function rotateActivity() {
       var city = cities[Math.floor(Math.random() * cities.length)];
       var rem = spots - Math.floor(Math.random() * 3);
@@ -958,9 +960,7 @@
       if (activityFeed) {
         activityFeed.style.opacity = '0';
         activityFeed.style.transition = 'opacity .4s';
-        setTimeout(function() {
-          activityFeed.style.opacity = '1';
-        }, 400);
+        setTimeout(function() { activityFeed.style.opacity = '1'; }, 400);
       }
     }
     setInterval(rotateActivity, 9000);
