@@ -89,10 +89,18 @@
     .vsl-pre{margin-bottom:8px}
     .vsl-eyebrow{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
     .vsl-pre-headline{font-size:clamp(15px,2.2vw,20px);font-weight:800;color:var(--navy);line-height:1.25}
-    .vsl-wrapper{position:relative;width:100%;aspect-ratio:16/9;background:#0a0a0a;border-radius:var(--r);overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08)}
+    .vsl-wrapper{position:relative;width:100%;aspect-ratio:4/3;background:#0a0a0a;border-radius:var(--r);overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,.22)}
     .vsl-wrapper video{display:block;width:100%;height:100%;object-fit:cover}
     .vsl-wrapper img{display:block;width:100%;height:100%;object-fit:cover}
+    .vsl-cta-overlay{position:absolute;bottom:0;left:0;right:0;padding:16px;background:linear-gradient(transparent,rgba(0,0,0,.72));display:flex;flex-direction:column;align-items:center;gap:8px}
+    .vsl-cta-btn{display:block;width:100%;max-width:320px;padding:14px 20px;border:none;border-radius:10px;font-size:16px;font-weight:800;color:#fff;background:var(--blue);cursor:pointer;text-align:center;box-shadow:0 3px 14px rgba(36,87,214,.4)}
+    .vsl-cta-hint{font-size:12px;color:rgba(255,255,255,.8);text-align:center}
     .hero-cta-note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5}
+    /* PLAN REVEAL */
+    .plan-reveal{display:none}
+    .plan-reveal.visible{display:flex;flex-direction:column;gap:14px}
+    /* PLAN COL always flex on desktop */
+    @media(min-width:881px){.plan-col{display:flex!important;flex-direction:column;gap:14px}}
 
     /* PLAN COLUMN */
     .plan-col{display:flex;flex-direction:column;gap:14px}
@@ -335,80 +343,100 @@
 
     <div class="hero-columns">
 
-      <!-- LEFT: STEAM MACHINE PHOTO -->
+      <!-- LEFT: VIDEO + CTA OVERLAY -->
       <div class="vsl-col">
         <div class="vsl-pre">
-          <div class="vsl-eyebrow">300° STEAM · TRUCK-MOUNTED</div>
-          <h2 class="vsl-pre-headline">This machine destroys bacteria, maggots &amp; odor — lid to wheels, after every pickup.</h2>
+          <div class="vsl-eyebrow">WATCH THIS FIRST</div>
+          <h2 class="vsl-pre-headline">See why your bins still stink after hosing them — and how we fully sanitize them after pickup.</h2>
         </div>
-        <div class="vsl-wrapper" style="aspect-ratio:4/3">
-          <img
-            src="./assets/steam-machine.webp"
-            alt="Natural Sanitation 300° steam cleaning machine with steam rising"
-            loading="eager"
-          />
+        <div class="vsl-wrapper" id="vsl-wrap">
+          <video
+            autoplay
+            muted
+            loop
+            playsinline
+            preload="auto"
+            poster="./assets/steam-machine.webp"
+            aria-label="Bin washing demonstration"
+          >
+            <source src="./assets/bin-wash.mp4" type="video/mp4" />
+          </video>
+          <div class="vsl-cta-overlay" id="vsl-overlay">
+            <button type="button" class="vsl-cta-btn" onclick="revealPlans()" id="vsl-cta">See plans &amp; pricing</button>
+            <span class="vsl-cta-hint">Takes 10 seconds. Plans unlock instantly.</span>
+          </div>
         </div>
         <p class="hero-cta-note" style="margin-top:8px">3 cleanings per season · spring, summer, fall · no contract</p>
       </div>
 
-      <!-- RIGHT: PLAN SELECTOR -->
-      <div class="plan-col">
+      <!-- RIGHT: PLAN SELECTOR (hidden until video CTA clicked) -->
+      <div class="plan-col" id="plan-col">
 
-        <!-- SPOTS BAR -->
-        <div class="spots-wrap">
-          <div class="spots-header">
-            <span class="spots-label">Route capacity this season</span>
-            <span class="spots-count">27 spots left</span>
-          </div>
-          <div class="spots-bar-track"><div class="spots-bar-fill"></div></div>
-          <p class="spots-note">Once these spots are gone, we won't open the route again until next season.</p>
+        <!-- INTRO (shown before reveal) -->
+        <div id="plan-intro" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;">
+          <p style="font-size:14px;font-weight:700;color:#166534;margin-bottom:4px">✅ Good news — we service your area.</p>
+          <p style="font-size:13px;color:#15803d">Choose how many bins need cleaning and pick your plan below.</p>
         </div>
 
-        <!-- BIN SELECTOR -->
-        <div>
-          <div class="field-label">How many bins need cleaning?</div>
-          <div class="bin-row">
-            <button type="button" class="bin-btn active" onclick="selectBins(1)">1–2 Bins</button>
-            <button type="button" class="bin-btn" onclick="selectBins(3)">3 Bins</button>
-            <button type="button" class="bin-btn" onclick="selectBins(4)">4 Bins</button>
-          </div>
-        </div>
+        <!-- PLAN REVEAL (hidden until video CTA clicked on mobile) -->
+        <div class="plan-reveal" id="plan-reveal">
 
-        <!-- PLAN TILES -->
-        <div class="plan-cards-row">
-          <div class="plan-tile selected" id="tile-quarterly" onclick="selectPlan('quarterly')">
-            <div class="plan-radio"></div>
-            <div class="plan-tile-top">
-              <span class="plan-name-caps">Quarterly</span>
+          <!-- SPOTS BAR -->
+          <div class="spots-wrap">
+            <div class="spots-header">
+              <span class="spots-label">Route capacity this season</span>
+              <span class="spots-count">27 spots left</span>
             </div>
-            <div class="plan-price-big" id="quarterly-price">$124</div>
-            <div class="plan-per-bin-line">/season · 3 washes</div>
-            <p class="plan-note-plain">Spring, summer &amp; fall.</p>
+            <div class="spots-bar-track"><div class="spots-bar-fill"></div></div>
+            <p class="spots-note">Once these spots are gone, we won't open the route again until next season.</p>
           </div>
-          <div class="plan-tile" id="tile-annual" onclick="selectPlan('annual')">
-            <div class="plan-radio"></div>
-            <div class="plan-tile-top">
-              <span class="plan-name-caps">Annual</span>
-              <span class="best-value-badge">Best Value</span>
+
+          <!-- BIN SELECTOR -->
+          <div>
+            <div class="field-label">How many bins need cleaning?</div>
+            <div class="bin-row">
+              <button type="button" class="bin-btn active" onclick="selectBins(1)">1–2 Bins</button>
+              <button type="button" class="bin-btn" onclick="selectBins(3)">3 Bins</button>
+              <button type="button" class="bin-btn" onclick="selectBins(4)">4 Bins</button>
             </div>
-            <div class="savings-pill" id="savings-pill">Save $125/yr</div>
-            <div class="plan-price-big" id="annual-price">$249</div>
-            <div class="plan-per-bin-line">/year · 9 washes</div>
-            <p class="plan-note-plain">Pay once, all year.</p>
           </div>
-        </div>
 
-        <p class="pricing-cta-trust">Secure checkout · No contract · Cancel any time</p>
-        <button type="button" class="cta-btn" id="main-cta" onclick="handleCtaClick()">
-          Reserve My Spot →
-        </button>
-        <p class="hero-cta-note" style="text-align:center;margin-top:6px">Quarterly from $124/season · Annual from $249/year</p>
+          <!-- PLAN TILES -->
+          <div class="plan-cards-row">
+            <div class="plan-tile selected" id="tile-quarterly" onclick="selectPlan('quarterly')">
+              <div class="plan-radio"></div>
+              <div class="plan-tile-top">
+                <span class="plan-name-caps">Quarterly</span>
+              </div>
+              <div class="plan-price-big" id="quarterly-price">$124</div>
+              <div class="plan-per-bin-line">/season · 3 washes</div>
+              <p class="plan-note-plain">Spring, summer &amp; fall.</p>
+            </div>
+            <div class="plan-tile" id="tile-annual" onclick="selectPlan('annual')">
+              <div class="plan-radio"></div>
+              <div class="plan-tile-top">
+                <span class="plan-name-caps">Annual</span>
+                <span class="best-value-badge">Best Value</span>
+              </div>
+              <div class="savings-pill" id="savings-pill">Save $125/yr</div>
+              <div class="plan-price-big" id="annual-price">$249</div>
+              <div class="plan-per-bin-line">/year · 9 washes</div>
+              <p class="plan-note-plain">Pay once, all year.</p>
+            </div>
+          </div>
 
-        <!-- ACTIVITY FEED -->
-        <div class="activity-feed" id="activity-feed">
-          <span class="activity-dot"></span>Someone in <strong>Shelby Twp</strong> just claimed a spot — 26 remaining
-        </div>
+          <p class="pricing-cta-trust">Secure checkout · No contract · Cancel any time</p>
+          <button type="button" class="cta-btn" id="main-cta" onclick="handleCtaClick()">
+            Pay and lock your route
+          </button>
+          <p class="hero-cta-note" style="text-align:center;margin-top:6px">Quarterly from $124/season · Annual from $249/year</p>
 
+          <!-- ACTIVITY FEED -->
+          <div class="activity-feed" id="activity-feed">
+            <span class="activity-dot"></span>Someone in <strong>Shelby Twp</strong> just claimed a spot — 26 remaining
+          </div>
+
+        </div><!-- /plan-reveal -->
       </div><!-- /plan-col -->
     </div><!-- /hero-columns -->
   </div><!-- /hero-inner -->
@@ -693,6 +721,36 @@
 </div>
 
 <script>
+  // ── PLAN REVEAL ──
+  function revealPlans() {
+    // Hide the overlay button
+    var overlay = document.getElementById('vsl-overlay');
+    if (overlay) overlay.style.display = 'none';
+    // Show the plan reveal
+    var reveal = document.getElementById('plan-reveal');
+    if (reveal) reveal.classList.add('visible');
+    // Hide the intro card
+    var intro = document.getElementById('plan-intro');
+    if (intro) intro.style.display = 'none';
+    // Scroll to plan col on mobile
+    if (window.innerWidth < 881) {
+      var planCol = document.getElementById('plan-col');
+      if (planCol) planCol.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  // On desktop, always show plans immediately
+  (function() {
+    if (window.innerWidth >= 881) {
+      var reveal = document.getElementById('plan-reveal');
+      if (reveal) reveal.classList.add('visible');
+      var intro = document.getElementById('plan-intro');
+      if (intro) intro.style.display = 'none';
+      var overlay = document.getElementById('vsl-overlay');
+      // Keep overlay visible on desktop so they can still click
+    }
+  })();
+
   // ── PRICING ──
   var PRICING = {
     1: { quarterly: 124, annual: 249 },
