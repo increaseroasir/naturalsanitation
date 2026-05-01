@@ -98,18 +98,16 @@
     .dontbe-overlay-sub{font-size:13px;color:rgba(255,255,255,.9)}
 
     /* BIN SELECTOR */
-    .bin-selector{padding:20px 20px 0;max-width:520px;margin:0 auto}
-    .bin-selector-label{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:10px;text-align:center}
-    .bin-btns{display:flex;gap:8px}
-    .bin-btn{flex:1;padding:14px 4px;border:2px solid var(--border);border-radius:var(--r);background:#fff;font-size:15px;font-weight:700;color:var(--charcoal);text-align:center;transition:all .15s;cursor:pointer}
+    .bin-selector{padding:20px 16px 0;width:100%;box-sizing:border-box}
+    .bin-selector-label{font-size:14px;font-weight:800;color:var(--navy);margin-bottom:12px;text-align:center}
+    .bin-btns{display:flex;gap:10px}
+    .bin-btn{flex:1;padding:18px 4px;border:2px solid var(--border);border-radius:var(--r);background:#fff;font-size:16px;font-weight:800;color:var(--charcoal);text-align:center;transition:all .15s;cursor:pointer}
     .bin-btn.active{border-color:var(--blue);background:#e9eefc;color:var(--blue)}
-    .bin-btn-sub{font-size:11px;font-weight:600;color:var(--muted);margin-top:3px}
-    .bin-btn.active .bin-btn-sub{color:var(--blue)}
 
     /* PRICE REVEAL */
-    .price-reveal{padding:14px 20px 0;max-width:520px;margin:0 auto}
-    .price-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .price-card{border:2px solid var(--border);border-radius:var(--r);padding:16px 12px;text-align:center;background:#fff;position:relative;transition:border-color .15s,box-shadow .15s}
+    .price-reveal{padding:14px 20px 0;width:100%;box-sizing:border-box;display:none}
+    .price-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
+    .price-card{border:2px solid var(--border);border-radius:var(--r);padding:18px 10px;text-align:center;background:#fff;position:relative;transition:border-color .15s,box-shadow .15s;width:100%;box-sizing:border-box}
     .price-card.featured{border-color:var(--navy);box-shadow:0 4px 20px rgba(22,50,92,.15)}
     .price-card-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap;letter-spacing:.05em}
     .price-card-label{font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
@@ -150,8 +148,8 @@
     .sbs-label-bar{background:#1e293b;padding:10px 16px;text-align:center}
     .sbs-label-bar span{font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8}
     .sbs-label-bar strong{color:#f5c518}
-    .sbs-video-wrap{position:relative;width:100%;background:#000}
-    .sbs-video-wrap video{width:100%;display:block;max-height:320px;object-fit:cover}
+    .sbs-video-wrap{width:100%;background:#000;overflow:hidden;border-radius:0}
+    .sbs-video-wrap video{width:100%;display:block;height:auto;max-height:400px;object-fit:cover}
     .sbs-labels{display:grid;grid-template-columns:1fr 1fr;background:#111}
     .sbs-label-left,.sbs-label-right{padding:8px 12px;text-align:center;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
     .sbs-label-left{background:rgba(180,0,0,.85);color:#fff;border-radius:0 0 0 var(--r)}
@@ -353,19 +351,24 @@
   </div>
 </div>
 
-<!-- BIN SELECTOR -->
-<div class="bin-selector" style="margin-top:20px">
-  <div class="bin-selector-label">How many bins need cleaning? Pick your plan below.</div>
+<!-- RESERVE MY SPOT CTA (shown first, hides when pricing reveals) -->
+<div class="cta-wrap" id="reserve-cta-wrap" style="margin-top:20px">
+  <button type="button" class="cta-btn" onclick="revealPricing()">
+    RESERVE MY SPOT <span>→</span>
+  </button>
+  <div class="cta-sub">
+    <span class="cta-dot"></span>
+    Secure checkout &nbsp;·&nbsp; No contract &nbsp;·&nbsp; Cancel any time
+  </div>
+</div>
+
+<!-- BIN SELECTOR (hidden until Reserve My Spot clicked) -->
+<div class="bin-selector" id="bin-selector-wrap" style="margin-top:20px;display:none">
+  <div class="bin-selector-label">How many bins need cleaning?</div>
   <div class="bin-btns">
-    <button type="button" class="bin-btn active" data-bins="2" onclick="selectBins(2)">
-      1–2 Bins<div class="bin-btn-sub">Most common</div>
-    </button>
-    <button type="button" class="bin-btn" data-bins="3" onclick="selectBins(3)">
-      3 Bins<div class="bin-btn-sub">Trash + 2 recycle</div>
-    </button>
-    <button type="button" class="bin-btn" data-bins="4" onclick="selectBins(4)">
-      4 Bins<div class="bin-btn-sub">Full household</div>
-    </button>
+    <button type="button" class="bin-btn active" data-bins="2" onclick="selectBins(2)">1–2 Bins</button>
+    <button type="button" class="bin-btn" data-bins="3" onclick="selectBins(3)">3 Bins</button>
+    <button type="button" class="bin-btn" data-bins="4" onclick="selectBins(4)">4 Bins</button>
   </div>
 </div>
 
@@ -433,8 +436,8 @@
     <span>Watch the <strong>300° Steam Clean</strong> in Action</span>
   </div>
   <div class="sbs-video-wrap">
-    <video autoplay muted loop playsinline preload="metadata">
-      <source src="assets/side-by-side.mp4" type="video/mp4" />
+    <video id="sbs-video" autoplay muted loop playsinline preload="auto" webkit-playsinline x5-playsinline style="width:100%;display:block;">
+      <source src="assets/side-by-side.mp4?v=3" type="video/mp4" />
     </video>
   </div>
   <div class="sbs-labels">
@@ -708,6 +711,20 @@
     return '../checkout.html?' + params.toString();
   }
 
+  function revealPricing() {
+    // Hide the top CTA, show bin selector + price cards
+    var reserveWrap = document.getElementById('reserve-cta-wrap');
+    var binWrap = document.getElementById('bin-selector-wrap');
+    var priceReveal = document.querySelector('.price-reveal');
+    if (reserveWrap) reserveWrap.style.display = 'none';
+    if (binWrap) { binWrap.style.display = 'block'; }
+    if (priceReveal) { priceReveal.style.display = 'block'; }
+    // Scroll to bin selector
+    setTimeout(function() {
+      if (binWrap) binWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }
+
   function handleCtaClick(plan) {
     pendingPlan = plan || 'quarterly';
     var p = PRICING[selectedBins];
@@ -726,13 +743,24 @@
     } else {
       // Quarterly selected — show upsell modal
       updatePriceCards();
-      openModal();
+      var modal = document.getElementById('upsell-modal');
+      if (modal) {
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+      }
     }
   }
 
   function scrollToPricing() {
-    var el = document.querySelector('.price-reveal');
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var reserveWrap = document.getElementById('reserve-cta-wrap');
+    var binWrap = document.getElementById('bin-selector-wrap');
+    var priceReveal = document.querySelector('.price-reveal');
+    if (reserveWrap) reserveWrap.style.display = 'none';
+    if (binWrap) { binWrap.style.display = 'block'; }
+    if (priceReveal) { priceReveal.style.display = 'block'; }
+    setTimeout(function() {
+      if (binWrap) binWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   }
 
   /* MODAL */
@@ -830,6 +858,30 @@
       var eid = p.get('event_id') || p.get('fb_event_id');
       if (eid) sessionStorage.setItem('ns_funnel_event_id', eid);
     } catch(e) {}
+  })();
+
+  /* VIDEO AUTOPLAY FALLBACK */
+  (function() {
+    var v = document.getElementById('sbs-video');
+    if (!v) return;
+    var tryPlay = function() {
+      var p = v.play();
+      if (p && p.catch) p.catch(function() {
+        // If autoplay blocked, add click-to-play overlay
+        v.controls = true;
+      });
+    };
+    if (v.readyState >= 2) { tryPlay(); }
+    else { v.addEventListener('canplay', tryPlay, { once: true }); }
+    // Intersection Observer — play when visible
+    if ('IntersectionObserver' in window) {
+      var obs = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) {
+          if (e.isIntersecting) { tryPlay(); } else { v.pause(); }
+        });
+      }, { threshold: 0.3 });
+      obs.observe(v);
+    }
   })();
 </script>
 </body>
