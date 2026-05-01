@@ -310,7 +310,7 @@
 
     <!-- Bullets -->
     <ul class="hero-bullets">
-      <li><span class="check">✓</span> 3 professional cleanings per quarter</li>
+      <li><span class="check">✓</span> 3 professional cleanings per season (spring, summer, fall)</li>
       <li><span class="check">✓</span> 400° steam kills bacteria &amp; odor at the source</li>
       <li><span class="check">✓</span> Before/after photo proof texted to you</li>
       <li><span class="check">✓</span> No contract — cancel any time</li>
@@ -329,8 +329,8 @@
 
 <!-- MAIN CTA -->
 <div class="cta-wrap">
-  <button type="button" class="cta-btn" onclick="handleCtaClick()">
-    CLAIM MY SPOT — $<span id="hero-price">124</span>/Quarter <span class="cta-arrow">→</span>
+  <button type="button" class="cta-btn" onclick="handleCtaClick()" id="hero-cta-btn">
+    CLAIM MY SPOT — $124 for the Season <span class="cta-arrow">→</span>
   </button>
   <div class="cta-sub">
     <span class="cta-dot"></span>
@@ -354,7 +354,7 @@
     <button type="button" class="bin-btn" data-bins="3" onclick="selectBins(3)" style="flex:1;padding:10px 4px;border:2px solid var(--border);border-radius:8px;background:#fff;font-size:14px;font-weight:700;color:var(--charcoal)">3 Bins</button>
     <button type="button" class="bin-btn" data-bins="4" onclick="selectBins(4)" style="flex:1;padding:10px 4px;border:2px solid var(--border);border-radius:8px;background:#fff;font-size:14px;font-weight:700;color:var(--charcoal)">4 Bins</button>
   </div>
-  <div style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px">Quarterly: 1/2 bins $124 · 3 bins $149 · 4 bins $164</div>
+  <div style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px">3 washes/season · 1–2 bins $124 · 3 bins $149 · 4 bins $164</div>
 </div>
 
 <!-- FEATURED ON -->
@@ -507,8 +507,8 @@
       <li><span class="check">✓</span> Friendly, fast support — real people</li>
       <li><span class="check">✓</span> No contract — cancel any time</li>
     </ul>
-    <button type="button" class="cta-btn" onclick="handleCtaClick()" style="max-width:400px;margin:0 auto">
-      CLAIM MY SPOT — $<span class="price-display">124</span>/Quarter <span class="cta-arrow">→</span>
+    <button type="button" class="cta-btn" onclick="handleCtaClick()" style="max-width:400px;margin:0 auto" id="guarantee-cta-btn">
+      CLAIM MY SPOT — $124 for the Season <span class="cta-arrow">→</span>
     </button>
     <div class="cta-sub" style="color:#94a3b8;margin-top:8px">
       <span class="cta-dot"></span>
@@ -605,6 +605,32 @@
         <p class="review-text">Manny and his team are amazing! My cans look brand new every time!</p>
         <span class="review-verified">Google Verified</span>
       </div>
+
+      <div class="review-card">
+        <div class="review-top">
+          <div class="review-avatar" style="background:#b45309">KM</div>
+          <div class="review-meta">
+            <div class="review-name">Karen Mitchell</div>
+            <div class="review-stars">★★★★★</div>
+            <div class="review-date">Feb 28, 2024</div>
+          </div>
+        </div>
+        <p class="review-text">We have two large bins and they both came out spotless. The before photo they texted me was honestly embarrassing — I had no idea how bad it had gotten. Worth every penny and I've already referred three neighbors.</p>
+        <span class="review-verified">Google Verified</span>
+      </div>
+
+      <div class="review-card">
+        <div class="review-top">
+          <div class="review-avatar" style="background:#1d4ed8">DT</div>
+          <div class="review-meta">
+            <div class="review-name">Derek Tanner</div>
+            <div class="review-stars">★★★★★</div>
+            <div class="review-date">Jan 10, 2024</div>
+          </div>
+        </div>
+        <p class="review-text">Super easy to sign up. They showed up exactly when they said they would, texted me the before and after, and the cans smelled fresh. No mess on my driveway either. Will be a customer for a long time.</p>
+        <span class="review-verified">Google Verified</span>
+      </div>
     </div>
   </div>
 </div>
@@ -620,8 +646,8 @@
       <li><span class="check">✓</span> 3 cleanings per quarter — spring, summer, fall</li>
       <li><span class="check">✓</span> No contract — cancel any time</li>
     </ul>
-    <button type="button" class="cta-btn" onclick="handleCtaClick()" style="max-width:400px;margin:0 auto">
-      CLAIM MY SPOT — $<span class="price-display">124</span>/Quarter <span class="cta-arrow">→</span>
+    <button type="button" class="cta-btn" onclick="handleCtaClick()" style="max-width:400px;margin:0 auto" id="bottom-cta-btn">
+      CLAIM MY SPOT — $124 for the Season <span class="cta-arrow">→</span>
     </button>
     <div class="cta-sub" style="color:rgba(255,255,255,.7);margin-top:8px">
       <span class="cta-dot"></span>
@@ -638,7 +664,7 @@
     <div class="faq-list">
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">What does the Quarterly plan include?<span class="faq-icon">▾</span></button>
-        <div class="faq-a">3 professional steam cleanings per quarter (spring, summer, fall). Each cleaning uses 400° pressurized steam — lid to wheels — with before/after photo proof texted to you. Eco-friendly rodent repellent applied after each clean. 1–2 bins $124/quarter · 3 bins $149/quarter · 4 bins $164/quarter.</div>
+        <div class="faq-a">3 professional steam cleanings per season (spring, summer, fall) — that's your full year of service. Each cleaning uses 400° pressurized steam — lid to wheels — with before/after photo proof texted to you. Eco-friendly rodent repellent applied after each clean. 1–2 bins $124/season · 3 bins $149/season · 4 bins $164/season.</div>
       </div>
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">Why can't I just use a hose or pressure washer?<span class="faq-icon">▾</span></button>
@@ -646,7 +672,7 @@
       </div>
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">How does pricing work for multiple bins?<span class="faq-icon">▾</span></button>
-        <div class="faq-a">Quarterly: 1/2 bins $124/qtr · 3 bins $149/qtr · 4 bins $164/qtr. Annual (best value): 1/2 bins $250/yr · 3 bins $299/yr · 4 bins $349/yr. No contract. Cancel any time.</div>
+        <div class="faq-a">Quarterly (3 washes/season): 1–2 bins $124 · 3 bins $149 · 4 bins $164. Annual (best value, 9 washes/year): 1–2 bins $250 · 3 bins $299 · 4 bins $349. No contract. Cancel any time.</div>
       </div>
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">What if I sign up mid-season?<span class="faq-icon">▾</span></button>
@@ -670,8 +696,8 @@
 
 <!-- STICKY BOTTOM BAR -->
 <div class="sticky-bar" id="sticky-bar">
-  <button type="button" class="sticky-bar-btn" onclick="handleCtaClick()">
-    CLAIM MY SPOT — $<span class="price-display">124</span>/Quarter →
+  <button type="button" class="sticky-bar-btn" onclick="handleCtaClick()" id="sticky-cta-btn">
+    CLAIM MY SPOT — $124 for the Season →
   </button>
 </div>
 
@@ -696,7 +722,7 @@
           <div class="modal-plan-label">Quarterly</div>
           <div class="modal-plan-price" id="modal-q-price">$124</div>
           <div class="modal-plan-period">/quarter</div>
-          <div class="modal-plan-note" id="modal-q-note">= $496/year</div>
+          <div class="modal-plan-note" id="modal-q-note">3 washes/season</div>
         </div>
         <div class="modal-plan best">
           <div class="modal-savings-tag" id="modal-savings-tag">Save $246/yr</div>
@@ -707,7 +733,7 @@
         </div>
       </div>
       <ul class="modal-value-list">
-        <li>All 9 seasonal cleanings locked in upfront</li>
+        <li>All 9 washes/year locked in upfront (3 per season × 3 seasons)</li>
         <li>Priority scheduling — your route spot reserved all year</li>
         <li>Pay once, forget about it — no quarterly renewals</li>
         <li>Same 400° steam · same photo proof · no contract</li>
@@ -731,6 +757,15 @@
   };
   var selectedBins = 2;
 
+  function updateCtaBtns() {
+    var p = PRICING[selectedBins];
+    var label = 'CLAIM MY SPOT — $' + p.quarterly + ' for the Season →';
+    ['hero-cta-btn','guarantee-cta-btn','bottom-cta-btn','sticky-cta-btn'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = label;
+    });
+  }
+
   function selectBins(n) {
     selectedBins = n;
     document.querySelectorAll('.bin-btn').forEach(function(b) {
@@ -739,23 +774,18 @@
       b.style.background = active ? '#e9eefc' : '#fff';
       b.style.color = active ? 'var(--blue)' : 'var(--charcoal)';
     });
-    var p = PRICING[n];
-    // Update all price displays
-    document.getElementById('hero-price').textContent = p.quarterly;
-    document.querySelectorAll('.price-display').forEach(function(el) {
-      el.textContent = p.quarterly;
-    });
+    updateCtaBtns();
     updateModalPrices();
   }
 
   function updateModalPrices() {
     var p = PRICING[selectedBins];
-    var annualEquiv = p.quarterly * 4;
-    var savings = annualEquiv - p.annual;
+    var seasonalEquiv = p.quarterly * 3;
+    var savings = seasonalEquiv - p.annual;
     document.getElementById('modal-q-price').textContent = '$' + p.quarterly;
-    document.getElementById('modal-q-note').textContent = '= $' + annualEquiv + '/year';
+    document.getElementById('modal-q-note').textContent = '3 washes/season';
     document.getElementById('modal-a-price').textContent = '$' + p.annual;
-    document.getElementById('modal-a-note').textContent = p.label + ' · all 9 cleanings';
+    document.getElementById('modal-a-note').textContent = p.label + ' · all 9 washes/year';
     document.getElementById('modal-savings-tag').textContent = 'Save $' + savings + '/yr';
     document.getElementById('modal-save-amt').textContent = savings;
   }
@@ -791,6 +821,9 @@
     updateModalPrices();
     openModal();
   }
+
+  // Init correct label on load
+  updateCtaBtns();
 
   /* ── MODAL ── */
   function openModal() {
