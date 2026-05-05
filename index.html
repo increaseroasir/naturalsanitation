@@ -1615,8 +1615,8 @@ head.appendChild(script);
 <div id="page-behind-gate" class="page-behind-gate">
 
 <!-- TOP BAR -->
-<div class="topbar">
-  Oakland &amp; Macomb County routes open this week
+<div class="topbar" id="scarcity-topbar">
+  🚨 <strong>Only <span id="topbar-spots">28</span> Route Spots Left</strong> — When We’re Full, We’re Full. <strong>Lock In Your Spot →</strong>
 </div>
 
 <!-- HEADER -->
@@ -1634,7 +1634,7 @@ head.appendChild(script);
 <!-- HERO -->
 <section class="hero">
   <div class="hero-inner">
-    <h1 class="hero-headline">No smell. No maggots. No more dreading your garbage bins.</h1>
+    <h1 class="hero-headline">Your Garbage Cans Absolutely Stink — And Nobody Wants to Clean Them.<br><span style="color:#22c55e;">Other Than Us.</span></h1>
     <p class="hero-sub">400° steam after pickup. We text before/after photos — same proof behind 250+ five-star Google reviews.</p>
     <div id="hero-gated-pricing" class="hero-gated-pricing" hidden aria-hidden="true">
       <p class="hero-cta-note" style="margin-top:6px;margin-bottom:10px">2 bins • $250/year — $39/month available.</p>
@@ -6556,6 +6556,41 @@ if (window.NSTracking && NSTracking.hydrateHiddenFields) {
 
 /* GHL partial lead: GHL_LEAD_PROXY_URL + scheduleModalGHLPartialLead (Step 1). */
 </script>
+/* ── SOCIAL PROOF TOAST ── */
+(function(){
+  var spotsLeft = 27;
+  var names = [
+    {n:'Ryan',c:'Auburn Hills'},{n:'Mike',c:'Shelby Township'},{n:'Jennifer',c:'Troy'},
+    {n:'Chris',c:'Rochester Hills'},{n:'Amanda',c:'Macomb Township'},{n:'Dave',c:'Novi'},
+    {n:'Sarah',c:'Canton'},{n:'Kevin',c:'Sterling Heights'},{n:'Lisa',c:'Bloomfield Hills'},
+    {n:'Tom',c:'Clarkston'},{n:'Nicole',c:'West Bloomfield'},{n:'Brian',c:'Grosse Pointe'},
+    {n:'Ashley',c:'Farmington Hills'},{n:'Jason',c:'Utica'},{n:'Megan',c:'Washington Township'},
+    {n:'Steve',c:'Lake Orion'},{n:'Rachel',c:'Chesterfield'},{n:'Dan',c:'Oxford'},
+    {n:'Brittany',c:'Milford'},{n:'Mark',c:'Northville'}
+  ];
+  var idx = 0;
+  function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+  shuffle(names);
+  var toastEl = document.createElement('div');
+  toastEl.id = 'sp-toast';
+  toastEl.style.cssText = 'position:fixed;bottom:20px;left:20px;z-index:99999;background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.18);padding:14px 18px;max-width:300px;display:flex;gap:12px;align-items:center;transform:translateX(-340px);transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1);';
+  toastEl.innerHTML = '<div style="font-size:28px;line-height:1">&#128465;</div><div><div id="sp-toast-name" style="font-weight:700;font-size:14px;color:#1a1a2e;"></div><div id="sp-toast-spots" style="font-size:12px;color:#ef4444;font-weight:700;margin-top:2px;"></div></div>';
+  document.body.appendChild(toastEl);
+  function showToast(){
+    if(spotsLeft < 12) return;
+    var person = names[idx % names.length]; idx++;
+    document.getElementById('sp-toast-name').textContent = person.n + ' from ' + person.c + ' just locked in their spot';
+    document.getElementById('sp-toast-spots').textContent = '⚠️ Only ' + spotsLeft + ' spots remaining';
+    var tb = document.getElementById('topbar-spots');
+    if(tb) tb.textContent = spotsLeft;
+    spotsLeft--;
+    toastEl.style.transform = 'translateX(0)';
+    setTimeout(function(){ toastEl.style.transform = 'translateX(-340px)'; }, 5000);
+  }
+  setTimeout(showToast, 8000);
+  setInterval(showToast, 45000);
+})();
+
 
 </body>
 </html>
