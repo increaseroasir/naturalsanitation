@@ -705,18 +705,16 @@ async function handleJobberSale(request, env) {
     const orderPayload = {
       email,
       orderId: invoiceNumber || ('jobber-' + Date.now()),
-      productName: product.name,
-      revenue: amountDollars,
       currency: 'USD',
+      items: [{ name: product.name, sku: product.sku || undefined, price: amountDollars, quantity: 1 }],
       tags: [attributionTag],
     };
-    if (product.sku) orderPayload.sku = product.sku;
     if (invoiceDate) orderPayload.date = invoiceDate;
 
     let orderResult = {};
     let orderOk = false;
     try {
-      const orderRes = await fetch('https://api.hyros.com/v1/api/v1.0/sales', {
+      const orderRes = await fetch('https://api.hyros.com/v1/api/v1.0/orders', {
         method: 'POST',
         headers: hyrosHeaders,
         body: JSON.stringify(orderPayload),
@@ -847,19 +845,17 @@ async function handleStripeWebhook(request, env) {
     const orderPayload = {
       email,
       orderId: invoiceId,
-      productName: product.name,
-      revenue: amountDollars,
       currency: 'USD',
       recurring: true,
+      items: [{ name: product.name, sku: product.sku || undefined, price: amountDollars, quantity: 1 }],
       tags: ['$subscription-renewal'],
     };
-    if (product.sku) orderPayload.sku = product.sku;
     if (subscriptionId) orderPayload.subscriptionId = subscriptionId;
 
     let orderResult = {};
     let orderOk = false;
     try {
-      const or = await fetch('https://api.hyros.com/v1/api/v1.0/sales', {
+      const or = await fetch('https://api.hyros.com/v1/api/v1.0/orders', {
         method: 'POST', headers: hyrosHeaders, body: JSON.stringify(orderPayload),
       });
       const ot = await or.text();
@@ -963,16 +959,14 @@ async function hyrosRecordPurchase(env, opts) {
   const orderPayload = {
     email: email || '',
     orderId: paymentIntentId || '',
-    productName: product.name,
-    productTag: product.tag,
-    revenue: amountDollars,
     currency: 'USD',
+    items: [{ name: product.name, sku: product.tag || undefined, price: amountDollars, quantity: 1 }],
     tags: ['$online-purchase'],
   };
 
   let orderResult = {};
   try {
-    const orderRes = await fetch('https://api.hyros.com/v1/api/v1.0/sales', {
+    const orderRes = await fetch('https://api.hyros.com/v1/api/v1.0/orders', {
       method: 'POST',
       headers: hyrosHeaders,
       body: JSON.stringify(orderPayload),
