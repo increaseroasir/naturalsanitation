@@ -3,6 +3,7 @@
  *
  * Routes:
  *   POST /create-payment-intent — Stripe PaymentIntent (env STRIPE_SECRET_KEY)
+ *   POST /confirm-purchase      — Hyros order creation after successful Stripe payment (env HYROS_API_KEY)
  *   POST /meta-capi — Meta Conversions API (env META_CAPI_ACCESS_TOKEN, never expose to browser)
  *   POST /ghl-lead — GoHighLevel Contacts API upsert (env GHL_API_TOKEN, GHL_LOCATION_ID; never in browser)
  *   POST /client-observe — lightweight browser/lead observability sink for debugging failed lead delivery
@@ -10,6 +11,7 @@
  *
  * Secrets / vars (Cloudflare dashboard → Worker → Settings → Variables):
  *   STRIPE_SECRET_KEY           — required for PaymentIntents
+ *   HYROS_API_KEY               — required for /confirm-purchase (Hyros order creation)
  *   META_CAPI_ACCESS_TOKEN      — required for /meta-capi (never in the browser)
  *   GHL_API_TOKEN               — required for /ghl-lead (private integration / sub-account token)
  *   GHL_LOCATION_ID             — required for /ghl-lead (sub-account location id)
@@ -55,6 +57,10 @@ function isClientObservePath(pathname) {
 
 function isLeadReceiptPath(pathname) {
   return pathname === '/lead-receipt' || pathname.endsWith('/lead-receipt');
+}
+
+function isConfirmPurchasePath(pathname) {
+  return pathname === '/confirm-purchase' || pathname.endsWith('/confirm-purchase');
 }
 
 const GHL_FORWARD_MAX_BYTES = 131072;
@@ -500,6 +506,190 @@ async function handleClientObserve(request, env) {
   } catch (err) {
     console.warn('[client-observe] handler error', err && err.message ? String(err.message) : err);
     return json({ ok: false, error: 'Observability handler failed' }, 500, corsHeaders());
+  }
+}
+
+/**
+ * Map plan + bins to a human-readable Hyros product name and tag.
+ * Must stay in sync with checkout.html TIER object.
+ */
+function hyrosBuildProduct(plan, bins) {
+  const p = String(plan || 'annual').toLowerCase();
+  const b = Math.min(4, Math.max(1, parseInt(String(bins), 10) || 1));
+  const binLabel = b === 1 ? '1 Bin' : b + ' Bins';
+  const prices = {
+    annual:    { 1: 199,   2: 250,   3: 299,   4: 349   },
+    monthly:   { 1: 33,    2: 39,    3: 45,    4: 50    },
+    quarterly: { 1: 125,   2: 125,   3: 155,   4: 185   },
+    onetime:   { 1: 54.99, 2: 54.99, 3: 65,    4: 75    },
+  };
+  const planLabels = {
+    annual: 'Annual Plan',
+    monthly: 'Monthly Plan',
+    quarterly: 'Quarterly Plan',
+    onetime: 'One-Time Clean',
+  };
+  const planLabel = planLabels[p] || 'Annual Plan';
+  const price = (prices[p] || prices.annual)[b] || 199;
+  const name = planLabel + ' — ' + binLabel;
+  // Hyros tag: lowercase, hyphens, no special chars
+  const tag = '$online-' + p + '-' + b + 'bin';
+  return { name, tag, price };
+}
+
+/**
+ * POST a new lead + order to Hyros API.
+ * Hyros docs: https://api.hyros.com/v1/api/v1.0/
+ * - First create/update the lead, then create the order attached to that lead.
+ */
+async function hyrosRecordPurchase(env, opts) {
+  const apiKey = env && typeof env.HYROS_API_KEY === 'string' ? env.HYROS_API_KEY.trim() : '';
+  if (!apiKey) {
+    console.warn('[hyros] HYROS_API_KEY not configured — skipping');
+    return { ok: false, reason: 'no_api_key' };
+  }
+
+  const { email, phone, firstName, lastName, plan, bins, amountDollars, paymentIntentId, fbc, hyrosClickId } = opts;
+  const product = hyrosBuildProduct(plan, bins);
+
+  const hyrosHeaders = {
+    'API-key': apiKey,
+    'Content-Type': 'application/json',
+  };
+
+  // Step 1: Create or update the lead in Hyros
+  const leadPayload = {
+    email: email || '',
+    firstName: firstName || '',
+    lastName: lastName || '',
+    phoneNumber: phone || '',
+    tags: ['$online-purchase', '!highlevel'],
+  };
+  if (fbc) leadPayload.fbc = fbc;
+  if (hyrosClickId) leadPayload.clickId = hyrosClickId;
+
+  let leadResult = {};
+  try {
+    const leadRes = await fetch('https://api.hyros.com/v1/api/v1.0/leads', {
+      method: 'POST',
+      headers: hyrosHeaders,
+      body: JSON.stringify(leadPayload),
+    });
+    const leadText = await leadRes.text();
+    try { leadResult = JSON.parse(leadText); } catch { leadResult = { raw: leadText.slice(0, 300) }; }
+    console.log('[hyros] lead upsert', leadRes.status, JSON.stringify(leadResult).slice(0, 400));
+  } catch (eL) {
+    console.warn('[hyros] lead upsert error', eL && eL.message ? eL.message : eL);
+  }
+
+  // Step 2: Create the order in Hyros
+  const orderPayload = {
+    email: email || '',
+    orderId: paymentIntentId || '',
+    productName: product.name,
+    productTag: product.tag,
+    revenue: amountDollars,
+    currency: 'USD',
+    tags: ['$online-purchase'],
+  };
+
+  let orderResult = {};
+  try {
+    const orderRes = await fetch('https://api.hyros.com/v1/api/v1.0/sales', {
+      method: 'POST',
+      headers: hyrosHeaders,
+      body: JSON.stringify(orderPayload),
+    });
+    const orderText = await orderRes.text();
+    try { orderResult = JSON.parse(orderText); } catch { orderResult = { raw: orderText.slice(0, 300) }; }
+    console.log('[hyros] order create', orderRes.status, JSON.stringify(orderResult).slice(0, 400));
+    if (!orderRes.ok) {
+      return { ok: false, reason: 'order_api_error', status: orderRes.status, body: orderResult };
+    }
+  } catch (eO) {
+    console.warn('[hyros] order create error', eO && eO.message ? eO.message : eO);
+    return { ok: false, reason: 'order_exception', message: eO && eO.message ? eO.message : String(eO) };
+  }
+
+  return { ok: true, product: product.name, tag: product.tag, orderId: paymentIntentId };
+}
+
+/**
+ * POST /confirm-purchase
+ * Called by checkout.html after Stripe payment succeeds.
+ * Verifies the PaymentIntent with Stripe, then records the order in Hyros.
+ * Body: { payment_intent_id, plan, bins, email, phone, first_name, last_name, fbc, hyros_click_id }
+ */
+async function handleConfirmPurchase(request, env) {
+  try {
+    const raw = await request.text();
+    if (raw.length > 16384) {
+      return json({ ok: false, error: 'Payload too large' }, 413, corsHeaders());
+    }
+    let body;
+    try { body = raw ? JSON.parse(raw) : {}; } catch {
+      return json({ ok: false, error: 'Invalid JSON' }, 400, corsHeaders());
+    }
+    if (!body || typeof body !== 'object') {
+      return json({ ok: false, error: 'Invalid body' }, 400, corsHeaders());
+    }
+
+    const piId = String(body.payment_intent_id || '').trim();
+    if (!piId || !/^pi_/.test(piId)) {
+      return json({ ok: false, error: 'Invalid payment_intent_id' }, 400, corsHeaders());
+    }
+
+    // Verify the PaymentIntent with Stripe to confirm it actually succeeded
+    const stripeSecret = env.STRIPE_SECRET_KEY;
+    if (!stripeSecret) {
+      return json({ ok: false, error: 'STRIPE_SECRET_KEY not configured' }, 503, corsHeaders());
+    }
+    const stripeRes = await fetch('https://api.stripe.com/v1/payment_intents/' + encodeURIComponent(piId), {
+      method: 'GET',
+      headers: { Authorization: 'Bearer ' + stripeSecret },
+    });
+    const stripeText = await stripeRes.text();
+    let stripeData;
+    try { stripeData = JSON.parse(stripeText); } catch { stripeData = {}; }
+
+    if (!stripeRes.ok || stripeData.status !== 'succeeded') {
+      console.warn('[confirm-purchase] stripe verify failed', stripeRes.status, stripeData && stripeData.status);
+      return json({ ok: false, error: 'Payment not confirmed by Stripe', stripe_status: stripeData && stripeData.status }, 402, corsHeaders());
+    }
+
+    const amountDollars = (stripeData.amount_received || stripeData.amount || 0) / 100;
+    const plan = String(body.plan || stripeData.metadata && stripeData.metadata.plan || 'annual').toLowerCase();
+    const bins = parseInt(String(body.bins || stripeData.metadata && stripeData.metadata.bins || '1'), 10) || 1;
+    const email = String(body.email || '').trim().toLowerCase();
+    const phone = String(body.phone || '').trim();
+    const firstName = String(body.first_name || '').trim();
+    const lastName = String(body.last_name || '').trim();
+    const fbc = String(body.fbc || '').trim();
+    const hyrosClickId = String(body.hyros_click_id || '').trim();
+
+    console.log('[confirm-purchase] verified', JSON.stringify({
+      piId, plan, bins, amountDollars,
+      email: email ? email.slice(0, 6) + '***' : 'none',
+      fbc_present: !!fbc,
+      hyros_click_id_present: !!hyrosClickId,
+    }));
+
+    const hyrosResult = await hyrosRecordPurchase(env, {
+      email, phone, firstName, lastName, plan, bins, amountDollars, paymentIntentId: piId, fbc, hyrosClickId,
+    });
+
+    console.log('[confirm-purchase] hyros result', JSON.stringify(hyrosResult));
+
+    return json({
+      ok: true,
+      hyros: hyrosResult,
+      product: hyrosResult.product || null,
+      stripe_amount: amountDollars,
+    }, 200, corsHeaders());
+
+  } catch (err) {
+    console.error('[confirm-purchase] error', err && err.message ? err.message : err);
+    return json({ ok: false, error: 'confirm-purchase exception', message: err && err.message ? err.message : String(err) }, 500, corsHeaders());
   }
 }
 
@@ -995,6 +1185,10 @@ export default {
 
     if (isLeadReceiptPath(url.pathname)) {
       return handleLeadReceipt(request, env);
+    }
+
+    if (isConfirmPurchasePath(url.pathname)) {
+      return handleConfirmPurchase(request, env);
     }
 
     if (!isCreatePaymentIntentPath(url.pathname)) {

@@ -1263,16 +1263,40 @@ function onSuccess({ name, email, phone, address, trashDay, paymentIntentId }) {
     });
   }
 
-  // Hyros purchase conversion
+  // Hyros purchase — server-side via Worker /confirm-purchase (proper product names + attribution)
   try {
-    if (window.hy) {
-      window.hy('event', 'purchase', {
-        revenue: paidDollars,
-        email: email || '',
-        transaction_id: piId
-      });
-    }
-  } catch(eHy) {}
+    var fbcVal = '';
+    try {
+      var ckParts = ('; ' + document.cookie).split('; _fbc=');
+      if (ckParts.length > 1) fbcVal = ckParts[1].split(';')[0] || '';
+    } catch(eFbc) {}
+    var hyrosClickVal = checkoutHyrosIdFromCookie();
+    var nameParts = (name || '').trim().split(/\s+/);
+    var confirmPayload = {
+      payment_intent_id: piId,
+      plan: selectedPlan || 'annual',
+      bins: selectedBins || 1,
+      email: email || '',
+      phone: phone || '',
+      first_name: nameParts[0] || '',
+      last_name: nameParts.slice(1).join(' ') || '',
+      fbc: fbcVal,
+      hyros_click_id: hyrosClickVal
+    };
+    fetch(NS_PAYMENT_ORIGIN + '/confirm-purchase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(confirmPayload)
+    }).then(function(r) {
+      return r.json();
+    }).then(function(d) {
+      console.log('[checkout] confirm-purchase', d);
+    }).catch(function(e) {
+      console.warn('[checkout] confirm-purchase error', e);
+    });
+  } catch(eConfirm) {
+    console.warn('[checkout] confirm-purchase setup error', eConfirm);
+  }
 
   showCheckoutSuccessUi({
     name: name || '',
