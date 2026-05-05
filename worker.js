@@ -4,6 +4,8 @@
  * Routes:
  *   POST /create-payment-intent — Stripe PaymentIntent (env STRIPE_SECRET_KEY)
  *   POST /confirm-purchase      — Hyros order creation after successful Stripe payment (env HYROS_API_KEY)
+ *   POST /jobber-sale           — Jobber invoice → Hyros order with GHL tag lookup (env GHL_API_TOKEN, GHL_LOCATION_ID, HYROS_API_KEY)
+ *   POST /stripe-webhook        — Stripe webhook for subscription renewals → Hyros recurring order (env STRIPE_WEBHOOK_SECRET, HYROS_API_KEY)
  *   POST /meta-capi — Meta Conversions API (env META_CAPI_ACCESS_TOKEN, never expose to browser)
  *   POST /ghl-lead — GoHighLevel Contacts API upsert (env GHL_API_TOKEN, GHL_LOCATION_ID; never in browser)
  *   POST /client-observe — lightweight browser/lead observability sink for debugging failed lead delivery
@@ -18,6 +20,8 @@
  *   GHL_FUNNEL_EVENT_FIELD_ID   — optional custom field id (Contacts) to store raw funnel event_id / jobber id
  *   META_TEST_EVENT_CODE        — optional, e.g. TEST28089 → Meta Graph `test_event_code` (Test Events only)
  *   GOOGLE_SHEET_WEBHOOK_URL    — optional Apps Script web app URL used by /lead-receipt for durable Google Sheets backup
+ *   JOBBER_WEBHOOK_SECRET       — optional shared secret for /jobber-sale (set same value in Zapier webhook header)
+ *   STRIPE_WEBHOOK_SECRET       — required for /stripe-webhook Stripe signature verification (whsec_...)
  *
  * Optional: browser may send `test_event_code` in the JSON body; the Worker forwards it only if it
  * matches /^TEST[A-Z0-9]+$/i (same format as Events Manager test codes).
@@ -61,6 +65,14 @@ function isLeadReceiptPath(pathname) {
 
 function isConfirmPurchasePath(pathname) {
   return pathname === '/confirm-purchase' || pathname.endsWith('/confirm-purchase');
+}
+
+function isJobberSalePath(pathname) {
+  return pathname === '/jobber-sale' || pathname.endsWith('/jobber-sale');
+}
+
+function isStripeWebhookPath(pathname) {
+  return pathname === '/stripe-webhook' || pathname.endsWith('/stripe-webhook');
 }
 
 const GHL_FORWARD_MAX_BYTES = 131072;
@@ -506,6 +518,371 @@ async function handleClientObserve(request, env) {
   } catch (err) {
     console.warn('[client-observe] handler error', err && err.message ? String(err.message) : err);
     return json({ ok: false, error: 'Observability handler failed' }, 500, corsHeaders());
+  }
+}
+
+/**
+ * Map a Jobber invoice total (dollars) to a canonical product name for Hyros.
+ * Covers all pricing tiers across main checkout, LTO, and quarterly pages.
+ * Returns { name, sku } or null if no match.
+ */
+function jobberAmountToProduct(amountDollars) {
+  const amt = Math.round(Number(amountDollars) * 100); // work in cents
+  const table = [
+    // Annual plans
+    { cents: 19900, name: 'Annual Plan — 1 Bin',       sku: 'annual-1bin'       },
+    { cents: 24900, name: 'Annual Plan — 2 Bins',      sku: 'annual-2bin'       },
+    { cents: 25000, name: 'Annual Plan — 2 Bins',      sku: 'annual-2bin'       },
+    { cents: 29900, name: 'Annual Plan — 3 Bins',      sku: 'annual-3bin'       },
+    { cents: 34900, name: 'Annual Plan — 4 Bins',      sku: 'annual-4bin'       },
+    // Monthly plans
+    { cents: 2999,  name: 'Monthly Plan — 1 Bin',      sku: 'monthly-1bin'      },
+    { cents: 3300,  name: 'Monthly Plan — 1 Bin',      sku: 'monthly-1bin'      },
+    { cents: 3900,  name: 'Monthly Plan — 2 Bins',     sku: 'monthly-2bin'      },
+    { cents: 4500,  name: 'Monthly Plan — 3 Bins',     sku: 'monthly-3bin'      },
+    { cents: 5000,  name: 'Monthly Plan — 4 Bins',     sku: 'monthly-4bin'      },
+    // Quarterly plans
+    { cents: 9400,  name: 'Quarterly Plan — 1 Bin',    sku: 'quarterly-1bin'    },
+    { cents: 12400, name: 'Quarterly Plan — 2 Bins',   sku: 'quarterly-2bin'    },
+    { cents: 12500, name: 'Quarterly Plan — 2 Bins',   sku: 'quarterly-2bin'    },
+    { cents: 14900, name: 'Quarterly Plan — 3 Bins',   sku: 'quarterly-3bin'    },
+    { cents: 15500, name: 'Quarterly Plan — 3 Bins',   sku: 'quarterly-3bin'    },
+    { cents: 16400, name: 'Quarterly Plan — 4 Bins',   sku: 'quarterly-4bin'    },
+    { cents: 18500, name: 'Quarterly Plan — 4 Bins',   sku: 'quarterly-4bin'    },
+    // One-time cleans
+    { cents: 5499,  name: 'One-Time Clean — 1 Bin',    sku: 'onetime-1bin'      },
+    { cents: 6500,  name: 'One-Time Clean — 3 Bins',   sku: 'onetime-3bin'      },
+    { cents: 7500,  name: 'One-Time Clean — 4 Bins',   sku: 'onetime-4bin'      },
+  ];
+  const match = table.find(r => r.cents === amt);
+  if (match) return { name: match.name, sku: match.sku };
+  // Fallback: generic label with raw amount so Hyros at least gets a real dollar figure
+  const dollars = (amt / 100).toFixed(2);
+  return { name: 'Jobber Service — $' + dollars, sku: 'jobber-unknown' };
+}
+
+/**
+ * Look up a GHL contact by email and return its tags array (or empty array).
+ * Uses the /contacts/search/duplicate endpoint.
+ */
+async function ghlFetchContactTagsByEmail(token, locId, email) {
+  const em = String(email || '').trim().toLowerCase();
+  if (!em || !em.includes('@')) return [];
+  const url = new URL(GHL_API_BASE + '/contacts/search/duplicate');
+  url.searchParams.set('locationId', locId);
+  url.searchParams.set('email', em);
+  let res = await fetch(url.toString(), {
+    method: 'GET',
+    headers: { ...ghlAuthHeaders(token), Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    // Try POST fallback
+    res = await fetch(GHL_API_BASE + '/contacts/search/duplicate', {
+      method: 'POST',
+      headers: ghlAuthHeaders(token),
+      body: JSON.stringify({ locationId: locId, email: em }),
+    });
+  }
+  const text = await res.text();
+  let j = {};
+  try { j = text ? JSON.parse(text) : {}; } catch { j = {}; }
+  const contact = ghlExtractContactFromDuplicateJson(j);
+  if (!contact) return [];
+  const raw = contact.tags;
+  if (!Array.isArray(raw)) return [];
+  return raw.map(t => (typeof t === 'string' ? t.trim() : typeof t === 'object' && t && typeof t.name === 'string' ? t.name.trim() : '')).filter(Boolean);
+}
+
+/**
+ * POST /jobber-sale
+ * Called by the Zapier "HYROS Zapier Jobber" Zap via webhook when a Jobber invoice is paid.
+ * Body (from Zapier): {
+ *   email: string,          // client email from Jobber invoice
+ *   amount: number|string,  // invoice total in dollars (e.g. 29.99)
+ *   invoice_number: string, // Jobber invoice number (used as orderId)
+ *   first_name?: string,
+ *   last_name?: string,
+ *   phone?: string,
+ *   invoice_date?: string,  // ISO date string
+ *   secret?: string,        // optional shared secret for basic auth
+ * }
+ * Logic:
+ *   1. Map amount → product name
+ *   2. Look up contact in GHL by email → check for 'purchasefunnellead' tag
+ *   3. Fire Hyros Create Lead + Create Order with correct attribution tag
+ */
+async function handleJobberSale(request, env) {
+  try {
+    const raw = await request.text();
+    if (raw.length > 16384) {
+      return json({ ok: false, error: 'Payload too large' }, 413, corsHeaders());
+    }
+    let body;
+    try { body = raw ? JSON.parse(raw) : {}; } catch {
+      return json({ ok: false, error: 'Invalid JSON' }, 400, corsHeaders());
+    }
+    if (!body || typeof body !== 'object') {
+      return json({ ok: false, error: 'Invalid body' }, 400, corsHeaders());
+    }
+
+    // Optional shared-secret guard (set JOBBER_WEBHOOK_SECRET in Worker env)
+    const expectedSecret = env && typeof env.JOBBER_WEBHOOK_SECRET === 'string' ? env.JOBBER_WEBHOOK_SECRET.trim() : '';
+    if (expectedSecret) {
+      const provided = String(body.secret || request.headers.get('X-Webhook-Secret') || '').trim();
+      if (provided !== expectedSecret) {
+        return json({ ok: false, error: 'Unauthorized' }, 401, corsHeaders());
+      }
+    }
+
+    const email = String(body.email || '').trim().toLowerCase();
+    const amountRaw = body.amount != null ? body.amount : body.total;
+    const amountDollars = parseFloat(String(amountRaw || '0').replace(/[^0-9.]/g, '')) || 0;
+    const invoiceNumber = String(body.invoice_number || body.invoice_id || '').trim();
+    const firstName = String(body.first_name || '').trim();
+    const lastName = String(body.last_name || '').trim();
+    const phone = String(body.phone || '').trim();
+    const invoiceDate = String(body.invoice_date || body.date || '').trim();
+
+    if (!email) {
+      return json({ ok: false, error: 'email is required' }, 400, corsHeaders());
+    }
+    if (amountDollars <= 0) {
+      return json({ ok: false, error: 'amount must be a positive number' }, 400, corsHeaders());
+    }
+
+    const product = jobberAmountToProduct(amountDollars);
+    console.log('[jobber-sale] product mapped', JSON.stringify({ amountDollars, product }));
+
+    // GHL tag lookup
+    const ghlToken = env && typeof env.GHL_API_TOKEN === 'string' ? env.GHL_API_TOKEN.trim() : '';
+    const ghlLocId = env && typeof env.GHL_LOCATION_ID === 'string' ? env.GHL_LOCATION_ID.trim() : '';
+    let isFunnelLead = false;
+    if (ghlToken && ghlLocId) {
+      try {
+        const tags = await ghlFetchContactTagsByEmail(ghlToken, ghlLocId, email);
+        isFunnelLead = tags.some(t => t.toLowerCase() === 'purchasefunnellead');
+        console.log('[jobber-sale] ghl tags', JSON.stringify({ email: email.slice(0, 6) + '***', tags, isFunnelLead }));
+      } catch (eGhl) {
+        console.warn('[jobber-sale] ghl lookup failed', eGhl && eGhl.message ? eGhl.message : eGhl);
+      }
+    } else {
+      console.warn('[jobber-sale] GHL env not configured — skipping tag lookup, defaulting to website-organic');
+    }
+
+    const attributionTag = isFunnelLead ? '$phone-close-ad-lead' : '$website-organic';
+    console.log('[jobber-sale] attribution', attributionTag);
+
+    // Fire Hyros
+    const apiKey = env && typeof env.HYROS_API_KEY === 'string' ? env.HYROS_API_KEY.trim() : '';
+    if (!apiKey) {
+      return json({ ok: false, error: 'HYROS_API_KEY not configured' }, 503, corsHeaders());
+    }
+    const hyrosHeaders = { 'API-key': apiKey, 'Content-Type': 'application/json' };
+
+    // Step 1: Upsert lead in Hyros
+    const leadPayload = {
+      email,
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
+      phoneNumber: phone || undefined,
+      tags: [attributionTag, '!highlevel'],
+    };
+    let leadResult = {};
+    try {
+      const leadRes = await fetch('https://api.hyros.com/v1/api/v1.0/leads', {
+        method: 'POST',
+        headers: hyrosHeaders,
+        body: JSON.stringify(leadPayload),
+      });
+      const leadText = await leadRes.text();
+      try { leadResult = JSON.parse(leadText); } catch { leadResult = { raw: leadText.slice(0, 300) }; }
+      console.log('[jobber-sale] hyros lead upsert', leadRes.status, JSON.stringify(leadResult).slice(0, 400));
+    } catch (eL) {
+      console.warn('[jobber-sale] hyros lead upsert error', eL && eL.message ? eL.message : eL);
+    }
+
+    // Step 2: Create order in Hyros
+    const orderPayload = {
+      email,
+      orderId: invoiceNumber || ('jobber-' + Date.now()),
+      productName: product.name,
+      revenue: amountDollars,
+      currency: 'USD',
+      tags: [attributionTag],
+    };
+    if (product.sku) orderPayload.sku = product.sku;
+    if (invoiceDate) orderPayload.date = invoiceDate;
+
+    let orderResult = {};
+    let orderOk = false;
+    try {
+      const orderRes = await fetch('https://api.hyros.com/v1/api/v1.0/sales', {
+        method: 'POST',
+        headers: hyrosHeaders,
+        body: JSON.stringify(orderPayload),
+      });
+      const orderText = await orderRes.text();
+      try { orderResult = JSON.parse(orderText); } catch { orderResult = { raw: orderText.slice(0, 300) }; }
+      console.log('[jobber-sale] hyros order create', orderRes.status, JSON.stringify(orderResult).slice(0, 400));
+      orderOk = orderRes.ok;
+    } catch (eO) {
+      console.warn('[jobber-sale] hyros order create error', eO && eO.message ? eO.message : eO);
+    }
+
+    return json({
+      ok: orderOk,
+      product: product.name,
+      sku: product.sku,
+      attribution_tag: attributionTag,
+      is_funnel_lead: isFunnelLead,
+      invoice_number: invoiceNumber,
+      amount_dollars: amountDollars,
+      hyros_order: orderResult,
+    }, orderOk ? 200 : 502, corsHeaders());
+
+  } catch (err) {
+    console.error('[jobber-sale] error', err && err.message ? err.message : err);
+    return json({ ok: false, error: 'jobber-sale exception', message: err && err.message ? err.message : String(err) }, 500, corsHeaders());
+  }
+}
+
+/**
+ * POST /stripe-webhook
+ * Handles Stripe webhook events. Listens for invoice.payment_succeeded to track
+ * subscription renewals in Hyros with recurring: true.
+ * Requires STRIPE_WEBHOOK_SECRET in Worker env for signature verification.
+ */
+async function handleStripeWebhook(request, env) {
+  try {
+    const rawBody = await request.text();
+    const sigHeader = request.headers.get('stripe-signature') || '';
+    const webhookSecret = env && typeof env.STRIPE_WEBHOOK_SECRET === 'string' ? env.STRIPE_WEBHOOK_SECRET.trim() : '';
+
+    // Signature verification (HMAC-SHA256 via Stripe's t= ts= v1= scheme)
+    if (webhookSecret && sigHeader) {
+      const parts = {};
+      for (const part of sigHeader.split(',')) {
+        const [k, v] = part.split('=');
+        if (k && v) parts[k.trim()] = v.trim();
+      }
+      const ts = parts['t'];
+      const v1 = parts['v1'];
+      if (ts && v1) {
+        const signedPayload = ts + '.' + rawBody;
+        const enc = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+          'raw', enc.encode(webhookSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+        );
+        const sig = await crypto.subtle.sign('HMAC', key, enc.encode(signedPayload));
+        const computed = [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+        if (computed !== v1) {
+          console.warn('[stripe-webhook] signature mismatch');
+          return json({ ok: false, error: 'Invalid signature' }, 400, corsHeaders());
+        }
+      }
+    }
+
+    let event;
+    try { event = rawBody ? JSON.parse(rawBody) : {}; } catch {
+      return json({ ok: false, error: 'Invalid JSON' }, 400, corsHeaders());
+    }
+
+    const eventType = String(event && event.type || '');
+    console.log('[stripe-webhook] event', eventType);
+
+    // Only handle subscription renewal invoices
+    if (eventType !== 'invoice.payment_succeeded') {
+      return json({ ok: true, ignored: true, event_type: eventType }, 200, corsHeaders());
+    }
+
+    const invoice = event && event.data && event.data.object;
+    if (!invoice) {
+      return json({ ok: false, error: 'No invoice object in event' }, 400, corsHeaders());
+    }
+
+    // Only process renewals (billing_reason = subscription_cycle), not the initial charge
+    const billingReason = String(invoice.billing_reason || '');
+    if (billingReason !== 'subscription_cycle') {
+      console.log('[stripe-webhook] skipping non-renewal', billingReason);
+      return json({ ok: true, ignored: true, billing_reason: billingReason }, 200, corsHeaders());
+    }
+
+    const email = String((invoice.customer_email) || '').trim().toLowerCase();
+    const amountDollars = (invoice.amount_paid || 0) / 100;
+    const invoiceId = String(invoice.id || '').trim();
+    const subscriptionId = String(invoice.subscription || '').trim();
+    const customerName = String(invoice.customer_name || '').trim();
+    const nameParts = customerName.split(/\s+/).filter(Boolean);
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ');
+
+    if (!email || amountDollars <= 0) {
+      return json({ ok: false, error: 'Missing email or amount in invoice' }, 400, corsHeaders());
+    }
+
+    const product = jobberAmountToProduct(amountDollars);
+    console.log('[stripe-webhook] renewal', JSON.stringify({
+      email: email.slice(0, 6) + '***', amountDollars, product: product.name, invoiceId, subscriptionId
+    }));
+
+    const apiKey = env && typeof env.HYROS_API_KEY === 'string' ? env.HYROS_API_KEY.trim() : '';
+    if (!apiKey) {
+      return json({ ok: false, error: 'HYROS_API_KEY not configured' }, 503, corsHeaders());
+    }
+    const hyrosHeaders = { 'API-key': apiKey, 'Content-Type': 'application/json' };
+
+    // Upsert lead
+    const leadPayload = { email, firstName: firstName || undefined, lastName: lastName || undefined };
+    try {
+      const lr = await fetch('https://api.hyros.com/v1/api/v1.0/leads', {
+        method: 'POST', headers: hyrosHeaders, body: JSON.stringify(leadPayload),
+      });
+      const lt = await lr.text();
+      console.log('[stripe-webhook] hyros lead upsert', lr.status, lt.slice(0, 300));
+    } catch (eL) {
+      console.warn('[stripe-webhook] hyros lead error', eL && eL.message ? eL.message : eL);
+    }
+
+    // Create renewal order with recurring: true
+    const orderPayload = {
+      email,
+      orderId: invoiceId,
+      productName: product.name,
+      revenue: amountDollars,
+      currency: 'USD',
+      recurring: true,
+      tags: ['$subscription-renewal'],
+    };
+    if (product.sku) orderPayload.sku = product.sku;
+    if (subscriptionId) orderPayload.subscriptionId = subscriptionId;
+
+    let orderResult = {};
+    let orderOk = false;
+    try {
+      const or = await fetch('https://api.hyros.com/v1/api/v1.0/sales', {
+        method: 'POST', headers: hyrosHeaders, body: JSON.stringify(orderPayload),
+      });
+      const ot = await or.text();
+      try { orderResult = JSON.parse(ot); } catch { orderResult = { raw: ot.slice(0, 300) }; }
+      console.log('[stripe-webhook] hyros order create', or.status, JSON.stringify(orderResult).slice(0, 400));
+      orderOk = or.ok;
+    } catch (eO) {
+      console.warn('[stripe-webhook] hyros order error', eO && eO.message ? eO.message : eO);
+    }
+
+    return json({
+      ok: orderOk,
+      event_type: eventType,
+      billing_reason: billingReason,
+      product: product.name,
+      amount_dollars: amountDollars,
+      invoice_id: invoiceId,
+      hyros_order: orderResult,
+    }, orderOk ? 200 : 502, corsHeaders());
+
+  } catch (err) {
+    console.error('[stripe-webhook] error', err && err.message ? err.message : err);
+    return json({ ok: false, error: 'stripe-webhook exception', message: err && err.message ? err.message : String(err) }, 500, corsHeaders());
   }
 }
 
@@ -1189,6 +1566,14 @@ export default {
 
     if (isConfirmPurchasePath(url.pathname)) {
       return handleConfirmPurchase(request, env);
+    }
+
+    if (isJobberSalePath(url.pathname)) {
+      return handleJobberSale(request, env);
+    }
+
+    if (isStripeWebhookPath(url.pathname)) {
+      return handleStripeWebhook(request, env);
     }
 
     if (!isCreatePaymentIntentPath(url.pathname)) {
