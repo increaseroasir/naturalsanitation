@@ -598,28 +598,35 @@ async function ghlFetchContactByEmail(token, locId, email) {
 /**
  * Look up a GHL contact by phone and return { tags, hyrosId, contact } (or defaults).
  * Fallback for /jobber-sale when email lookup finds no contact (phone-only opt-in leads).
+ * NOTE: GHL /contacts/search/duplicate does NOT support phone param — use /contacts/?query= instead.
  */
 async function ghlFetchContactByPhone(token, locId, phone) {
   const ph = String(phone || '').trim();
   if (!ph) return { tags: [], hyrosId: '' };
-  const url = new URL(GHL_API_BASE + '/contacts/search/duplicate');
+  // Strip non-digits for the query search, then also try E.164
+  const digits = ph.replace(/\D/g, '');
+  const searchQuery = digits.length >= 10 ? digits.slice(-10) : digits; // last 10 digits
+  const url = new URL(GHL_API_BASE + '/contacts/');
   url.searchParams.set('locationId', locId);
-  url.searchParams.set('phone', ph);
-  let res = await fetch(url.toString(), {
+  url.searchParams.set('query', searchQuery);
+  url.searchParams.set('limit', '5');
+  const res = await fetch(url.toString(), {
     method: 'GET',
     headers: { ...ghlAuthHeaders(token), Accept: 'application/json' },
   });
-  if (!res.ok) {
-    res = await fetch(GHL_API_BASE + '/contacts/search/duplicate', {
-      method: 'POST',
-      headers: ghlAuthHeaders(token),
-      body: JSON.stringify({ locationId: locId, phone: ph }),
-    });
-  }
   const text = await res.text();
   let j = {};
   try { j = text ? JSON.parse(text) : {}; } catch { j = {}; }
-  const contact = ghlExtractContactFromDuplicateJson(j);
+  // /contacts/ returns { contacts: [...] }
+  const contacts = Array.isArray(j.contacts) ? j.contacts : [];
+  // Find the best match — prefer exact phone match
+  const e164 = digits.length === 10 ? '+1' + digits
+    : digits.length === 11 && digits[0] === '1' ? '+' + digits
+    : ph;
+  const contact = contacts.find(c => {
+    const cp = String(c.phone || '').replace(/\D/g, '');
+    return cp.slice(-10) === digits.slice(-10);
+  }) || contacts[0] || null;
   if (!contact) return { tags: [], hyrosId: '' };
   const raw = contact.tags;
   const tags = Array.isArray(raw)
