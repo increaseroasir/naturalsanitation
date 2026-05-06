@@ -1967,7 +1967,7 @@ async function handleDashboardApi(request, env) {
     const tags = (sale.lead && sale.lead.tags) || [];
     const price = (sale.usdPrice && sale.usdPrice.price) || 0;
     const productName = (sale.product && sale.product.name) || '';
-    const recurring = sale.recurring || false;
+    const recurring = sale.recurring || tags.includes('$subscription-renewal');
 
     // Skip $0 for AOV
     if (price > 0) { totalRevForAov += price; totalOrders++; }
