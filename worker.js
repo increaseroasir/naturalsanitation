@@ -1026,24 +1026,26 @@ async function hyrosRecordPurchase(env, opts) {
     return { ok: false, reason: 'no_api_key' };
   }
 
-  const { email, phone, firstName, lastName, plan, bins, amountDollars, paymentIntentId, fbc, hyrosClickId } = opts;
+   const { email, phone, firstName, lastName, plan, bins, amountDollars, paymentIntentId, fbc, hyrosClickId, purchaseSource } = opts;
   const product = hyrosBuildProduct(plan, bins);
-
   const hyrosHeaders = {
     'API-key': apiKey,
     'Content-Type': 'application/json',
   };
-
+  // Determine source tag: sent-link, funnel-self-purchase, or fallback to $online-purchase
+  const sourceTag = purchaseSource === 'sent-link' ? '$sent-link-purchase'
+    : purchaseSource === 'funnel' ? '$funnel-self-purchase'
+    : '$funnel-self-purchase'; // default for all checkout.html purchases
   // Step 1: Create or update the lead in Hyros
   const leadPayload = {
     email: email || '',
     firstName: firstName || '',
     lastName: lastName || '',
     phoneNumber: phone || '',
-    tags: ['$online-purchase', '!highlevel'],
+    tags: [sourceTag, '!highlevel'],
   };
   if (fbc) leadPayload.fbc = fbc;
-  if (hyrosClickId) leadPayload.clickId = hyrosClickId;
+  if (hyrosClickId) leadPayload.clickId = hyrosClickId;;
 
   let leadResult = {};
   try {
@@ -1065,7 +1067,7 @@ async function hyrosRecordPurchase(env, opts) {
     orderId: paymentIntentId || '',
     currency: 'USD',
     items: [{ name: product.name, sku: product.tag || undefined, price: amountDollars, quantity: 1 }],
-    tags: ['$online-purchase'],
+    tags: [sourceTag],
   };
 
   let orderResult = {};
@@ -1149,8 +1151,9 @@ async function handleConfirmPurchase(request, env) {
       hyros_click_id_present: !!hyrosClickId,
     }));
 
+    const purchaseSource = String(body.source || '').trim().toLowerCase() || 'funnel';
     const hyrosResult = await hyrosRecordPurchase(env, {
-      email, phone, firstName, lastName, plan, bins, amountDollars, paymentIntentId: piId, fbc, hyrosClickId,
+      email, phone, firstName, lastName, plan, bins, amountDollars, paymentIntentId: piId, fbc, hyrosClickId, purchaseSource,
     });
 
     console.log('[confirm-purchase] hyros result', JSON.stringify(hyrosResult));

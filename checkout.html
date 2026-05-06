@@ -1275,6 +1275,7 @@ function onSuccess({ name, email, phone, address, trashDay, paymentIntentId }) {
     } catch(eFbc) {}
     var hyrosClickVal = checkoutHyrosIdFromCookie();
     var nameParts = (name || '').trim().split(/\s+/);
+    var checkoutSource = params.get('source') || 'funnel';
     var confirmPayload = {
       payment_intent_id: piId,
       plan: selectedPlan || 'annual',
@@ -1284,7 +1285,8 @@ function onSuccess({ name, email, phone, address, trashDay, paymentIntentId }) {
       first_name: nameParts[0] || '',
       last_name: nameParts.slice(1).join(' ') || '',
       fbc: fbcVal,
-      hyros_click_id: hyrosClickVal
+      hyros_click_id: hyrosClickVal,
+      source: checkoutSource
     };
     fetch(NS_PAYMENT_ORIGIN + '/confirm-purchase', {
       method: 'POST',
