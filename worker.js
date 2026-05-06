@@ -1856,14 +1856,14 @@ async function handleDashboardApi(request, env) {
 
   const hyrosKey = env.HYROS_API_KEY || '';
   const hyrosHeaders = { 'API-key': hyrosKey, 'Content-Type': 'application/json' };
-  const metaToken = env.META_CAPI_ACCESS_TOKEN || '';
+  const metaToken = env.META_ADS_TOKEN || '';
   const metaAccountId = 'act_2659531691011918';
 
   // Fetch Hyros leads and sales in parallel
   const [leadsRes, salesRes, metaRes] = await Promise.allSettled([
     fetch(`https://api.hyros.com/v1/api/v1.0/leads?fromDate=${fromDate}&toDate=${toDate}&limit=500`, { headers: hyrosHeaders }),
     fetch(`https://api.hyros.com/v1/api/v1.0/sales?fromDate=${fromDate}&toDate=${toDate}&limit=500`, { headers: hyrosHeaders }),
-    fetch(`https://graph.facebook.com/v19.0/${metaAccountId}/insights?fields=spend,impressions,clicks,reach&date_preset=${period === 'mtd' ? 'this_month' : period === 'today' ? 'today' : period === '7d' ? 'last_7d' : 'last_3d'}&access_token=${metaToken}`),
+    fetch(`https://graph.facebook.com/v19.0/${metaAccountId}/insights?fields=spend,impressions,clicks,reach&date_preset=${period === 'mtd' ? 'this_month' : period === 'today' ? 'today' : period === '7d' ? 'last_7d' : 'last_3_days'}&access_token=${metaToken}`),
   ]);
 
   let leads = [], sales = [], metaData = {};
