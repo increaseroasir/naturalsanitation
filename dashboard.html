@@ -361,8 +361,15 @@ let manualSpend = 0;
 let lastDashData = null;
 
 function applySpend() {
-  const val = parseFloat(document.getElementById('spend-override').value) || 0;
+  const raw = document.getElementById('spend-override').value.trim();
+  const val = parseFloat(raw) || 0;
   manualSpend = val;
+  if (val === 0) {
+    // Clear override — reload live data from API
+    localStorage.removeItem('ns_manual_spend_' + currentPeriod);
+    loadData();
+    return;
+  }
   if (lastDashData) {
     lastDashData.meta.spend = manualSpend;
     renderDashboard(lastDashData);
@@ -409,7 +416,14 @@ async function loadData() {
     });
     if (!r.ok) throw new Error('API error ' + r.status);
     const data = await r.json();
-    data.meta.spend = manualSpend; // overlay manual spend
+    // Only override with manual spend if user has explicitly entered one (> 0)
+    // Otherwise use the live Meta spend returned by the API
+    if (manualSpend > 0) {
+      data.meta.spend = manualSpend;
+    }
+    // Show live spend as placeholder so user knows what Meta reported
+    const liveSpend = data.meta.spend || 0;
+    document.getElementById('spend-override').placeholder = liveSpend > 0 ? ('Live: $' + Math.round(liveSpend)) : 'e.g. 918';
     lastDashData = data;
     renderDashboard(data);
     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
