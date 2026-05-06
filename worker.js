@@ -951,6 +951,139 @@ async function handleJobberSale(request, env) {
  * subscription renewals in Hyros with recurring: true.
  * Requires STRIPE_WEBHOOK_SECRET in Worker env for signature verification.
  */
+
+/**
+ * Handles payment_intent.succeeded for website self-purchases.
+ * Logs the order to Hyros and fires Meta CAPI Purchase event.
+ * Called from handleStripeWebhook when event.type === 'payment_intent.succeeded'.
+ */
+async function handleStripePaymentIntent(event, env) {
+  try {
+    const pi = event && event.data && event.data.object;
+    if (!pi) return json({ ok: false, error: 'No payment_intent object' }, 400, corsHeaders());
+    const meta = pi.metadata || {};
+    // Only process NS funnel purchases (must have ns_utm_source or phone in metadata)
+    const phone = String(meta.phone || '').replace(/\D/g, '');
+    const email = String(meta.email || pi.receipt_email || '').trim().toLowerCase();
+    const amountCents = pi.amount || 0;
+    const amountDollars = amountCents / 100;
+    const piId = String(pi.id || '');
+    const plan = String(meta.plan || '');
+    const bins = String(meta.bins || '');
+    const fbclid = String(meta.ns_fbclid || '');
+    const utmSource = String(meta.ns_utm_source || '');
+    const utmCampaign = String(meta.ns_utm_campaign || '');
+    const utmContent = String(meta.ns_utm_content || '');
+    const isSingleCharge = meta.single_charge === 'true';
+    // Skip if not a funnel purchase (no phone and no email)
+    if (!phone && !email) {
+      return json({ ok: true, ignored: true, reason: 'no_phone_or_email' }, 200, corsHeaders());
+    }
+    // Skip $0 or failed
+    if (amountDollars <= 0 || pi.status !== 'succeeded') {
+      return json({ ok: true, ignored: true, reason: 'zero_or_failed', status: pi.status }, 200, corsHeaders());
+    }
+    const product = jobberAmountToProduct(amountDollars);
+    const e164Phone = phone ? (phone.length === 10 ? '+1' + phone : '+' + phone) : '';
+    console.log('[stripe-pi] processing', JSON.stringify({ piId, amountDollars, plan, bins, phone: phone.slice(0,4)+'***', email: email.slice(0,4)+'***', isSingleCharge }));
+    const apiKey = env && typeof env.HYROS_API_KEY === 'string' ? env.HYROS_API_KEY.trim() : '';
+    if (!apiKey) return json({ ok: false, error: 'HYROS_API_KEY not configured' }, 503, corsHeaders());
+    const hyrosHeaders = { 'API-key': apiKey, 'Content-Type': 'application/json' };
+    // Upsert Hyros lead with email + phone + fbclid for merge
+    const leadPayload = {
+      email: email || e164Phone,
+      tags: ['$funnel-self-purchase'],
+    };
+    if (e164Phone) leadPayload.phoneNumber = e164Phone;
+    if (fbclid) leadPayload.clickId = fbclid;
+    try {
+      const lr = await fetch('https://api.hyros.com/v1/api/v1.0/leads', {
+        method: 'POST', headers: hyrosHeaders, body: JSON.stringify(leadPayload),
+      });
+      const lt = await lr.text();
+      console.log('[stripe-pi] hyros lead upsert', lr.status, lt.slice(0, 300));
+    } catch (eL) {
+      console.warn('[stripe-pi] hyros lead error', eL && eL.message ? eL.message : eL);
+    }
+    // Create Hyros order
+    const orderPayload = {
+      email: email || e164Phone,
+      orderId: piId,
+      currency: 'USD',
+      recurring: false,
+      items: [{ name: product.name, sku: product.sku || undefined, price: amountDollars, quantity: 1 }],
+      tags: ['$funnel-self-purchase'],
+    };
+    let orderResult = {};
+    let orderOk = false;
+    try {
+      const or = await fetch('https://api.hyros.com/v1/api/v1.0/orders', {
+        method: 'POST', headers: hyrosHeaders, body: JSON.stringify(orderPayload),
+      });
+      const ot = await or.text();
+      try { orderResult = JSON.parse(ot); } catch { orderResult = { raw: ot.slice(0, 300) }; }
+      console.log('[stripe-pi] hyros order create', or.status, JSON.stringify(orderResult).slice(0, 400));
+      orderOk = or.ok;
+    } catch (eO) {
+      console.warn('[stripe-pi] hyros order error', eO && eO.message ? eO.message : eO);
+    }
+    // Fire Meta CAPI Purchase event
+    let capiResult = null;
+    try {
+      const capiToken = env && typeof env.META_CAPI_ACCESS_TOKEN === 'string' ? env.META_CAPI_ACCESS_TOKEN.trim() : '';
+      const pixelId = (env && env.META_PIXEL_ID) ? String(env.META_PIXEL_ID) : '499919262310418';
+      if (capiToken) {
+        const userData = await hashUserDataPlain({
+          email: email || undefined,
+          phone: e164Phone || undefined,
+          external_id: email || e164Phone,
+        });
+        if (fbclid) userData.fbc = fbclid;
+        const capiPayload = {
+          data: [{
+            event_name: 'Purchase',
+            event_time: Math.floor(Date.now() / 1000),
+            event_id: piId,
+            action_source: 'website',
+            user_data: userData,
+            custom_data: {
+              currency: 'USD',
+              value: amountDollars,
+              content_name: product.name,
+              content_ids: [product.sku || product.name],
+              content_type: 'product',
+              order_id: piId,
+            },
+          }],
+        };
+        const testCode = env && env.META_TEST_EVENT_CODE ? sanitizeMetaTestEventCode(env.META_TEST_EVENT_CODE) : '';
+        if (testCode) capiPayload.test_event_code = testCode;
+        const capiRes = await fetch(
+          'https://graph.facebook.com/v21.0/' + encodeURIComponent(pixelId) + '/events?access_token=' + encodeURIComponent(capiToken),
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(capiPayload) }
+        );
+        const capiText = await capiRes.text();
+        try { capiResult = JSON.parse(capiText); } catch { capiResult = { raw: capiText.slice(0, 300) }; }
+        console.log('[stripe-pi] meta-capi Purchase', capiRes.status, JSON.stringify(capiResult).slice(0, 400));
+      }
+    } catch (eCapi) {
+      console.warn('[stripe-pi] meta-capi error', eCapi && eCapi.message ? eCapi.message : eCapi);
+    }
+    return json({
+      ok: orderOk,
+      event_type: 'payment_intent.succeeded',
+      product: product.name,
+      amount_dollars: amountDollars,
+      pi_id: piId,
+      hyros_order: orderResult,
+      meta_capi: capiResult,
+    }, orderOk ? 200 : 502, corsHeaders());
+  } catch (err) {
+    console.error('[stripe-pi] error', err && err.message ? err.message : err);
+    return json({ ok: false, error: 'stripe-pi exception', message: err && err.message ? err.message : String(err) }, 500, corsHeaders());
+  }
+}
+
 async function handleStripeWebhook(request, env) {
   try {
     const rawBody = await request.text();
@@ -986,9 +1119,12 @@ async function handleStripeWebhook(request, env) {
       return json({ ok: false, error: 'Invalid JSON' }, 400, corsHeaders());
     }
 
-    const eventType = String(event && event.type || '');
+     const eventType = String(event && event.type || '');
     console.log('[stripe-webhook] event', eventType);
-
+    // Handle website self-purchases (payment_intent.succeeded with ns_ metadata)
+    if (eventType === 'payment_intent.succeeded') {
+      return handleStripePaymentIntent(event, env);
+    }
     // Only handle subscription renewal invoices
     if (eventType !== 'invoice.payment_succeeded') {
       return json({ ok: true, ignored: true, event_type: eventType }, 200, corsHeaders());
