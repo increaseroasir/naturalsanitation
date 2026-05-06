@@ -714,6 +714,8 @@ async function handleJobberSale(request, env) {
     const lastName = String(body.last_name || '').trim();
     const phone = String(body.phone || '').trim();
     const invoiceDate = String(body.invoice_date || body.date || '').trim();
+    // Explicit renewal flag from Zapier (optional — set is_renewal: true in Zap payload for returning customers)
+    const isRenewalFlag = body.is_renewal === true || String(body.is_renewal || '').toLowerCase() === 'true';
 
     if (!email) {
       return json({ ok: false, error: 'email is required' }, 400, corsHeaders());
@@ -770,8 +772,46 @@ async function handleJobberSale(request, env) {
       console.warn('[jobber-sale] GHL env not configured — skipping tag lookup, defaulting to website-organic');
     }
 
-    const attributionTag = isFunnelLead ? '$phone-close-ad-lead' : '$website-organic';
-    console.log('[jobber-sale] attribution', JSON.stringify({ attributionTag, isFunnelLead, hasHyrosId: !!ghlHyrosId }));
+    // Renewal detection: if not a funnel lead, check Hyros for prior $api-* product tags.
+    // A lead with existing product tags is a returning customer — tag as renewal, not organic.
+    let isRenewal = isRenewalFlag;
+    if (!isRenewal && !isFunnelLead) {
+      const hyrosApiKeyForLookup = env && typeof env.HYROS_API_KEY === 'string' ? env.HYROS_API_KEY.trim() : '';
+      if (hyrosApiKeyForLookup) {
+        try {
+          const today = new Date().toISOString().slice(0, 10);
+          const lookupUrl = `https://api.hyros.com/v1/api/v1.0/leads?fromDate=2020-01-01&toDate=${today}&limit=1000`;
+          const lookupRes = await fetch(lookupUrl, { headers: { 'API-key': hyrosApiKeyForLookup } });
+          if (lookupRes.ok) {
+            const lookupData = await lookupRes.json();
+            const normalizedInputPhone = phone.replace(/\D/g, '');
+            const existingLead = (lookupData.result || []).find(l => {
+              const leadEmail = (l.email || '').toLowerCase();
+              const leadPhones = (l.phoneNumbers || []).map(p => p.replace(/\D/g, ''));
+              return (email && leadEmail === email) ||
+                     (normalizedInputPhone.length >= 10 && leadPhones.some(p => p.endsWith(normalizedInputPhone) || normalizedInputPhone.endsWith(p)));
+            });
+            if (existingLead) {
+              const existingTags = existingLead.tags || [];
+              const hasProductTag = existingTags.some(t => t.startsWith('$api-'));
+              if (hasProductTag) {
+                isRenewal = true;
+                console.log('[jobber-sale] renewal detected via Hyros existing product tags', JSON.stringify({
+                  email: email.slice(0, 6) + '***',
+                  phone: phone ? phone.slice(-4) : null,
+                  existingProductTags: existingTags.filter(t => t.startsWith('$api-')),
+                }));
+              }
+            }
+          }
+        } catch (eHyrosLookup) {
+          console.warn('[jobber-sale] hyros renewal check failed', eHyrosLookup && eHyrosLookup.message ? eHyrosLookup.message : eHyrosLookup);
+        }
+      }
+    }
+
+    const attributionTag = isRenewal ? '$subscription-renewal' : (isFunnelLead ? '$phone-close-ad-lead' : '$website-organic');
+    console.log('[jobber-sale] attribution', JSON.stringify({ attributionTag, isFunnelLead, isRenewal, hasHyrosId: !!ghlHyrosId }));
 
     // Fire Hyros
     const apiKey = env && typeof env.HYROS_API_KEY === 'string' ? env.HYROS_API_KEY.trim() : '';
@@ -813,6 +853,7 @@ async function handleJobberSale(request, env) {
       items: [{ name: product.name, sku: product.sku || undefined, price: amountDollars, quantity: 1 }],
       tags: [attributionTag],
     };
+    if (isRenewal) orderPayload.recurring = true;
     if (invoiceDate) orderPayload.date = invoiceDate;
 
     let orderResult = {};
@@ -837,6 +878,7 @@ async function handleJobberSale(request, env) {
       sku: product.sku,
       attribution_tag: attributionTag,
       is_funnel_lead: isFunnelLead,
+      is_renewal: isRenewal,
       invoice_number: invoiceNumber,
       amount_dollars: amountDollars,
       hyros_order: orderResult,
