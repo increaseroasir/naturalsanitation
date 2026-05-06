@@ -1673,11 +1673,19 @@ export default {
       return new Response(null, { status: 204, headers: h });
     }
 
+    const url = new URL(request.url);
+    // Dashboard endpoints allow GET
+    if (request.method === 'GET') {
+      if (url.pathname === '/dashboard-api' || url.pathname.endsWith('/dashboard-api')) {
+        return handleDashboardApi(request, env);
+      }
+      if (url.pathname === '/dashboard' || url.pathname.endsWith('/dashboard')) {
+        return handleDashboardPage(request, env);
+      }
+    }
     if (request.method !== 'POST') {
       return json({ error: 'Method not allowed' }, 405, h);
-    }
-
-    const url = new URL(request.url);
+    };
 
     if (isMetaCapiPath(url.pathname)) {
       return handleMetaCapi(request, env);
@@ -1703,10 +1711,15 @@ export default {
       return handleJobberSale(request, env);
     }
 
-    if (isStripeWebhookPath(url.pathname)) {
+     if (isStripeWebhookPath(url.pathname)) {
       return handleStripeWebhook(request, env);
     }
-
+    if (url.pathname === '/dashboard-api' || url.pathname.endsWith('/dashboard-api')) {
+      return handleDashboardApi(request, env);
+    }
+    if (url.pathname === '/dashboard' || url.pathname.endsWith('/dashboard')) {
+      return handleDashboardPage(request, env);
+    }
     if (!isCreatePaymentIntentPath(url.pathname)) {
       return new Response('Not found', { status: 404, headers: h });
     }
@@ -1800,3 +1813,141 @@ export default {
     return json(out, 200, h);
   },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DASHBOARD PAGE — serves dashboard.html inline
+// ─────────────────────────────────────────────────────────────────────────────
+async function handleDashboardPage(request, env) {
+  // Fetch the dashboard HTML from the same origin (Cloudflare Pages or static)
+  // For now, redirect to the GitHub Pages / static host URL
+  return Response.redirect('https://naturalsanitationsignup.com/dashboard.html', 302);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DASHBOARD API — aggregates Hyros + Meta data for the dashboard
+// ─────────────────────────────────────────────────────────────────────────────
+async function handleDashboardApi(request, env) {
+  const h = corsHeaders();
+  // Simple key auth
+  const key = request.headers.get('X-Dashboard-Key') || '';
+  if (key !== 'ns2026dash') {
+    return json({ error: 'Unauthorized' }, 401, h);
+  }
+
+  const url = new URL(request.url);
+  const period = url.searchParams.get('period') || 'mtd';
+
+  // Calculate date range
+  const now = new Date();
+  let fromDate, toDate;
+  toDate = now.toISOString().split('T')[0];
+  if (period === 'today') {
+    fromDate = toDate;
+  } else if (period === '3d') {
+    const d = new Date(now); d.setDate(d.getDate() - 2);
+    fromDate = d.toISOString().split('T')[0];
+  } else if (period === '7d') {
+    const d = new Date(now); d.setDate(d.getDate() - 6);
+    fromDate = d.toISOString().split('T')[0];
+  } else {
+    // MTD
+    fromDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  }
+
+  const hyrosKey = env.HYROS_API_KEY || '';
+  const hyrosHeaders = { 'API-key': hyrosKey, 'Content-Type': 'application/json' };
+  const metaToken = env.META_CAPI_ACCESS_TOKEN || '';
+  const metaAccountId = 'act_2659531691011918';
+
+  // Fetch Hyros leads and sales in parallel
+  const [leadsRes, salesRes, metaRes] = await Promise.allSettled([
+    fetch(`https://api.hyros.com/v1/api/v1.0/leads?fromDate=${fromDate}&toDate=${toDate}&limit=500`, { headers: hyrosHeaders }),
+    fetch(`https://api.hyros.com/v1/api/v1.0/sales?fromDate=${fromDate}&toDate=${toDate}&limit=500`, { headers: hyrosHeaders }),
+    fetch(`https://graph.facebook.com/v19.0/${metaAccountId}/insights?fields=spend,impressions,clicks,reach&date_preset=${period === 'mtd' ? 'this_month' : period === 'today' ? 'today' : period === '7d' ? 'last_7d' : 'last_3d'}&access_token=${metaToken}`),
+  ]);
+
+  let leads = [], sales = [], metaData = {};
+  try { const d = await leadsRes.value.json(); leads = d.result || []; } catch {}
+  try { const d = await salesRes.value.json(); sales = d.result || []; } catch {}
+  try {
+    const d = await metaRes.value.json();
+    metaData = (d.data && d.data[0]) || {};
+  } catch {}
+
+  // Count leads (opt-ins) — contacts with $ghl-new-contact tag
+  const totalLeads = leads.filter(l => (l.tags || []).some(t => t === '$ghl-new-contact')).length;
+
+  // Aggregate sales by source tag
+  const purchases = { funnel: 0, sent_link: 0, phone_close: 0, organic: 0, renewal: 0, total: 0 };
+  const revenue = { funnel: 0, sent_link: 0, phone_close: 0, organic: 0, renewal: 0, total: 0, ad_attributed: 0, recurring: 0 };
+  const phonePlanMix = {};
+  let totalOrders = 0;
+  let totalRevForAov = 0;
+
+  for (const sale of sales) {
+    const tags = (sale.lead && sale.lead.tags) || [];
+    const price = (sale.usdPrice && sale.usdPrice.price) || 0;
+    const productName = (sale.product && sale.product.name) || '';
+    const recurring = sale.recurring || false;
+
+    // Skip $0 for AOV
+    if (price > 0) { totalRevForAov += price; totalOrders++; }
+
+    if (recurring) {
+      purchases.renewal++;
+      revenue.renewal += price;
+      revenue.recurring += price;
+    } else if (tags.includes('$funnel-self-purchase')) {
+      purchases.funnel++;
+      revenue.funnel += price;
+      revenue.ad_attributed += price;
+    } else if (tags.includes('$sent-link-purchase')) {
+      purchases.sent_link++;
+      revenue.sent_link += price;
+      revenue.ad_attributed += price;
+    } else if (tags.includes('$phone-close-ad-lead')) {
+      purchases.phone_close++;
+      revenue.phone_close += price;
+      revenue.ad_attributed += price;
+      // Plan mix for phone closes
+      const planKey = productName.includes('Annual') ? 'Annual' :
+                      productName.includes('Monthly') ? 'Monthly' :
+                      productName.includes('Quarterly') ? 'Quarterly' : 'Other';
+      phonePlanMix[planKey] = (phonePlanMix[planKey] || 0) + 1;
+    } else {
+      purchases.organic++;
+      revenue.organic += price;
+    }
+  }
+
+  purchases.total = purchases.funnel + purchases.sent_link + purchases.phone_close + purchases.organic;
+  revenue.total = revenue.funnel + revenue.sent_link + revenue.phone_close + revenue.organic + revenue.renewal;
+  revenue.aov = totalOrders > 0 ? Math.round(totalRevForAov / totalOrders) : 0;
+
+  // Meta data
+  const metaSpend = parseFloat(metaData.spend || 0);
+  const metaImpressions = parseInt(metaData.impressions || 0);
+  const metaClicks = parseInt(metaData.clicks || 0);
+
+  // Opt-in rate: leads / (meta clicks * 0.6 as proxy for landing page views)
+  // We don't have exact visitor count from Meta CAPI, so we use link clicks as proxy
+  const estimatedVisitors = metaClicks || 0;
+  const optInRate = estimatedVisitors > 0 ? (totalLeads / estimatedVisitors * 100) : 0;
+
+  return json({
+    period, fromDate, toDate,
+    leads: totalLeads,
+    visitors: estimatedVisitors || null,
+    opt_in_rate: Math.round(optInRate * 10) / 10,
+    purchases,
+    revenue,
+    phone_plan_mix: phonePlanMix,
+    phone_close_rate: null,
+    phone_contact_rate: null,
+    meta: {
+      spend: metaSpend,
+      impressions: metaImpressions,
+      clicks: metaClicks,
+    },
+  }, 200, h);
+}

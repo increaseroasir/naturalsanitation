@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Natural Sanitation — Performance Dashboard</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0f1117;
+      --surface:#1a1d27;
+      --surface2:#22263a;
+      --border:#2e3347;
+      --blue:#3b82f6;
+      --blue-dim:#1d4ed8;
+      --green:#22c55e;
+      --yellow:#f59e0b;
+      --red:#ef4444;
+      --orange:#f97316;
+      --purple:#a855f7;
+      --text:#e2e8f0;
+      --muted:#64748b;
+      --white:#fff;
+    }
+    html{-webkit-text-size-adjust:100%}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      font-size:14px;
+      line-height:1.5;
+      min-height:100vh;
+    }
+
+    /* ── AUTH GATE ── */
+    #auth-gate{
+      position:fixed;inset:0;
+      background:var(--bg);
+      display:flex;align-items:center;justify-content:center;
+      z-index:1000;
+    }
+    #auth-gate.hidden{display:none}
+    .auth-card{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:40px 36px;
+      width:340px;
+      text-align:center;
+    }
+    .auth-logo{font-size:22px;font-weight:900;color:var(--white);margin-bottom:4px}
+    .auth-logo span{color:var(--blue)}
+    .auth-sub{font-size:12px;color:var(--muted);margin-bottom:28px;letter-spacing:.5px;text-transform:uppercase}
+    .auth-card input{
+      width:100%;padding:12px 14px;
+      background:var(--surface2);
+      border:1px solid var(--border);
+      border-radius:8px;
+      color:var(--text);
+      font-size:15px;
+      margin-bottom:12px;
+      outline:none;
+    }
+    .auth-card input:focus{border-color:var(--blue)}
+    .auth-btn{
+      width:100%;padding:12px;
+      background:var(--blue);
+      color:#fff;font-size:15px;font-weight:700;
+      border:none;border-radius:8px;cursor:pointer;
+      transition:background .15s;
+    }
+    .auth-btn:hover{background:var(--blue-dim)}
+    .auth-error{color:var(--red);font-size:12px;margin-top:8px;min-height:16px}
+
+    /* ── HEADER ── */
+    header{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:16px 24px;
+      border-bottom:1px solid var(--border);
+      background:var(--surface);
+      position:sticky;top:0;z-index:100;
+    }
+    .logo{font-size:16px;font-weight:900;color:var(--white)}
+    .logo span{color:var(--blue)}
+    .header-right{display:flex;align-items:center;gap:12px}
+    .period-tabs{display:flex;gap:4px}
+    .period-tab{
+      padding:6px 14px;border-radius:6px;
+      font-size:12px;font-weight:600;
+      border:1px solid var(--border);
+      background:transparent;color:var(--muted);
+      cursor:pointer;transition:all .15s;
+    }
+    .period-tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+    .refresh-btn{
+      padding:6px 12px;border-radius:6px;
+      font-size:12px;font-weight:600;
+      border:1px solid var(--border);
+      background:transparent;color:var(--muted);
+      cursor:pointer;transition:all .15s;
+    }
+    .refresh-btn:hover{border-color:var(--blue);color:var(--blue)}
+    .last-updated{font-size:11px;color:var(--muted)}
+
+    /* ── MAIN LAYOUT ── */
+    main{padding:24px;max-width:1400px;margin:0 auto}
+
+    /* ── SECTION HEADERS ── */
+    .section-title{
+      font-size:11px;font-weight:700;letter-spacing:1.5px;
+      text-transform:uppercase;color:var(--muted);
+      margin-bottom:12px;margin-top:28px;
+    }
+    .section-title:first-child{margin-top:0}
+
+    /* ── STAT GRID ── */
+    .stat-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+      gap:12px;
+      margin-bottom:4px;
+    }
+    .stat-card{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:16px 18px;
+      position:relative;
+      overflow:hidden;
+    }
+    .stat-card::before{
+      content:'';
+      position:absolute;top:0;left:0;right:0;
+      height:3px;
+      background:var(--accent,var(--blue));
+    }
+    .stat-label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+    .stat-value{font-size:28px;font-weight:900;color:var(--white);line-height:1}
+    .stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+    .stat-target{
+      font-size:10px;margin-top:6px;
+      padding:2px 7px;border-radius:20px;
+      display:inline-block;font-weight:600;
+    }
+    .target-good{background:rgba(34,197,94,.15);color:var(--green)}
+    .target-warn{background:rgba(245,158,11,.15);color:var(--yellow)}
+    .target-bad{background:rgba(239,68,68,.15);color:var(--red)}
+    .target-na{background:rgba(100,116,139,.15);color:var(--muted)}
+
+    /* ── CHART CARDS ── */
+    .chart-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:16px;
+    }
+    @media(max-width:900px){.chart-grid{grid-template-columns:1fr}}
+    .chart-card{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:20px;
+    }
+    .chart-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:16px}
+    .chart-wrap{position:relative;height:200px}
+
+    /* ── FUNNEL VISUAL ── */
+    .funnel-card{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:20px;
+      margin-bottom:16px;
+    }
+    .funnel-steps{display:flex;flex-direction:column;gap:8px}
+    .funnel-step{
+      display:flex;align-items:center;gap:12px;
+    }
+    .funnel-bar-wrap{flex:1;background:var(--surface2);border-radius:6px;height:32px;overflow:hidden;position:relative}
+    .funnel-bar{height:100%;border-radius:6px;transition:width .6s ease;display:flex;align-items:center;padding:0 10px}
+    .funnel-bar-label{font-size:12px;font-weight:700;color:#fff;white-space:nowrap}
+    .funnel-step-name{font-size:12px;color:var(--muted);width:140px;text-align:right;flex-shrink:0}
+    .funnel-step-count{font-size:13px;font-weight:700;color:var(--white);width:60px;text-align:right;flex-shrink:0}
+    .funnel-step-rate{font-size:11px;color:var(--muted);width:50px;text-align:right;flex-shrink:0}
+
+    /* ── SOURCE BREAKDOWN TABLE ── */
+    .breakdown-card{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:20px;
+      margin-bottom:16px;
+    }
+    .breakdown-table{width:100%;border-collapse:collapse}
+    .breakdown-table th{
+      font-size:10px;font-weight:700;letter-spacing:.8px;
+      text-transform:uppercase;color:var(--muted);
+      padding:8px 12px;text-align:left;
+      border-bottom:1px solid var(--border);
+    }
+    .breakdown-table td{
+      padding:10px 12px;font-size:13px;
+      border-bottom:1px solid rgba(46,51,71,.5);
+    }
+    .breakdown-table tr:last-child td{border-bottom:none}
+    .source-badge{
+      display:inline-block;padding:2px 8px;border-radius:20px;
+      font-size:11px;font-weight:600;
+    }
+
+    /* ── LOADING STATE ── */
+    .loading-overlay{
+      position:fixed;inset:0;
+      background:rgba(15,17,23,.85);
+      display:flex;align-items:center;justify-content:center;
+      flex-direction:column;gap:12px;
+      z-index:500;
+    }
+    .loading-overlay.hidden{display:none}
+    .spinner{
+      width:32px;height:32px;
+      border:3px solid var(--border);
+      border-top-color:var(--blue);
+      border-radius:50%;
+      animation:spin .7s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-text{font-size:14px;color:var(--muted)}
+
+    /* ── EMPTY STATE ── */
+    .empty{color:var(--muted);font-size:13px;text-align:center;padding:20px}
+  </style>
+</head>
+<body>
+
+<!-- Auth Gate -->
+<div id="auth-gate">
+  <div class="auth-card">
+    <div class="auth-logo">Natural <span>Sanitation</span></div>
+    <div class="auth-sub">Performance Dashboard</div>
+    <input type="password" id="auth-input" placeholder="Enter dashboard password" />
+    <button class="auth-btn" onclick="checkAuth()">Access Dashboard</button>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text">Loading live data…</div>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="logo">Natural <span>Sanitation</span></div>
+  <div class="header-right">
+    <div class="period-tabs">
+      <button class="period-tab active" onclick="setPeriod('today')">Today</button>
+      <button class="period-tab" onclick="setPeriod('3d')">3 Days</button>
+      <button class="period-tab" onclick="setPeriod('7d')">7 Days</button>
+      <button class="period-tab" onclick="setPeriod('mtd')">MTD</button>
+    </div>
+    <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+    <span class="last-updated" id="last-updated"></span>
+  </div>
+</header>
+
+<main id="dashboard" style="display:none">
+
+  <!-- ACQUISITION FUNNEL -->
+  <div class="section-title">Acquisition Funnel</div>
+  <div class="funnel-card">
+    <div class="chart-title">Lead → Purchase Flow</div>
+    <div class="funnel-steps" id="funnel-steps">
+      <div class="empty">Loading…</div>
+    </div>
+  </div>
+
+  <!-- TOP METRICS -->
+  <div class="section-title">Key Metrics</div>
+  <div class="stat-grid" id="top-stats">
+    <div class="stat-card"><div class="stat-label">Loading</div><div class="stat-value">—</div></div>
+  </div>
+
+  <!-- CONVERSION RATES -->
+  <div class="section-title">Conversion Rates</div>
+  <div class="stat-grid" id="rate-stats">
+    <div class="stat-card"><div class="stat-label">Loading</div><div class="stat-value">—</div></div>
+  </div>
+
+  <!-- REVENUE & AD PERFORMANCE -->
+  <div class="section-title">Revenue & Ad Performance</div>
+  <div class="stat-grid" id="revenue-stats">
+    <div class="stat-card"><div class="stat-label">Loading</div><div class="stat-value">—</div></div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="section-title">Purchase Sources & Plan Mix</div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-title">Purchases by Source</div>
+      <div class="chart-wrap"><canvas id="sourceChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Plan Mix — Phone Closes</div>
+      <div class="chart-wrap"><canvas id="planChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- SOURCE BREAKDOWN TABLE -->
+  <div class="section-title">Purchase Breakdown by Source</div>
+  <div class="breakdown-card">
+    <table class="breakdown-table">
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th>Purchases</th>
+          <th>Revenue</th>
+          <th>Avg Order</th>
+          <th>% of Total</th>
+        </tr>
+      </thead>
+      <tbody id="breakdown-body">
+        <tr><td colspan="5" class="empty">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<script>
+const NS_API = 'https://ns-payment.increase-roas.workers.dev';
+const DASH_PASSWORD = 'ns2026dash';
+let currentPeriod = 'mtd';
+let sourceChartInst = null;
+let planChartInst = null;
+
+// ── AUTH ──
+function checkAuth() {
+  const val = document.getElementById('auth-input').value;
+  if (val === DASH_PASSWORD) {
+    document.getElementById('auth-gate').classList.add('hidden');
+    document.getElementById('dashboard').style.display = 'block';
+    loadData();
+  } else {
+    document.getElementById('auth-error').textContent = 'Incorrect password';
+  }
+}
+document.getElementById('auth-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkAuth();
+});
+
+// ── PERIOD ──
+function setPeriod(p) {
+  currentPeriod = p;
+  document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  loadData();
+}
+
+// ── LOAD DATA ──
+async function loadData() {
+  document.getElementById('loading').classList.remove('hidden');
+  try {
+    const r = await fetch(`${NS_API}/dashboard-api?period=${currentPeriod}`, {
+      headers: { 'X-Dashboard-Key': DASH_PASSWORD }
+    });
+    if (!r.ok) throw new Error('API error ' + r.status);
+    const data = await r.json();
+    renderDashboard(data);
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    console.error(e);
+    document.getElementById('last-updated').textContent = 'Error loading data';
+  }
+  document.getElementById('loading').classList.add('hidden');
+}
+
+// ── RENDER ──
+function fmt$(n) { return '$' + Number(n||0).toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0}); }
+function fmtPct(n) { return (Number(n||0)).toFixed(1) + '%'; }
+function fmtN(n) { return Number(n||0).toLocaleString(); }
+
+function targetBadge(val, low, high, unit) {
+  const v = Number(val||0);
+  const label = unit === '%' ? fmtPct(v) : (unit === '$' ? fmt$(v) : fmtN(v));
+  if (v >= high) return `<span class="stat-target target-good">✓ ${label}</span>`;
+  if (v >= low)  return `<span class="stat-target target-warn">~ ${label}</span>`;
+  return `<span class="stat-target target-bad">↓ ${label}</span>`;
+}
+
+function renderDashboard(d) {
+  // FUNNEL
+  const totalLeads = d.leads || 0;
+  const onlineBuyers = d.purchases.funnel + d.purchases.sent_link;
+  const phoneBuyers = d.purchases.phone_close;
+  const totalBuyers = d.purchases.total;
+  const funnelSteps = [
+    { name: 'Website Visitors', count: d.visitors || '—', pct: 100, color: '#3b82f6' },
+    { name: 'Opt-ins (Leads)', count: totalLeads, pct: d.opt_in_rate || 0, color: '#6366f1' },
+    { name: 'Online Purchases', count: onlineBuyers, pct: totalLeads > 0 ? (onlineBuyers/totalLeads*100) : 0, color: '#22c55e' },
+    { name: 'Phone Closes', count: phoneBuyers, pct: totalLeads > 0 ? (phoneBuyers/totalLeads*100) : 0, color: '#f97316' },
+  ];
+  const maxCount = funnelSteps[0].count === '—' ? totalLeads : Math.max(funnelSteps[0].count, totalLeads);
+  document.getElementById('funnel-steps').innerHTML = funnelSteps.map(s => {
+    const w = s.count === '—' ? 100 : (maxCount > 0 ? Math.max(5, s.count/maxCount*100) : 5);
+    const countDisplay = s.count === '—' ? '—' : fmtN(s.count);
+    const pctDisplay = s.name === 'Website Visitors' ? '' : fmtPct(s.pct);
+    return `<div class="funnel-step">
+      <div class="funnel-step-name">${s.name}</div>
+      <div class="funnel-bar-wrap">
+        <div class="funnel-bar" style="width:${w}%;background:${s.color}">
+          <span class="funnel-bar-label">${countDisplay}</span>
+        </div>
+      </div>
+      <div class="funnel-step-rate">${pctDisplay}</div>
+    </div>`;
+  }).join('');
+
+  // TOP STATS
+  document.getElementById('top-stats').innerHTML = [
+    { label: 'Total Opt-ins', value: fmtN(totalLeads), sub: 'Funnel leads', accent: '#3b82f6' },
+    { label: 'Total Purchases', value: fmtN(totalBuyers), sub: 'Online + Phone', accent: '#22c55e' },
+    { label: 'Total Revenue', value: fmt$(d.revenue.total), sub: 'All sources', accent: '#a855f7' },
+    { label: 'Avg Order Value', value: fmt$(d.revenue.aov), sub: 'Excl. $0 orders', accent: '#f59e0b' },
+    { label: 'New Customers', value: fmtN(totalBuyers), sub: 'Online + Phone', accent: '#22c55e' },
+    { label: 'Recurring Revenue', value: fmt$(d.revenue.recurring), sub: 'Subscription renewals', accent: '#6366f1' },
+  ].map(s => `<div class="stat-card" style="--accent:${s.accent}">
+    <div class="stat-label">${s.label}</div>
+    <div class="stat-value">${s.value}</div>
+    <div class="stat-sub">${s.sub}</div>
+  </div>`).join('');
+
+  // CONVERSION RATES
+  const optInRate = d.opt_in_rate || 0;
+  const onlineConvRate = totalLeads > 0 ? (onlineBuyers / totalLeads * 100) : 0;
+  const phoneCloseRate = d.phone_close_rate || 0;
+  document.getElementById('rate-stats').innerHTML = [
+    { label: 'Opt-in Rate', value: fmtPct(optInRate), sub: 'Form fills ÷ visitors', badge: targetBadge(optInRate, 20, 25, '%'), accent: '#3b82f6' },
+    { label: 'Online Conv. Rate', value: fmtPct(onlineConvRate), sub: 'Buyers ÷ opt-ins', badge: targetBadge(onlineConvRate, 10, 12, '%'), accent: '#22c55e' },
+    { label: 'Phone Contact Rate', value: d.phone_contact_rate ? fmtPct(d.phone_contact_rate) : '—', sub: 'Target: 60–70%', badge: d.phone_contact_rate ? targetBadge(d.phone_contact_rate, 60, 70, '%') : '<span class="stat-target target-na">Manual input needed</span>', accent: '#f97316' },
+    { label: 'Phone Close Rate', value: d.phone_close_rate ? fmtPct(d.phone_close_rate) : '—', sub: 'Target: 30–40%', badge: d.phone_close_rate ? targetBadge(d.phone_close_rate, 30, 40, '%') : '<span class="stat-target target-na">Manual input needed</span>', accent: '#f97316' },
+    { label: 'Blended Close Rate', value: totalLeads > 0 ? fmtPct(totalBuyers/totalLeads*100) : '—', sub: 'Total buyers ÷ leads', badge: totalLeads > 0 ? targetBadge(totalBuyers/totalLeads*100, 10, 15, '%') : '', accent: '#6366f1' },
+  ].map(s => `<div class="stat-card" style="--accent:${s.accent}">
+    <div class="stat-label">${s.label}</div>
+    <div class="stat-value">${s.value}</div>
+    <div class="stat-sub">${s.sub}</div>
+    ${s.badge || ''}
+  </div>`).join('');
+
+  // REVENUE & AD PERFORMANCE
+  const roas = d.meta.spend > 0 ? (d.revenue.ad_attributed / d.meta.spend) : 0;
+  const cac = totalBuyers > 0 ? ((d.meta.spend) / totalBuyers) : 0;
+  document.getElementById('revenue-stats').innerHTML = [
+    { label: 'Meta Ad Spend', value: fmt$(d.meta.spend), sub: 'This period', accent: '#3b82f6' },
+    { label: 'Ad-Attributed Revenue', value: fmt$(d.revenue.ad_attributed), sub: 'From ad clicks', accent: '#22c55e' },
+    { label: 'ROAS', value: roas > 0 ? roas.toFixed(2) + 'x' : '—', sub: 'Ad rev ÷ spend', badge: roas > 0 ? targetBadge(roas, 2, 3, 'x') : '', accent: '#a855f7' },
+    { label: 'Cost Per Lead', value: d.meta.spend > 0 && totalLeads > 0 ? fmt$(d.meta.spend/totalLeads) : '—', sub: 'Spend ÷ opt-ins', accent: '#f59e0b' },
+    { label: 'Blended CAC', value: cac > 0 ? fmt$(cac) : '—', sub: 'Spend ÷ new customers', accent: '#ef4444' },
+    { label: 'Impressions', value: fmtN(d.meta.impressions), sub: 'Meta reach', accent: '#64748b' },
+  ].map(s => `<div class="stat-card" style="--accent:${s.accent}">
+    <div class="stat-label">${s.label}</div>
+    <div class="stat-value">${s.value}</div>
+    <div class="stat-sub">${s.sub}</div>
+    ${s.badge || ''}
+  </div>`).join('');
+
+  // SOURCE CHART
+  const srcLabels = ['Funnel Self-Purchase', 'Sent-Link Purchase', 'Phone Close (Ad)', 'Organic/GBP', 'Subscription Renewal'];
+  const srcData = [d.purchases.funnel, d.purchases.sent_link, d.purchases.phone_close, d.purchases.organic, d.purchases.renewal];
+  const srcColors = ['#3b82f6','#6366f1','#f97316','#64748b','#a855f7'];
+  if (sourceChartInst) sourceChartInst.destroy();
+  sourceChartInst = new Chart(document.getElementById('sourceChart'), {
+    type: 'doughnut',
+    data: { labels: srcLabels, datasets: [{ data: srcData, backgroundColor: srcColors, borderWidth: 2, borderColor: '#1a1d27' }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 } } } }
+  });
+
+  // PLAN MIX CHART (phone closes)
+  const planLabels = Object.keys(d.phone_plan_mix || {});
+  const planData = Object.values(d.phone_plan_mix || {});
+  const planColors = ['#f97316','#3b82f6','#22c55e','#a855f7','#f59e0b'];
+  if (planChartInst) planChartInst.destroy();
+  if (planLabels.length > 0) {
+    planChartInst = new Chart(document.getElementById('planChart'), {
+      type: 'bar',
+      data: { labels: planLabels, datasets: [{ data: planData, backgroundColor: planColors.slice(0, planLabels.length), borderRadius: 6, borderWidth: 0 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#64748b' }, grid: { color: '#2e3347' } },
+          y: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { display: false } }
+        }
+      }
+    });
+  } else {
+    document.getElementById('planChart').parentElement.innerHTML = '<div class="empty">No phone close data yet</div>';
+  }
+
+  // BREAKDOWN TABLE
+  const sources = [
+    { name: 'Funnel Self-Purchase', tag: '$funnel-self-purchase', color: '#3b82f6', count: d.purchases.funnel, rev: d.revenue.funnel },
+    { name: 'Sent-Link Purchase', tag: '$sent-link-purchase', color: '#6366f1', count: d.purchases.sent_link, rev: d.revenue.sent_link },
+    { name: 'Phone Close (Ad Lead)', tag: '$phone-close-ad-lead', color: '#f97316', count: d.purchases.phone_close, rev: d.revenue.phone_close },
+    { name: 'Organic / GBP', tag: '$website-organic', color: '#64748b', count: d.purchases.organic, rev: d.revenue.organic },
+    { name: 'Subscription Renewal', tag: '$subscription-renewal', color: '#a855f7', count: d.purchases.renewal, rev: d.revenue.renewal },
+  ];
+  const totalRev = d.revenue.total || 1;
+  document.getElementById('breakdown-body').innerHTML = sources.map(s => {
+    const aov = s.count > 0 ? fmt$(s.rev / s.count) : '—';
+    const pct = totalRev > 0 ? fmtPct(s.rev / totalRev * 100) : '—';
+    return `<tr>
+      <td><span class="source-badge" style="background:${s.color}22;color:${s.color}">${s.name}</span></td>
+      <td>${fmtN(s.count)}</td>
+      <td>${fmt$(s.rev)}</td>
+      <td>${aov}</td>
+      <td>${pct}</td>
+    </tr>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
