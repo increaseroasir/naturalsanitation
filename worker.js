@@ -712,7 +712,13 @@ async function handleJobberSale(request, env) {
     const invoiceNumber = String(body.invoice_number || body.invoice_id || '').trim();
     const firstName = String(body.first_name || '').trim();
     const lastName = String(body.last_name || '').trim();
-    const phone = String(body.phone || '').trim();
+    const phoneRaw = String(body.phone || '').trim();
+    // Normalize phone to E.164 (+1XXXXXXXXXX) so Hyros can match the ad-attributed phone lead
+    const phoneDigits = phoneRaw.replace(/\D/g, '');
+    let phone = phoneRaw;
+    if (phoneDigits.length === 10) phone = '+1' + phoneDigits;
+    else if (phoneDigits.length === 11 && phoneDigits[0] === '1') phone = '+' + phoneDigits;
+    else if (phoneDigits.length > 0) phone = '+' + phoneDigits;
     const invoiceDate = String(body.invoice_date || body.date || '').trim();
     // Explicit renewal flag from Zapier (optional — set is_renewal: true in Zap payload for returning customers)
     const isRenewalFlag = body.is_renewal === true || String(body.is_renewal || '').toLowerCase() === 'true';
