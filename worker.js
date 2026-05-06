@@ -562,12 +562,12 @@ function jobberAmountToProduct(amountDollars) {
 }
 
 /**
- * Look up a GHL contact by email and return its tags array (or empty array).
+ * Look up a GHL contact by email and return { tags, hyrosId, contact } (or defaults).
  * Uses the /contacts/search/duplicate endpoint.
  */
-async function ghlFetchContactTagsByEmail(token, locId, email) {
+async function ghlFetchContactByEmail(token, locId, email) {
   const em = String(email || '').trim().toLowerCase();
-  if (!em || !em.includes('@')) return [];
+  if (!em || !em.includes('@')) return { tags: [], hyrosId: '' };
   const url = new URL(GHL_API_BASE + '/contacts/search/duplicate');
   url.searchParams.set('locationId', locId);
   url.searchParams.set('email', em);
@@ -576,7 +576,6 @@ async function ghlFetchContactTagsByEmail(token, locId, email) {
     headers: { ...ghlAuthHeaders(token), Accept: 'application/json' },
   });
   if (!res.ok) {
-    // Try POST fallback
     res = await fetch(GHL_API_BASE + '/contacts/search/duplicate', {
       method: 'POST',
       headers: ghlAuthHeaders(token),
@@ -587,10 +586,76 @@ async function ghlFetchContactTagsByEmail(token, locId, email) {
   let j = {};
   try { j = text ? JSON.parse(text) : {}; } catch { j = {}; }
   const contact = ghlExtractContactFromDuplicateJson(j);
-  if (!contact) return [];
+  if (!contact) return { tags: [], hyrosId: '' };
   const raw = contact.tags;
-  if (!Array.isArray(raw)) return [];
-  return raw.map(t => (typeof t === 'string' ? t.trim() : typeof t === 'object' && t && typeof t.name === 'string' ? t.name.trim() : '')).filter(Boolean);
+  const tags = Array.isArray(raw)
+    ? raw.map(t => (typeof t === 'string' ? t.trim() : typeof t === 'object' && t && typeof t.name === 'string' ? t.name.trim() : '')).filter(Boolean)
+    : [];
+  const hyrosId = ghlExtractHyrosId(contact);
+  return { tags, hyrosId, contact };
+}
+
+/**
+ * Look up a GHL contact by phone and return { tags, hyrosId, contact } (or defaults).
+ * Fallback for /jobber-sale when email lookup finds no contact (phone-only opt-in leads).
+ */
+async function ghlFetchContactByPhone(token, locId, phone) {
+  const ph = String(phone || '').trim();
+  if (!ph) return { tags: [], hyrosId: '' };
+  const url = new URL(GHL_API_BASE + '/contacts/search/duplicate');
+  url.searchParams.set('locationId', locId);
+  url.searchParams.set('phone', ph);
+  let res = await fetch(url.toString(), {
+    method: 'GET',
+    headers: { ...ghlAuthHeaders(token), Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    res = await fetch(GHL_API_BASE + '/contacts/search/duplicate', {
+      method: 'POST',
+      headers: ghlAuthHeaders(token),
+      body: JSON.stringify({ locationId: locId, phone: ph }),
+    });
+  }
+  const text = await res.text();
+  let j = {};
+  try { j = text ? JSON.parse(text) : {}; } catch { j = {}; }
+  const contact = ghlExtractContactFromDuplicateJson(j);
+  if (!contact) return { tags: [], hyrosId: '' };
+  const raw = contact.tags;
+  const tags = Array.isArray(raw)
+    ? raw.map(t => (typeof t === 'string' ? t.trim() : typeof t === 'object' && t && typeof t.name === 'string' ? t.name.trim() : '')).filter(Boolean)
+    : [];
+  const hyrosId = ghlExtractHyrosId(contact);
+  return { tags, hyrosId, contact };
+}
+
+/**
+ * Extract hyros_id / click_id from a GHL contact object.
+ * Checks: (1) customFields array for a field named hyros_id or containing a Hyros-style UUID,
+ * (2) the source string for a "hyros:" prefix written by ghlBuildSource.
+ */
+function ghlExtractHyrosId(contact) {
+  if (!contact) return '';
+  // Check customFields for a field whose key/name contains hyros or click_id
+  const cfs = contact.customFields || contact.customField || [];
+  if (Array.isArray(cfs)) {
+    for (const cf of cfs) {
+      const key = String(cf.id || cf.fieldKey || cf.name || '').toLowerCase();
+      const val = String(cf.field_value || cf.fieldValue || cf.value || '').trim();
+      if (val && (key.includes('hyros') || key.includes('click_id'))) return val;
+    }
+  }
+  // Fallback: parse "hyros:<value>" from the GHL source string
+  const src = String(contact.source || '');
+  const m = src.match(/hyros:([^\s\u00b7&·]+)/);
+  if (m && m[1]) return m[1];
+  return '';
+}
+
+/** @deprecated — kept for backward compat; use ghlFetchContactByEmail instead */
+async function ghlFetchContactTagsByEmail(token, locId, email) {
+  const { tags } = await ghlFetchContactByEmail(token, locId, email);
+  return tags;
 }
 
 /**
@@ -653,15 +718,44 @@ async function handleJobberSale(request, env) {
     const product = jobberAmountToProduct(amountDollars);
     console.log('[jobber-sale] product mapped', JSON.stringify({ amountDollars, product }));
 
-    // GHL tag lookup
+    // GHL tag lookup — try email first, then fall back to phone for phone-only opt-in leads
     const ghlToken = env && typeof env.GHL_API_TOKEN === 'string' ? env.GHL_API_TOKEN.trim() : '';
     const ghlLocId = env && typeof env.GHL_LOCATION_ID === 'string' ? env.GHL_LOCATION_ID.trim() : '';
     let isFunnelLead = false;
+    let ghlHyrosId = '';  // hyros_click_id stored on the GHL contact at opt-in time
     if (ghlToken && ghlLocId) {
       try {
-        const tags = await ghlFetchContactTagsByEmail(ghlToken, ghlLocId, email);
+        // Primary: look up by email
+        const emailResult = await ghlFetchContactByEmail(ghlToken, ghlLocId, email);
+        let tags = emailResult.tags;
+        let hyrosId = emailResult.hyrosId;
+        let lookupMethod = 'email';
+
+        // Fallback: if email lookup found no purchasefunnellead tag AND we have a phone, try phone
+        // This handles leads who opted in with phone only (no email on GHL contact)
+        if (!tags.some(t => t.toLowerCase() === 'purchasefunnellead') && phone) {
+          const normalizedPhone = phone.replace(/\D/g, '');
+          const e164Phone = normalizedPhone.length === 10 ? '+1' + normalizedPhone
+            : normalizedPhone.length === 11 && normalizedPhone[0] === '1' ? '+' + normalizedPhone
+            : phone;
+          const phoneResult = await ghlFetchContactByPhone(ghlToken, ghlLocId, e164Phone);
+          if (phoneResult.tags.some(t => t.toLowerCase() === 'purchasefunnellead')) {
+            tags = phoneResult.tags;
+            hyrosId = phoneResult.hyrosId;
+            lookupMethod = 'phone';
+          }
+        }
+
         isFunnelLead = tags.some(t => t.toLowerCase() === 'purchasefunnellead');
-        console.log('[jobber-sale] ghl tags', JSON.stringify({ email: email.slice(0, 6) + '***', tags, isFunnelLead }));
+        ghlHyrosId = hyrosId;
+        console.log('[jobber-sale] ghl tags', JSON.stringify({
+          email: email.slice(0, 6) + '***',
+          phone: phone ? phone.slice(-4) : null,
+          lookupMethod,
+          tags,
+          isFunnelLead,
+          hyrosIdFound: !!ghlHyrosId,
+        }));
       } catch (eGhl) {
         console.warn('[jobber-sale] ghl lookup failed', eGhl && eGhl.message ? eGhl.message : eGhl);
       }
@@ -670,7 +764,7 @@ async function handleJobberSale(request, env) {
     }
 
     const attributionTag = isFunnelLead ? '$phone-close-ad-lead' : '$website-organic';
-    console.log('[jobber-sale] attribution', attributionTag);
+    console.log('[jobber-sale] attribution', JSON.stringify({ attributionTag, isFunnelLead, hasHyrosId: !!ghlHyrosId }));
 
     // Fire Hyros
     const apiKey = env && typeof env.HYROS_API_KEY === 'string' ? env.HYROS_API_KEY.trim() : '';
@@ -680,6 +774,8 @@ async function handleJobberSale(request, env) {
     const hyrosHeaders = { 'API-key': apiKey, 'Content-Type': 'application/json' };
 
     // Step 1: Upsert lead in Hyros
+    // Include phone so Hyros can match the pre-registered phone lead and merge the email onto it.
+    // Include clickId (hyros_id from GHL) if available to lock in ad attribution.
     const leadPayload = {
       email,
       firstName: firstName || undefined,
@@ -687,6 +783,7 @@ async function handleJobberSale(request, env) {
       phoneNumber: phone || undefined,
       tags: [attributionTag, '!highlevel'],
     };
+    if (ghlHyrosId) leadPayload.clickId = ghlHyrosId;  // stitch ad click attribution
     let leadResult = {};
     try {
       const leadRes = await fetch('https://api.hyros.com/v1/api/v1.0/leads', {
@@ -1285,6 +1382,36 @@ async function handleGhlLead(request, env) {
       } catch (eNote) {
         console.warn('[ghl-lead] note fallback exception', eNote && eNote.message ? String(eNote.message) : eNote);
       }
+    }
+
+    // Pre-register lead in Hyros immediately at opt-in with phone + hyros_click_id.
+    // This locks in Meta ad attribution BEFORE the sale happens.
+    // When the Jobber invoice fires later, Hyros matches by phone and stitches the order to this click.
+    const hyrosApiKey = typeof env.HYROS_API_KEY === 'string' ? env.HYROS_API_KEY.trim() : '';
+    const hyrosClickId = String(parsed.hyros_id || '').trim();
+    if (hyrosApiKey && phone) {
+      try {
+        const hyrosLeadPayload = {
+          phoneNumber: phone,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          tags: ['$ghl-new-contact', 'purchasefunnellead'],
+        };
+        if (hyrosClickId) hyrosLeadPayload.clickId = hyrosClickId;
+        if (emailTrim) hyrosLeadPayload.email = emailTrim;
+        const hyrosRes = await fetch('https://api.hyros.com/v1/api/v1.0/leads', {
+          method: 'POST',
+          headers: { 'API-key': hyrosApiKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify(hyrosLeadPayload),
+        });
+        const hyrosText = await hyrosRes.text();
+        console.log('[ghl-lead] hyros pre-register', hyrosRes.status, hyrosText.slice(0, 300),
+          JSON.stringify({ phone: phone.slice(-4), hasClickId: !!hyrosClickId, hasEmail: !!emailTrim }));
+      } catch (eHyros) {
+        console.warn('[ghl-lead] hyros pre-register error', eHyros && eHyros.message ? eHyros.message : eHyros);
+      }
+    } else if (!hyrosApiKey) {
+      console.warn('[ghl-lead] HYROS_API_KEY not set — skipping Hyros pre-registration');
     }
 
     console.log(
