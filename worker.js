@@ -1874,8 +1874,9 @@ async function handleDashboardApi(request, env) {
     metaData = (d.data && d.data[0]) || {};
   } catch {}
 
-  // Count leads (opt-ins) — contacts with $ghl-new-contact tag
-  const totalLeads = leads.filter(l => (l.tags || []).some(t => t === '$ghl-new-contact')).length;
+  // Count leads (opt-ins) — all Hyros leads in the date range (every opt-in creates a Hyros lead)
+  // Hyros does not preserve custom tags like $ghl-new-contact, so we count all leads directly
+  const totalLeads = leads.length;
 
   // Aggregate sales by source tag
   const purchases = { funnel: 0, sent_link: 0, phone_close: 0, organic: 0, renewal: 0, total: 0 };
