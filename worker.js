@@ -1914,9 +1914,14 @@ async function handleDashboardApi(request, env) {
   const TEST_EMAILS = new Set(['test@test.com','test-jobber@test.com','test-renewal@test.com',
     'testphoneclose001@example.com','test-attribution@test.com','test-recurring@test.com',
     'test-date@test.com','test-007@test.com']);
+  const seenOrderIds = new Set();
   for (const sale of sales) {
     const saleEmail = (sale.lead && sale.lead.email) || '';
     if (TEST_EMAILS.has(saleEmail) || saleEmail.startsWith('test') || saleEmail.includes('@example.com')) continue;
+    // Deduplicate by orderId — Hyros logs both $0 and real price for same order
+    const orderId = sale.orderId || '';
+    if (orderId && seenOrderIds.has(orderId)) continue;
+    if (orderId) seenOrderIds.add(orderId);
     const tags = (sale.lead && sale.lead.tags) || [];
     const price = (sale.usdPrice && sale.usdPrice.price) || 0;
     const productName = (sale.product && sale.product.name) || '';
