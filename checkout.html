@@ -1166,13 +1166,27 @@ function showCheckoutSuccessUi(opts) {
     if (opts.txn) tyParams.set('txn', opts.txn);
     // Pass through UTMs and event_id
     var src = new URLSearchParams(window.location.search);
-    ['event_id','fb_event_id','utm_source','utm_medium','utm_campaign','utm_content','utm_term','fbclid','gclid'].forEach(function(k) {
+    ['event_id','fb_event_id','utm_source','utm_medium','utm_campaign','utm_content','utm_term','fbclid','gclid','source'].forEach(function(k) {
       if (src.has(k)) tyParams.set(k, src.get(k));
     });
     try {
       var storedId = sessionStorage.getItem('ns_funnel_event_id');
       if (storedId && !tyParams.has('event_id')) tyParams.set('event_id', storedId);
     } catch(e) {}
+    // Pass fbc cookie for CAPI attribution on thank-you page
+    try {
+      var fbcParts = ('; ' + document.cookie).split('; _fbc=');
+      if (fbcParts.length > 1) {
+        var rawFbcTy = fbcParts[1].split(';')[0] || '';
+        try { rawFbcTy = decodeURIComponent(rawFbcTy); } catch(e) {}
+        if (rawFbcTy) tyParams.set('fbc', rawFbcTy);
+      }
+    } catch(eFbcTy) {}
+    // Pass Hyros click ID for attribution continuity
+    try {
+      var hcTy = checkoutHyrosIdFromCookie();
+      if (hcTy) tyParams.set('hyros_click_id', hcTy);
+    } catch(eHcTy) {}
     window.location.href = '/thank-you.html?' + tyParams.toString();
     return;
   } catch(eRedir) {}
@@ -1206,18 +1220,9 @@ function onSuccess({ name, email, phone, address, trashDay, paymentIntentId }) {
   }
 
   var paidDollars = getCheckoutChargeDollars();
+  // NOTE: Purchase pixel + CAPI fires on thank-you.html (single source of truth for dedup).
+  // HyrosPurchase custom event still fires here for Hyros attribution continuity.
   if (window.NSTracking) {
-    NSTracking.firePurchaseStandard(
-      {
-        value: paidDollars,
-        currency: 'USD',
-        content_name: planNames[selectedPlan],
-        num_items: selectedBins,
-        transaction_id: piId
-      },
-      { email: email, phone: phone },
-      piId
-    );
     NSTracking.trackCustom(
       'HyrosPurchase',
       'HyrosPurchase_' + piId,
@@ -1227,19 +1232,6 @@ function onSuccess({ name, email, phone, address, trashDay, paymentIntentId }) {
         value: paidDollars
       },
       {}
-    );
-  } else if (typeof fbq !== 'undefined') {
-    fbq(
-      'track',
-      'Purchase',
-      {
-        value: paidDollars,
-        currency: 'USD',
-        content_name: planNames[selectedPlan],
-        num_items: selectedBins,
-        transaction_id: piId
-      },
-      { eventID: piId }
     );
   }
 

@@ -8,6 +8,8 @@
 
   <!-- Meta Pixel -->
   <script>
+  window.__NS_META_PIXEL_ID = '499919262310418';
+  window.__NS_CAPI_URL = 'https://ns-payment.increase-roas.workers.dev/meta-capi';
   !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
   n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
   n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
@@ -18,6 +20,9 @@
   </script>
   <noscript><img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=499919262310418&ev=PageView&noscript=1"/></noscript>
+
+  <!-- Tracking Runtime (NSTracking — pixel + CAPI bridge) -->
+  <script src="./tracking-runtime.js?v=20260425c"></script>
 
   <!-- Hyros Universal Script -->
   <script>
@@ -296,8 +301,10 @@
   var city = (p.get('city') || '').trim();
   var txnId = (p.get('txn') || '').trim();
   var eventId = p.get('event_id') || '';
-  var META_PIXEL_ID = '499919262310418';
+  var fbcParam = p.get('fbc') || '';
   var purchaseValue = parseFloat(String(amount).replace(/[^0-9.]/g, '')) || 0;
+  var planNames = { annual: 'Annual Plan', monthly: 'Monthly Plan', quarterly: 'Quarterly Plan' };
+  var contentName = planNames[plan] || 'Annual Plan';
 
   // Personalize welcome line
   if (first) {
@@ -319,68 +326,79 @@
   var details = encodeURIComponent('Leave bins accessible for the tech. Text Manny: (586) 500-6794');
   cal.href = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + title + '&details=' + details;
 
-  // Hashing helpers
-  function normalizePhone(phoneRaw) {
-    var d = String(phoneRaw || '').replace(/\D/g, '');
-    if (d.length === 10) return '1' + d;
-    if (d.length === 11 && d.charAt(0) === '1') return d;
-    return d;
+  // ── PURCHASE TRACKING (single source of truth) ──────────────────────────────
+  // Dedup guard: only fire once per Stripe payment intent ID
+  var purchaseEventId = /^pi_/.test(txnId) ? txnId : ('ty_' + Date.now());
+  var SS_KEY = 'ns_ty_purchase_fired';
+  try {
+    if (sessionStorage.getItem(SS_KEY) === purchaseEventId) {
+      // Already fired on this session (e.g. page refresh) — skip
+      console.log('[thank-you] Purchase already fired for', purchaseEventId);
+    } else {
+      sessionStorage.setItem(SS_KEY, purchaseEventId);
+      firePurchaseTracking();
+    }
+  } catch(e) {
+    // sessionStorage blocked — fire anyway
+    firePurchaseTracking();
   }
-  function sha256Hex(plain) {
-    if (!plain || !window.crypto || !window.crypto.subtle) return Promise.resolve('');
-    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(plain)).then(function(buf) {
-      return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
-    });
-  }
 
-  // Fire Purchase pixel + CAPI
-  var emNorm = email.toLowerCase().trim();
-  Promise.all([sha256Hex(emNorm), sha256Hex(normalizePhone(phone))]).then(function(hashes) {
-    if (typeof fbq === 'undefined') return;
-
-    // Init pixel with user data for matching
-    var match = {};
-    var externalId = eventId || '';
-    try { if (!externalId) externalId = localStorage.getItem('ns_funnel_event_id') || ''; } catch(e) {}
-    if (externalId) match.external_id = externalId;
-    if (hashes[0]) match.em = hashes[0];
-    if (hashes[1]) match.ph = hashes[1];
-    if (Object.keys(match).length) fbq('init', META_PIXEL_ID, match);
-
-    // Fire Purchase event — use Stripe pi_ as dedup eventID
-    var purchaseEventId = /^pi_/.test(txnId) ? txnId : ('ty_' + Date.now());
-    fbq('track', 'Purchase', {
+  function firePurchaseTracking() {
+    var customData = {
       value: purchaseValue,
       currency: 'USD',
-      content_name: plan || 'annual',
+      content_name: contentName,
       content_category: 'garbage_can_cleaning',
       num_items: bins
-    }, { eventID: purchaseEventId });
+    };
+    var userPlain = {};
+    if (email) userPlain.email = email;
+    if (phone) userPlain.phone = phone;
 
-    // Meta CAPI server-side (deduplication)
-    try {
-      fetch('https://ns-payment.increase-roas.workers.dev/meta-capi', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event_name: 'Purchase',
-          event_id: purchaseEventId,
-          event_source_url: location.href,
-          fbp: (document.cookie.match(/_fbp=([^;]+)/) || [])[1] || '',
-          fbc: (document.cookie.match(/_fbc=([^;]+)/) || [])[1] || '',
-          em: hashes[0] || '',
-          ph: hashes[1] || '',
-          external_id: externalId || '',
-          value: purchaseValue,
-          currency: 'USD',
-          content_name: plan || 'annual',
-          content_category: 'garbage_can_cleaning',
-          num_items: bins,
-          client_user_agent: navigator.userAgent
-        })
-      }).catch(function(){});
-    } catch(e) {}
-  });
+    if (window.NSTracking && typeof NSTracking.firePurchaseStandard === 'function') {
+      // NSTracking handles both pixel + CAPI with proper dedup
+      // Update context with fbc from URL param if cookie not present
+      if (fbcParam && typeof NSTracking.updateContext === 'function') {
+        NSTracking.updateContext({ fbc_override: fbcParam });
+      }
+      NSTracking.firePurchaseStandard(customData, userPlain, purchaseEventId);
+      console.log('[thank-you] Purchase fired via NSTracking', purchaseEventId);
+    } else {
+      // Fallback: fire pixel directly + manual CAPI call
+      if (typeof fbq !== 'undefined') {
+        fbq('track', 'Purchase', customData, { eventID: purchaseEventId });
+        console.log('[thank-you] Purchase fired via fbq fallback', purchaseEventId);
+      }
+      // Manual CAPI fallback
+      try {
+        var fbcCookie = '';
+        try {
+          var fbcParts = ('; ' + document.cookie).split('; _fbc=');
+          if (fbcParts.length > 1) fbcCookie = fbcParts[1].split(';')[0] || '';
+          try { fbcCookie = decodeURIComponent(fbcCookie); } catch(e) {}
+        } catch(e) {}
+        var fbpCookie = '';
+        try {
+          var fbpParts = ('; ' + document.cookie).split('; _fbp=');
+          if (fbpParts.length > 1) fbpCookie = fbpParts[1].split(';')[0] || '';
+        } catch(e) {}
+        fetch('https://ns-payment.increase-roas.workers.dev/meta-capi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
+          body: JSON.stringify({
+            event_name: 'Purchase',
+            event_id: purchaseEventId,
+            event_source_url: location.href,
+            fbp: fbpCookie,
+            fbc: fbcCookie || fbcParam,
+            user_data_plain: userPlain,
+            custom_data: customData
+          })
+        }).catch(function(){});
+      } catch(e) {}
+    }
+  }
 
   // Google Analytics purchase event
   if (typeof gtag !== 'undefined') {
