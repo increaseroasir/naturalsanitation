@@ -1268,7 +1268,10 @@ function onSuccess({ name, email, phone, address, trashDay, paymentIntentId }) {
     var fbcVal = '';
     try {
       var ckParts = ('; ' + document.cookie).split('; _fbc=');
-      if (ckParts.length > 1) fbcVal = ckParts[1].split(';')[0] || '';
+      if (ckParts.length > 1) {
+        var rawFbc = ckParts[1].split(';')[0] || '';
+        try { fbcVal = decodeURIComponent(rawFbc); } catch(eDec) { fbcVal = rawFbc; }
+      }
     } catch(eFbc) {}
     var hyrosClickVal = checkoutHyrosIdFromCookie();
     var nameParts = (name || '').trim().split(/\s+/);
