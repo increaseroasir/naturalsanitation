@@ -400,10 +400,12 @@ function renderDashboard(d) {
   const onlineBuyers = d.purchases.funnel + d.purchases.sent_link;
   const phoneBuyers = d.purchases.phone_close;
   const totalBuyers = d.purchases.total;
+  const initiateCheckout = d.initiate_checkout || 0;
   const funnelSteps = [
     { name: 'Website Visitors', count: d.visitors || '—', pct: 100, color: '#3b82f6' },
     { name: 'Opt-ins (Leads)', count: totalLeads, pct: d.opt_in_rate || 0, color: '#6366f1' },
-    { name: 'Online Purchases', count: onlineBuyers, pct: totalLeads > 0 ? (onlineBuyers/totalLeads*100) : 0, color: '#22c55e' },
+    { name: 'Initiate Checkout', count: initiateCheckout, pct: totalLeads > 0 ? (initiateCheckout/totalLeads*100) : 0, color: '#a855f7' },
+    { name: 'Online Purchases', count: onlineBuyers, pct: initiateCheckout > 0 ? (onlineBuyers/initiateCheckout*100) : (totalLeads > 0 ? (onlineBuyers/totalLeads*100) : 0), color: '#22c55e' },
     { name: 'Phone Closes', count: phoneBuyers, pct: totalLeads > 0 ? (phoneBuyers/totalLeads*100) : 0, color: '#f97316' },
   ];
   const maxCount = funnelSteps[0].count === '—' ? totalLeads : Math.max(funnelSteps[0].count, totalLeads);

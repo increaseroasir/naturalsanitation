@@ -1858,22 +1858,48 @@ async function handleDashboardApi(request, env) {
   const hyrosHeaders = { 'API-key': hyrosKey, 'Content-Type': 'application/json' };
   const metaToken = env.META_ADS_TOKEN || '';
   const metaAccountId = 'act_2659531691011918';
-
-  // Fetch Hyros leads and sales in parallel
-  const [leadsRes, salesRes, metaRes] = await Promise.allSettled([
+  const ghlToken = env.GHL_API_TOKEN || '';
+  const ghlLocId = env.GHL_LOCATION_ID || '';
+  // Build GHL date filter for contacts created in the period
+  const ghlFromTs = new Date(fromDate + 'T00:00:00.000Z').getTime();
+  const ghlToTs = new Date(toDate + 'T23:59:59.999Z').getTime();
+  // Fetch Hyros leads, sales, Meta insights, and GHL initiate_checkout count in parallel
+  const [leadsRes, salesRes, metaRes, ghlCheckoutRes] = await Promise.allSettled([
     fetch(`https://api.hyros.com/v1/api/v1.0/leads?fromDate=${fromDate}&toDate=${toDate}&limit=500`, { headers: hyrosHeaders }),
     fetch(`https://api.hyros.com/v1/api/v1.0/sales?fromDate=${fromDate}&toDate=${toDate}&limit=500`, { headers: hyrosHeaders }),
     fetch(`https://graph.facebook.com/v19.0/${metaAccountId}/insights?fields=spend,impressions,clicks,reach&date_preset=${period === 'mtd' ? 'this_month' : period === 'today' ? 'today' : period === '7d' ? 'last_7d' : 'last_3_days'}&access_token=${metaToken}`),
+    ghlToken && ghlLocId ? fetch('https://services.leadconnectorhq.com/contacts/search', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + ghlToken, Version: '2021-07-28', 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        locationId: ghlLocId,
+        page: 1,
+        pageLimit: 100,
+        filters: [
+          { field: 'tags', operator: 'contains', value: 'initiate_checkout' },
+        ],
+      })
+    }) : Promise.resolve(null),
   ]);
-
-  let leads = [], sales = [], metaData = {};
+  let leads = [], sales = [], metaData = {}, initiateCheckoutCount = 0;
   try { const d = await leadsRes.value.json(); leads = d.result || []; } catch {}
   try { const d = await salesRes.value.json(); sales = d.result || []; } catch {}
   try {
     const d = await metaRes.value.json();
     metaData = (d.data && d.data[0]) || {};
   } catch {}
-
+  // Count GHL initiate_checkout contacts in the period (client-side date filter)
+  try {
+    if (ghlCheckoutRes.value) {
+      const d = await ghlCheckoutRes.value.json();
+      const contacts = d.contacts || [];
+      // Filter client-side by dateAdded within the period
+      initiateCheckoutCount = contacts.filter(c => {
+        const ts = c.dateAdded ? new Date(c.dateAdded).getTime() : 0;
+        return ts >= ghlFromTs && ts <= ghlToTs;
+      }).length;
+    }
+  } catch {}
   // Count leads (opt-ins) — all Hyros leads in the date range (every opt-in creates a Hyros lead)
   // Hyros does not preserve custom tags like $ghl-new-contact, so we count all leads directly
   const totalLeads = leads.length;
@@ -1935,9 +1961,13 @@ async function handleDashboardApi(request, env) {
   const estimatedVisitors = metaClicks || 0;
   const optInRate = estimatedVisitors > 0 ? (totalLeads / estimatedVisitors * 100) : 0;
 
+  // Checkout-to-lead rate
+  const checkoutRate = totalLeads > 0 ? Math.round((initiateCheckoutCount / totalLeads) * 1000) / 10 : 0;
   return json({
     period, fromDate, toDate,
     leads: totalLeads,
+    initiate_checkout: initiateCheckoutCount,
+    checkout_rate: checkoutRate,
     visitors: estimatedVisitors || null,
     opt_in_rate: Math.round(optInRate * 10) / 10,
     purchases,
