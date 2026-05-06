@@ -30,8 +30,8 @@
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Idempotency-Key',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Idempotency-Key, X-Dashboard-Key',
     'Access-Control-Max-Age': '86400',
   };
 }
