@@ -875,9 +875,58 @@ async function handleJobberSale(request, env) {
       console.log('[jobber-sale] hyros order create', orderRes.status, JSON.stringify(orderResult).slice(0, 400));
       orderOk = orderRes.ok;
     } catch (eO) {
-      console.warn('[jobber-sale] hyros order create error', eO && eO.message ? eO.message : eO);
+       console.warn('[jobber-sale] hyros order create error', eO && eO.message ? eO.message : eO);
     }
-
+    // Step 3: Fire Meta CAPI Purchase event for funnel ad leads (phone closes)
+    // This ensures the conversion reaches Meta even when the customer never visits the thank-you page.
+    let capiResult = null;
+    if (isFunnelLead && !isRenewal && orderOk) {
+      try {
+        const capiToken = env && typeof env.META_CAPI_ACCESS_TOKEN === 'string' ? env.META_CAPI_ACCESS_TOKEN.trim() : '';
+        const pixelId = (env && env.META_PIXEL_ID) ? String(env.META_PIXEL_ID) : '499919262310418';
+        if (capiToken) {
+          const userData = await hashUserDataPlain({
+            email,
+            phone,
+            first_name: firstName || undefined,
+            last_name: lastName || undefined,
+            external_id: email,
+          });
+          // Use ghlHyrosId as fbc (Hyros stores the fbclid as hyros_id on the GHL contact at opt-in)
+          if (ghlHyrosId) userData.fbc = String(ghlHyrosId);
+          const capiPayload = {
+            data: [{
+              event_name: 'Purchase',
+              event_time: Math.floor(Date.now() / 1000),
+              event_id: 'jobber-' + (invoiceNumber || Date.now()),
+              action_source: 'phone_call',
+              user_data: userData,
+              custom_data: {
+                currency: 'USD',
+                value: amountDollars,
+                content_name: product.name,
+                content_ids: [product.sku || product.name],
+                content_type: 'product',
+                order_id: invoiceNumber || undefined,
+              },
+            }],
+          };
+          const testCode = env && env.META_TEST_EVENT_CODE ? sanitizeMetaTestEventCode(env.META_TEST_EVENT_CODE) : '';
+          if (testCode) capiPayload.test_event_code = testCode;
+          const capiRes = await fetch(
+            'https://graph.facebook.com/v21.0/' + encodeURIComponent(pixelId) + '/events?access_token=' + encodeURIComponent(capiToken),
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(capiPayload) }
+          );
+          const capiText = await capiRes.text();
+          try { capiResult = JSON.parse(capiText); } catch { capiResult = { raw: capiText.slice(0, 300) }; }
+          console.log('[jobber-sale] meta-capi Purchase', capiRes.status, JSON.stringify(capiResult).slice(0, 400));
+        } else {
+          console.warn('[jobber-sale] META_CAPI_ACCESS_TOKEN not set — skipping CAPI Purchase event');
+        }
+      } catch (eCapi) {
+        console.warn('[jobber-sale] meta-capi error', eCapi && eCapi.message ? eCapi.message : eCapi);
+      }
+    }
     return json({
       ok: orderOk,
       product: product.name,
@@ -888,8 +937,8 @@ async function handleJobberSale(request, env) {
       invoice_number: invoiceNumber,
       amount_dollars: amountDollars,
       hyros_order: orderResult,
+      meta_capi: capiResult,
     }, orderOk ? 200 : 502, corsHeaders());
-
   } catch (err) {
     console.error('[jobber-sale] error', err && err.message ? err.message : err);
     return json({ ok: false, error: 'jobber-sale exception', message: err && err.message ? err.message : String(err) }, 500, corsHeaders());
