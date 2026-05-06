@@ -1911,7 +1911,12 @@ async function handleDashboardApi(request, env) {
   let totalOrders = 0;
   let totalRevForAov = 0;
 
+  const TEST_EMAILS = new Set(['test@test.com','test-jobber@test.com','test-renewal@test.com',
+    'testphoneclose001@example.com','test-attribution@test.com','test-recurring@test.com',
+    'test-date@test.com','test-007@test.com']);
   for (const sale of sales) {
+    const saleEmail = (sale.lead && sale.lead.email) || '';
+    if (TEST_EMAILS.has(saleEmail) || saleEmail.startsWith('test') || saleEmail.includes('@example.com')) continue;
     const tags = (sale.lead && sale.lead.tags) || [];
     const price = (sale.usdPrice && sale.usdPrice.price) || 0;
     const productName = (sale.product && sale.product.name) || '';
