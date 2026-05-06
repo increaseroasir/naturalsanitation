@@ -275,7 +275,7 @@ function ghlBuildIncomingTagList(body) {
     }
   }
   if (st === 'lead_detail') {
-    out.push('partial_lead', 'lead_gate', 'lead_detail');
+    out.push('partial_lead', 'lead_gate', 'lead_detail', 'funnelv1optin');
   }
   if (st === 'partial_lead') {
     out.push('partial_lead');
