@@ -458,17 +458,17 @@ function renderDashboard(d) {
 
   // REVENUE & AD PERFORMANCE
   const nc = d.new_customers || {};
-  const roasM1 = nc.roas_m1;
-  const roasM2 = nc.roas_m2;
+  const roasDay1 = nc.roas_day1;
   const roasM3 = nc.roas_m3;
+  const roasM12 = nc.roas_m12;
   document.getElementById('revenue-stats').innerHTML = [
     { label: 'Meta Ad Spend', value: fmt$(d.meta.spend), sub: 'This period', accent: '#3b82f6' },
     { label: 'New Customer Revenue', value: nc.revenue > 0 ? fmt$(nc.revenue) : '—', sub: 'New sales only (excl. renewals)', accent: '#22c55e' },
     { label: 'New Customer AOV', value: nc.aov > 0 ? fmt$(nc.aov) : '—', sub: 'Avg order — new customers', accent: '#f59e0b' },
     { label: 'Cost Per Customer', value: nc.cost_per_customer ? fmt$(nc.cost_per_customer) : '—', sub: 'Spend ÷ new customers', accent: '#ef4444' },
-    { label: 'ROAS Month 1', value: roasM1 ? roasM1.toFixed(2) + 'x' : '—', sub: 'New cash ÷ spend', badge: roasM1 ? targetBadge(roasM1, 1, 2, 'x') : '', accent: '#a855f7' },
-    { label: 'ROAS Month 2', value: roasM2 ? roasM2.toFixed(2) + 'x' : '—', sub: 'Recurring plans only', badge: roasM2 ? targetBadge(roasM2, 1.5, 2.5, 'x') : '', accent: '#6366f1' },
-    { label: 'ROAS Month 3', value: roasM3 ? roasM3.toFixed(2) + 'x' : '—', sub: 'Recurring plans only', badge: roasM3 ? targetBadge(roasM3, 2, 3, 'x') : '', accent: '#06b6d4' },
+    { label: 'ROAS Day 1', value: roasDay1 ? roasDay1.toFixed(2) + 'x' : '—', sub: 'New cash ÷ spend', badge: roasDay1 ? targetBadge(roasDay1, 1, 2, 'x') : '', accent: '#a855f7' },
+    { label: 'ROAS Month 3', value: roasM3 ? roasM3.toFixed(2) + 'x' : '—', sub: 'Recurring plans projected', badge: roasM3 ? targetBadge(roasM3, 1.5, 2.5, 'x') : '', accent: '#6366f1' },
+    { label: 'ROAS Month 12', value: roasM12 ? roasM12.toFixed(2) + 'x' : '—', sub: 'Recurring plans projected', badge: roasM12 ? targetBadge(roasM12, 2, 4, 'x') : '', accent: '#06b6d4' },
     { label: 'Impressions', value: fmtN(d.meta.impressions), sub: 'Meta reach', accent: '#64748b' },
   ].map(s => `<div class="stat-card" style="--accent:${s.accent}">
     <div class="stat-label">${s.label}</div>

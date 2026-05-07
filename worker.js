@@ -723,8 +723,8 @@ async function handleJobberSale(request, env) {
     // Explicit renewal flag from Zapier (optional — set is_renewal: true in Zap payload for returning customers)
     const isRenewalFlag = body.is_renewal === true || String(body.is_renewal || '').toLowerCase() === 'true';
 
-    if (!email) {
-      return json({ ok: false, error: 'email is required' }, 400, corsHeaders());
+    if (!email && !phone) {
+      return json({ ok: false, error: 'email or phone is required' }, 400, corsHeaders());
     }
     if (amountDollars <= 0) {
       return json({ ok: false, error: 'amount must be a positive number' }, 400, corsHeaders());
@@ -829,8 +829,10 @@ async function handleJobberSale(request, env) {
     // Step 1: Upsert lead in Hyros
     // Include phone so Hyros can match the pre-registered phone lead and merge the email onto it.
     // Include clickId (hyros_id from GHL) if available to lock in ad attribution.
+    // Use email as primary identifier; fall back to phone (E.164) if no email provided
+    const hyrosIdentifier = email || phone;
     const leadPayload = {
-      email,
+      email: hyrosIdentifier,
       firstName: firstName || undefined,
       lastName: lastName || undefined,
       phoneNumber: phone || undefined,
@@ -853,7 +855,7 @@ async function handleJobberSale(request, env) {
 
     // Step 2: Create order in Hyros
     const orderPayload = {
-      email,
+      email: hyrosIdentifier,
       orderId: invoiceNumber || ('jobber-' + Date.now()),
       currency: 'USD',
       items: [{ name: product.name, sku: product.sku || undefined, price: amountDollars, quantity: 1 }],
@@ -886,11 +888,11 @@ async function handleJobberSale(request, env) {
         const pixelId = (env && env.META_PIXEL_ID) ? String(env.META_PIXEL_ID) : '499919262310418';
         if (capiToken) {
           const userData = await hashUserDataPlain({
-            email,
+            email: email || undefined,
             phone,
             first_name: firstName || undefined,
             last_name: lastName || undefined,
-            external_id: email,
+            external_id: hyrosIdentifier,
           });
           // Use ghlHyrosId as fbc (Hyros stores the fbclid as hyros_id on the GHL contact at opt-in)
           if (ghlHyrosId) userData.fbc = String(ghlHyrosId);
@@ -2070,21 +2072,41 @@ async function handleDashboardApi(request, env) {
   const url = new URL(request.url);
   const period = url.searchParams.get('period') || 'mtd';
 
-  // Calculate date range
+  // Calculate date range — use Eastern Time (UTC-4 EDT / UTC-5 EST)
+  // Determine if DST is active: EDT runs from 2nd Sunday in March to 1st Sunday in November
   const now = new Date();
+  function isEDT(d) {
+    const y = d.getUTCFullYear();
+    // 2nd Sunday in March
+    const mar = new Date(Date.UTC(y, 2, 1));
+    const marDay = mar.getUTCDay();
+    const dstStart = new Date(Date.UTC(y, 2, 8 + (7 - marDay) % 7, 7)); // 2am ET = 7am UTC
+    // 1st Sunday in November
+    const nov = new Date(Date.UTC(y, 10, 1));
+    const novDay = nov.getUTCDay();
+    const dstEnd = new Date(Date.UTC(y, 10, 1 + (7 - novDay) % 7, 6)); // 2am ET = 6am UTC
+    return d >= dstStart && d < dstEnd;
+  }
+  const etOffsetHours = isEDT(now) ? -4 : -5;
+  const etNowMs = now.getTime() + etOffsetHours * 3600000;
+  const etNow = new Date(etNowMs);
+  function toYMD(d) {
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  }
+  const etDateStr = toYMD(etNow);
   let fromDate, toDate;
-  toDate = now.toISOString().split('T')[0];
+  toDate = etDateStr;
   if (period === 'today') {
     fromDate = toDate;
   } else if (period === '3d') {
-    const d = new Date(now); d.setDate(d.getDate() - 2);
-    fromDate = d.toISOString().split('T')[0];
+    const d = new Date(etNowMs - 2 * 86400000);
+    fromDate = toYMD(d);
   } else if (period === '7d') {
-    const d = new Date(now); d.setDate(d.getDate() - 6);
-    fromDate = d.toISOString().split('T')[0];
+    const d = new Date(etNowMs - 6 * 86400000);
+    fromDate = toYMD(d);
   } else {
-    // MTD
-    fromDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    // MTD — first day of current month in ET
+    fromDate = `${etNow.getUTCFullYear()}-${String(etNow.getUTCMonth()+1).padStart(2,'0')}-01`;
   }
 
   const hyrosKey = env.HYROS_API_KEY || '';
@@ -2100,7 +2122,7 @@ async function handleDashboardApi(request, env) {
   const [leadsRes, salesRes, metaRes, ghlCheckoutRes] = await Promise.allSettled([
     fetch(`https://api.hyros.com/v1/api/v1.0/leads?fromDate=${fromDate}&toDate=${toDate}&limit=500`, { headers: hyrosHeaders }),
     fetch(`https://api.hyros.com/v1/api/v1.0/sales?fromDate=${fromDate}&toDate=${toDate}&limit=500`, { headers: hyrosHeaders }),
-    fetch(`https://graph.facebook.com/v19.0/${metaAccountId}/insights?fields=spend,impressions,clicks,reach&date_preset=${period === 'mtd' ? 'this_month' : period === 'today' ? 'today' : period === '7d' ? 'last_7d' : 'last_3_days'}&access_token=${metaToken}`),
+    fetch(`https://graph.facebook.com/v19.0/${metaAccountId}/insights?fields=spend,impressions,clicks,reach,actions&time_range=${encodeURIComponent(JSON.stringify({since:fromDate,until:toDate}))}&access_token=${metaToken}`),
     ghlToken && ghlLocId ? fetch('https://services.leadconnectorhq.com/contacts/search', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + ghlToken, Version: '2021-07-28', 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -2114,13 +2136,14 @@ async function handleDashboardApi(request, env) {
       })
     }) : Promise.resolve(null),
   ]);
-  let leads = [], sales = [], metaData = {}, initiateCheckoutCount = 0;
+  let leads = [], sales = [], metaData = {}, initiateCheckoutCount = 0, metaError = null;
   try { const d = await leadsRes.value.json(); leads = d.result || []; } catch {}
   try { const d = await salesRes.value.json(); sales = d.result || []; } catch {}
   try {
     const d = await metaRes.value.json();
-    metaData = (d.data && d.data[0]) || {};
-  } catch {}
+    if (d.error) { metaError = d.error.message || 'Meta API error'; }
+    else { metaData = (d.data && d.data[0]) || {}; }
+  } catch (e) { metaError = e.message; }
   // Count GHL initiate_checkout contacts in the period (client-side date filter)
   try {
     if (ghlCheckoutRes.value) {
@@ -2137,12 +2160,31 @@ async function handleDashboardApi(request, env) {
   // Hyros does not preserve custom tags like $ghl-new-contact, so we count all leads directly
   const totalLeads = leads.length;
 
+  // Plan type classification by price
+  const MONTHLY_PRICES = new Set([39, 40, 45, 51]);
+  const ONE_TIME_PRICES = new Set([60, 65, 70, 75, 80, 85, 90]);
+  const QUARTERLY_PRICES = new Set([100, 109, 112, 125, 155, 185]);
+  const ANNUAL_PRICES = new Set([200, 225, 250, 275, 299, 310, 349, 370]);
+  function getPlanType(price) {
+    const p = Math.round(price);
+    if (MONTHLY_PRICES.has(p)) return 'monthly';
+    if (ONE_TIME_PRICES.has(p)) return 'one_time';
+    if (QUARTERLY_PRICES.has(p)) return 'quarterly';
+    if (ANNUAL_PRICES.has(p)) return 'annual';
+    return 'unknown';
+  }
+
   // Aggregate sales by source tag
   const purchases = { funnel: 0, sent_link: 0, phone_close: 0, organic: 0, renewal: 0, total: 0 };
   const revenue = { funnel: 0, sent_link: 0, phone_close: 0, organic: 0, renewal: 0, total: 0, ad_attributed: 0, recurring: 0 };
   const phonePlanMix = {};
   let totalOrders = 0;
   let totalRevForAov = 0;
+  // New customer metrics (funnel + phone closes only, no renewals/organic)
+  let newCustRevenue = 0;   // M1 cash collected from new customers
+  let newCustOrders = 0;    // count for AOV
+  let newCustM3Revenue = 0; // projected additional revenue by month 3 (recurring plans)
+  let newCustM12Revenue = 0; // projected additional revenue by month 12 (recurring plans)
 
   const TEST_EMAILS = new Set(['test@test.com','test-jobber@test.com','test-renewal@test.com',
     'testphoneclose001@example.com','test-attribution@test.com','test-recurring@test.com',
@@ -2171,10 +2213,27 @@ async function handleDashboardApi(request, env) {
       purchases.funnel++;
       revenue.funnel += price;
       revenue.ad_attributed += price;
+      // New customer tracking
+      if (price > 0) {
+        const planType = getPlanType(price);
+        newCustRevenue += price; newCustOrders++;
+        if (planType === 'monthly') { newCustM3Revenue += price * 2; newCustM12Revenue += price * 11; }
+        else if (planType === 'quarterly') { newCustM3Revenue += price; newCustM12Revenue += price * 3; }
+        else if (planType === 'annual') { newCustM12Revenue += price; } // annual renews at month 12
+        // one_time: no future revenue
+      }
     } else if (tags.includes('$sent-link-purchase')) {
       purchases.sent_link++;
       revenue.sent_link += price;
       revenue.ad_attributed += price;
+      // New customer tracking
+      if (price > 0) {
+        const planType = getPlanType(price);
+        newCustRevenue += price; newCustOrders++;
+        if (planType === 'monthly') { newCustM3Revenue += price * 2; newCustM12Revenue += price * 11; }
+        else if (planType === 'quarterly') { newCustM3Revenue += price; newCustM12Revenue += price * 3; }
+        else if (planType === 'annual') { newCustM12Revenue += price; }
+      }
     } else if (tags.includes('$phone-close-ad-lead')) {
       purchases.phone_close++;
       revenue.phone_close += price;
@@ -2184,6 +2243,14 @@ async function handleDashboardApi(request, env) {
                       productName.includes('Monthly') ? 'Monthly' :
                       productName.includes('Quarterly') ? 'Quarterly' : 'Other';
       phonePlanMix[planKey] = (phonePlanMix[planKey] || 0) + 1;
+      // New customer tracking
+      if (price > 0) {
+        const planType = getPlanType(price);
+        newCustRevenue += price; newCustOrders++;
+        if (planType === 'monthly') { newCustM3Revenue += price * 2; newCustM12Revenue += price * 11; }
+        else if (planType === 'quarterly') { newCustM3Revenue += price; newCustM12Revenue += price * 3; }
+        else if (planType === 'annual') { newCustM12Revenue += price; }
+      }
     } else {
       purchases.organic++;
       revenue.organic += price;
@@ -2198,14 +2265,28 @@ async function handleDashboardApi(request, env) {
   const metaSpend = parseFloat(metaData.spend || 0);
   const metaImpressions = parseInt(metaData.impressions || 0);
   const metaClicks = parseInt(metaData.clicks || 0);
+  // Extract landing_page_view and link_click from actions array
+  const metaActions = metaData.actions || [];
+  const lpvAction = metaActions.find(a => a.action_type === 'landing_page_view');
+  const metaLandingPageViews = lpvAction ? parseInt(lpvAction.value || 0) : 0;
+  const linkClickAction = metaActions.find(a => a.action_type === 'link_click');
+  const metaLinkClicks = linkClickAction ? parseInt(linkClickAction.value || 0) : metaClicks;
 
-  // Opt-in rate: leads / (meta clicks * 0.6 as proxy for landing page views)
-  // We don't have exact visitor count from Meta CAPI, so we use link clicks as proxy
-  const estimatedVisitors = metaClicks || 0;
+  // Website Visitors = Landing Page Views (not Clicks all)
+  const estimatedVisitors = metaLandingPageViews || metaClicks || 0;
   const optInRate = estimatedVisitors > 0 ? (totalLeads / estimatedVisitors * 100) : 0;
 
   // Checkout-to-lead rate
   const checkoutRate = totalLeads > 0 ? Math.round((initiateCheckoutCount / totalLeads) * 1000) / 10 : 0;
+
+  // New customer metrics
+  const newCustCount = purchases.funnel + purchases.sent_link + purchases.phone_close;
+  const newCustAov = newCustOrders > 0 ? Math.round(newCustRevenue / newCustOrders) : 0;
+  const costPerCustomer = newCustCount > 0 && metaSpend > 0 ? Math.round(metaSpend / newCustCount) : null;
+  const roasDay1 = metaSpend > 0 ? Math.round((newCustRevenue / metaSpend) * 100) / 100 : null;
+  const roasM3 = metaSpend > 0 ? Math.round(((newCustRevenue + newCustM3Revenue) / metaSpend) * 100) / 100 : null;
+  const roasM12 = metaSpend > 0 ? Math.round(((newCustRevenue + newCustM3Revenue + newCustM12Revenue) / metaSpend) * 100) / 100 : null;
+
   return json({
     period, fromDate, toDate,
     leads: totalLeads,
@@ -2215,6 +2296,15 @@ async function handleDashboardApi(request, env) {
     opt_in_rate: Math.round(optInRate * 10) / 10,
     purchases,
     revenue,
+    new_customers: {
+      count: newCustCount,
+      revenue: Math.round(newCustRevenue * 100) / 100,
+      aov: newCustAov,
+      cost_per_customer: costPerCustomer,
+      roas_day1: roasDay1,
+      roas_m3: roasM3,
+      roas_m12: roasM12,
+    },
     phone_plan_mix: phonePlanMix,
     phone_close_rate: null,
     phone_contact_rate: null,
@@ -2222,6 +2312,9 @@ async function handleDashboardApi(request, env) {
       spend: metaSpend,
       impressions: metaImpressions,
       clicks: metaClicks,
+      link_clicks: metaLinkClicks,
+      landing_page_views: metaLandingPageViews,
     },
+    meta_error: metaError,
   }, 200, h);
 }
