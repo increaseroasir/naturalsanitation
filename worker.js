@@ -666,6 +666,29 @@ async function ghlFetchContactTagsByEmail(token, locId, email) {
 }
 
 /**
+ * Fire an alert to GHL webhook when a Hyros order fails.
+ * Sends a POST to the GHL inbound webhook which triggers an SMS workflow.
+ */
+async function fireOrderFailureAlert(name, amount, errorMsg) {
+  const GHL_ALERT_WEBHOOK = 'https://services.leadconnectorhq.com/hooks/AgYU7eDD6q7eXj6RUven/webhook-trigger/50e797d4-b714-453e-9706-5f1193a739f5';
+  try {
+    await fetch(GHL_ALERT_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `ALERT: Hyros order FAILED for ${name} ($${amount}). Error: ${errorMsg}. Log in to Hyros and manually add the order.`,
+        name: name,
+        amount: `$${amount}`,
+        type: 'hyros_order_failure',
+      }),
+    });
+  } catch (e) {
+    // Alert failure should never crash the Worker
+    console.error('Alert webhook failed:', e.message);
+  }
+}
+
+/**
  * POST /jobber-sale
  * Called by the Zapier "HYROS Zapier Jobber" Zap via webhook when a Jobber invoice is paid.
  * Body (from Zapier): {
@@ -883,6 +906,14 @@ async function handleJobberSale(request, env) {
     } catch (eO) {
        console.warn('[jobber-sale] hyros order create error', eO && eO.message ? eO.message : eO);
     }
+    // Fire alert if order failed
+    if (!orderOk) {
+      await fireOrderFailureAlert(
+        `${firstName || ''} ${lastName || ''}`.trim() || phone || email || 'Unknown',
+        amount,
+        orderResult && orderResult.message ? orderResult.message : (orderResult && orderResult.raw ? orderResult.raw : 'Unknown error')
+      );
+    }
     // Step 3: Fire Meta CAPI Purchase event for funnel ad leads (phone closes)
     // This ensures the conversion reaches Meta even when the customer never visits the thank-you page.
     let capiResult = null;
@@ -1032,6 +1063,14 @@ async function handleStripePaymentIntent(event, env) {
       orderOk = or.ok;
     } catch (eO) {
       console.warn('[stripe-pi] hyros order error', eO && eO.message ? eO.message : eO);
+    }
+    // Fire alert if order failed
+    if (!orderOk) {
+      await fireOrderFailureAlert(
+        email || 'Unknown',
+        amountDollars,
+        orderResult && orderResult.message ? orderResult.message : (orderResult && orderResult.raw ? orderResult.raw : 'Unknown error')
+      );
     }
     // Fire Meta CAPI Purchase event
     let capiResult = null;
