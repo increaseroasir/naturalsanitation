@@ -719,7 +719,9 @@ async function handleJobberSale(request, env) {
     if (phoneDigits.length === 10) phone = '+1' + phoneDigits;
     else if (phoneDigits.length === 11 && phoneDigits[0] === '1') phone = '+' + phoneDigits;
     else if (phoneDigits.length > 0) phone = '+' + phoneDigits;
-    const invoiceDate = String(body.invoice_date || body.date || '').trim();
+    // Strip timezone offset from date so Hyros accepts it (Hyros requires ISO without tz offset)
+    const rawInvoiceDate = String(body.invoice_date || body.date || '').trim();
+    const invoiceDate = rawInvoiceDate ? rawInvoiceDate.replace(/([T ]\d{2}:\d{2}:\d{2})[+-]\d{2}:?\d{2}$/, '$1').replace(/Z$/, '') : '';
     // Explicit renewal flag from Zapier (optional — set is_renewal: true in Zap payload for returning customers)
     const isRenewalFlag = body.is_renewal === true || String(body.is_renewal || '').toLowerCase() === 'true';
 
@@ -816,7 +818,9 @@ async function handleJobberSale(request, env) {
       }
     }
 
-    const attributionTag = isRenewal ? '$subscription-renewal' : (isFunnelLead ? '$phone-close-ad-lead' : '$website-organic');
+    // Jobber closes are ALWAYS phone closes — default to $phone-close-ad-lead even if GHL lookup fails.
+    // Only tag as $website-organic if explicitly flagged as non-funnel (never for Jobber).
+    const attributionTag = isRenewal ? '$subscription-renewal' : '$phone-close-ad-lead';
     console.log('[jobber-sale] attribution', JSON.stringify({ attributionTag, isFunnelLead, isRenewal, hasHyrosId: !!ghlHyrosId }));
 
     // Fire Hyros
@@ -882,7 +886,7 @@ async function handleJobberSale(request, env) {
     // Step 3: Fire Meta CAPI Purchase event for funnel ad leads (phone closes)
     // This ensures the conversion reaches Meta even when the customer never visits the thank-you page.
     let capiResult = null;
-    if (isFunnelLead && !isRenewal && orderOk) {
+    if (!isRenewal && orderOk) {  // Fire CAPI for ALL Jobber closes, not just confirmed funnel leads
       try {
         const capiToken = env && typeof env.META_CAPI_ACCESS_TOKEN === 'string' ? env.META_CAPI_ACCESS_TOKEN.trim() : '';
         const pixelId = (env && env.META_PIXEL_ID) ? String(env.META_PIXEL_ID) : '499919262310418';
